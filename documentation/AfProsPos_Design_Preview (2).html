@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfProsPos — Design Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+:root{
+  --blue:#1E56E8; --yellow:#F5A623; --black:#101828; --white:#FFFFFF;
+  --danger:#D92D20; --success:#16A34A;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#EDEFF3;color:var(--black);}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+i.bi{line-height:1;}
+
+/* ---------- meta toolbar ---------- */
+.meta-toolbar{position:sticky;top:0;z-index:500;background:#14171F;color:#fff;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;}
+.meta-toolbar .grp{display:flex;gap:4px;background:#20242F;border-radius:8px;padding:3px;}
+.meta-toolbar .grp button{background:transparent;border:0;color:#9AA3B2;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:6px;transition:.15s;}
+.meta-toolbar .grp button.active{background:#1E56E8;color:#fff;}
+.meta-toolbar .label{font-size:11px;color:#697086;text-transform:uppercase;letter-spacing:.04em;margin-right:2px;}
+.meta-toolbar .spacer{flex:1;}
+.meta-toolbar .demo-btn{background:#2A2F3D;border:1px solid #3A3F4F;color:#E4E7EC;font-size:12px;font-weight:500;padding:6px 10px;border-radius:6px;}
+.meta-toolbar .demo-btn:hover{background:#343A4A;}
+
+.stage{padding:28px 16px 80px;display:flex;justify-content:center;}
+.device-frame{width:100%;max-width:1280px;transition:max-width .25s ease;background:var(--frame-bg,#fff);border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.06),0 8px 30px rgba(16,24,40,.08);container-type:inline-size;position:relative;}
+.device-frame.mobile{max-width:390px;}
+.app-view{display:none;}
+.app-view.active{display:block;}
+
+/* =========================================================
+   ADMIN THEME — Cloudflare / Dojah inspired
+   ========================================================= */
+#admin-app{
+  --a-bg:#F5F6F8; --a-surface:#fff; --a-border:#E4E7EC; --a-border2:#D0D5DD;
+  --a-text:#101828; --a-text2:#667085; --a-text3:#98A2B3;
+  --a-blue:#1E56E8; --a-blue-soft:#EAF0FF;
+  --a-yellow:#F5A623; --a-yellow-soft:#FFF6E5;
+  --a-red:#D92D20; --a-red-soft:#FEF0EE;
+  --a-green:#16A34A; --a-green-soft:#EAF8EE;
+  background:var(--a-bg); color:var(--a-text); font-size:13px; display:flex; min-height:640px; position:relative;
+}
+#admin-app.sb-collapsed .sidebar{width:64px;}
+#admin-app.sb-collapsed .sb-label,#admin-app.sb-collapsed .sb-groupname{display:none;}
+#admin-app.sb-collapsed .sb-collapse-btn i{transform:rotate(180deg);}
+#admin-app .sidebar{width:220px;flex-shrink:0;background:var(--a-surface);border-right:1px solid var(--a-border);display:flex;flex-direction:column;transition:width .18s ease,transform .22s ease;padding:14px 10px;}
+#admin-app .sb-top{display:flex;align-items:center;gap:8px;padding:4px 6px 16px;}
+#admin-app .sb-top .mark{width:26px;height:26px;flex-shrink:0;}
+#admin-app .sb-top .name{font-weight:700;font-size:14px;letter-spacing:-.01em;}
+#admin-app .sb-groupname{font-size:10.5px;font-weight:600;color:var(--a-text3);letter-spacing:.05em;text-transform:uppercase;margin:14px 8px 6px;}
+#admin-app .sb-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;color:var(--a-text2);font-size:12.5px;font-weight:500;margin-bottom:1px;}
+#admin-app .sb-item i{flex-shrink:0;width:16px;font-size:14.5px;text-align:center;}
+#admin-app .sb-item.active{background:var(--a-blue-soft);color:var(--a-blue);font-weight:600;}
+#admin-app .sb-item:hover:not(.active){background:#F2F3F6;color:var(--a-text);}
+#admin-app .sb-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--a-border);}
+#admin-app .sb-collapse-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;color:var(--a-text2);font-size:12px;font-weight:500;padding:7px 8px;border-radius:6px;}
+#admin-app .sb-collapse-btn:hover{background:#F2F3F6;}
+#admin-app .sb-collapse-btn i{transition:transform .18s;}
+#admin-app .mobile-backdrop{display:none;position:absolute;inset:0;background:rgba(16,20,30,.44);z-index:390;}
+#admin-app .hamburger-btn{display:none;background:none;border:0;color:var(--a-text2);font-size:17px;padding:5px 6px;border-radius:6px;}
+#admin-app .hamburger-btn:hover{background:#F2F3F6;}
+
+#admin-app .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+#admin-app .topbar{height:52px;flex-shrink:0;border-bottom:1px solid var(--a-border);display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--a-surface);}
+#admin-app .shop-switch{display:flex;align-items:center;gap:6px;border:1px solid var(--a-border);border-radius:6px;padding:5px 9px;font-size:12px;font-weight:500;color:var(--a-text);}
+#admin-app .search-wrap{position:relative;flex:1;max-width:320px;}
+#admin-app .search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--a-text3);font-size:12px;}
+#admin-app .search{width:100%;border:1px solid var(--a-border);border-radius:6px;padding:6px 10px 6px 26px;font-size:12px;color:var(--a-text);background:var(--a-bg);}
+#admin-app .search::placeholder{color:var(--a-text3);}
+#admin-app .top-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+#admin-app .bell{position:relative;color:var(--a-text2);font-size:15px;display:flex;}
+#admin-app .bell .dot{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--a-red);border-radius:50%;border:1.5px solid #fff;}
+#admin-app .avatar{width:26px;height:26px;border-radius:50%;background:var(--a-blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+#admin-app .content{padding:20px 22px 40px;}
+#admin-app .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+#admin-app .page-head h1{font-size:19px;font-weight:700;margin:0 0 3px;letter-spacing:-.01em;}
+#admin-app .page-head p{margin:0;font-size:12.5px;color:var(--a-text2);}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+@container (max-width:640px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+.stat-card{background:var(--a-surface);border:1px solid var(--a-border);border-radius:8px;padding:13px 14px;}
+.stat-card .l{font-size:11.5px;color:var(--a-text2);font-weight:500;margin-bottom:6px;}
+.stat-card .v{font-size:20px;font-weight:700;letter-spacing:-.02em;}
+.stat-card .d{font-size:11px;color:var(--a-green);font-weight:600;margin-top:4px;}
+
+.a-table-wrap{background:var(--a-surface);border:1px solid var(--a-border);border-radius:8px;overflow:hidden;margin-bottom:24px;}
+.a-table-toolbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--a-border);flex-wrap:wrap;}
+.a-table-toolbar input{flex:1;min-width:160px;max-width:260px;border:1px solid var(--a-border);border-radius:6px;padding:6px 9px;font-size:12px;background:var(--a-bg);}
+.btn{border:0;border-radius:6px;font-size:12.5px;font-weight:600;padding:7px 13px;display:inline-flex;align-items:center;gap:6px;transition:.12s;white-space:nowrap;}
+.btn i{font-size:13px;}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--a-blue);color:#fff;}
+.btn-primary:hover{background:#1747C4;}
+.btn-neutral{background:#fff;color:var(--a-text);border:1px solid var(--a-border2);}
+.btn-neutral:hover{background:#F2F3F6;}
+.btn-warning{background:var(--a-yellow-soft);color:#9A5B00;border:1px solid #F5D999;}
+.btn-warning:hover{background:#FCEDCB;}
+.btn-danger{background:var(--a-red-soft);color:var(--a-red);border:1px solid #F6C6C1;}
+.btn-danger:hover{background:#FBE1DE;}
+.btn-danger.solid{background:var(--a-red);color:#fff;border:0;}
+.btn:disabled{opacity:.7;cursor:default;}
+.btn .spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+.btn-neutral .spin,.btn-warning .spin{border:2px solid rgba(0,0,0,.15);border-top-color:currentColor;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+table.a-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.a-table th{text-align:left;font-size:11px;font-weight:600;color:var(--a-text2);padding:9px 14px;border-bottom:1px solid var(--a-border);background:#FAFBFC;}
+table.a-table td{padding:10px 14px;border-bottom:1px solid var(--a-border);color:var(--a-text);}
+table.a-table tr:last-child td{border-bottom:0;}
+table.a-table tr:hover td{background:#FAFBFC;}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.badge.b-blue{background:var(--a-blue-soft);color:var(--a-blue);}
+.badge.b-green{background:var(--a-green-soft);color:var(--a-green);}
+.badge.b-yellow{background:var(--a-yellow-soft);color:#9A5B00;}
+.badge.b-grey{background:#F2F3F6;color:var(--a-text2);}
+.row-menu{background:none;border:0;color:var(--a-text3);font-size:14px;padding:4px 6px;border-radius:5px;}
+.row-menu:hover{background:#F2F3F6;color:var(--a-text);}
+.a-table-foot{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-top:1px solid var(--a-border);font-size:11.5px;color:var(--a-text2);}
+.pager{display:flex;gap:4px;}
+.pager button{width:24px;height:24px;border:1px solid var(--a-border2);background:#fff;border-radius:5px;font-size:11px;display:flex;align-items:center;justify-content:center;}
+
+.a-cards{display:none;}
+@container (max-width:640px){.a-table-wrap table.a-table{display:none;} .a-cards{display:block;}}
+.a-card-row{border-bottom:1px solid var(--a-border);}
+.a-card-row:last-child{border-bottom:0;}
+.a-card-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;}
+.a-card-head .main-info{display:flex;flex-direction:column;gap:5px;}
+.a-card-head .device{font-weight:600;font-size:13px;}
+.a-card-toggle{background:none;border:0;color:var(--a-text3);display:flex;align-items:center;justify-content:center;width:26px;height:26px;transition:transform .15s;}
+.a-card-row.open .a-card-toggle{transform:rotate(180deg);}
+.a-card-detail{display:none;padding:0 14px 14px;}
+.a-card-row.open .a-card-detail{display:block;}
+.a-card-detail .kv{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-top:1px dashed var(--a-border);}
+.a-card-detail .kv span:first-child{color:var(--a-text2);}
+.a-card-actions{display:flex;gap:8px;margin-top:10px;}
+
+.a-form-section{margin-bottom:26px;}
+.a-form-section h2{font-size:14.5px;font-weight:700;margin:0 0 3px;}
+.a-form-section .sub{font-size:12px;color:var(--a-text2);margin:0 0 14px;}
+.a-banner{display:flex;gap:9px;align-items:flex-start;background:var(--a-yellow-soft);border:1px solid #F5D999;color:#7A4A00;border-radius:7px;padding:10px 12px;font-size:12px;margin-bottom:16px;}
+.a-banner i{margin-top:1px;}
+.a-form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;margin-bottom:14px;}
+.a-form-row.full{grid-template-columns:1fr;}
+@container (max-width:640px){.a-form-row{grid-template-columns:1fr;}}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--a-text);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--a-border2);border-radius:6px;padding:8px 10px;font-size:12.5px;background:#fff;color:var(--a-text);}
+.field input:focus,.field textarea:focus{outline:2px solid #C7D6FC;border-color:var(--a-blue);}
+.field.error input{border-color:var(--a-red);}
+.field .err-msg{font-size:11px;color:var(--a-red);margin-top:4px;display:flex;align-items:center;gap:4px;}
+.field.valid input{border-color:var(--a-green);}
+.field .ok-msg{font-size:11px;color:var(--a-green);margin-top:4px;display:flex;align-items:center;gap:4px;}
+.a-form-actions{display:flex;gap:8px;max-width:640px;margin-top:4px;flex-wrap:wrap;}
+.skel{background:linear-gradient(90deg,#EEF0F3 25%,#F7F8FA 37%,#EEF0F3 63%);background-size:400% 100%;animation:shimmer 1.3s infinite;border-radius:4px;}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+
+/* mobile off-canvas behavior — admin (flush, serious) */
+@container (max-width:640px){
+  #admin-app .sidebar{position:absolute;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:400;width:230px;box-shadow:0 0 0 1px rgba(0,0,0,.02);}
+  #admin-app .sidebar.mobile-open{transform:translateX(0);}
+  #admin-app.sidebar-open .mobile-backdrop{display:block;}
+  #admin-app .sb-collapse-btn{display:none;}
+  #admin-app .hamburger-btn{display:flex;align-items:center;justify-content:center;}
+  #admin-app .search-wrap{display:none;}
+  #admin-app .shop-switch .txt{display:none;}
+  #admin-app .content{padding:16px;}
+}
+
+/* =========================================================
+   CUSTOMER THEME — playful / material
+   ========================================================= */
+#customer-app{
+  --c-blue:#2F6FED; --c-blue-soft:#E7EFFF; --c-yellow:#FFC845; --c-yellow-soft:#FFF6DF;
+  --c-red:#E24444; --c-red-soft:#FDECEC; --c-green:#1FA463; --c-green-soft:#E8F8EF;
+  --c-text:#1B1F27; --c-text2:#636B78;
+  background:linear-gradient(180deg,#CFE3FF 0%, #EAF3FF 38%, #FFFFFF 72%);
+  min-height:640px; color:var(--c-text); position:relative;
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+}
+#customer-app .c-topbar{display:flex;align-items:center;gap:12px;width:100%;padding:18px 18px 6px;}
+#customer-app .c-hamburger{background:#fff;width:38px;height:38px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(16,24,40,.08);color:var(--c-text);font-size:15px;flex-shrink:0;}
+#customer-app .c-avatar{width:42px;height:42px;border-radius:50%;background:var(--c-blue);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+#customer-app .c-greet{font-size:16px;font-weight:700;}
+#customer-app .c-greet small{display:block;font-family:'Inter';font-weight:500;color:var(--c-text2);font-size:12px;}
+#customer-app .c-bell{margin-left:auto;position:relative;background:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(16,24,40,.08);font-size:15px;flex-shrink:0;}
+#customer-app .c-bell .ydot{position:absolute;top:8px;right:9px;width:8px;height:8px;background:var(--c-yellow);border:2px solid #fff;border-radius:50%;}
+
+/* customer off-canvas nav drawer — floating, curved edges (Material) */
+#customer-app .c-drawer-backdrop{display:none;position:absolute;inset:0;background:rgba(16,20,30,.4);z-index:390;}
+#customer-app.drawer-open .c-drawer-backdrop{display:block;}
+#customer-app .c-drawer{position:absolute;top:12px;bottom:12px;left:12px;width:248px;background:#fff;border-radius:22px;box-shadow:0 24px 60px rgba(16,24,40,.3);z-index:400;padding:18px 12px;transform:translateX(-130%);transition:transform .22s ease;display:flex;flex-direction:column;}
+#customer-app.drawer-open .c-drawer{transform:translateX(0);}
+#customer-app .c-drawer-brand{display:flex;align-items:center;gap:9px;padding:6px 8px 18px;}
+#customer-app .c-drawer-brand .name{font-weight:800;font-size:14px;}
+#customer-app .c-drawer-item{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:14px;color:var(--c-text2);font-size:13px;font-weight:600;margin-bottom:2px;}
+#customer-app .c-drawer-item i{width:18px;text-align:center;font-size:15px;}
+#customer-app .c-drawer-item.active{background:var(--c-blue-soft);color:var(--c-blue);}
+#customer-app .c-drawer-item:hover:not(.active){background:#F5F6F9;}
+#customer-app .c-drawer-foot{margin-top:auto;border-top:1px solid #EEF0F3;padding-top:10px;}
+
+#customer-app .c-body{padding:14px 18px 0;width:100%;}
+.c-hero-card{background:linear-gradient(135deg,#2F6FED,#1E56E8);border-radius:22px;padding:18px 18px 20px;color:#fff;margin-bottom:18px;box-shadow:0 8px 24px rgba(47,111,237,.28);}
+.c-hero-card .chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;margin-bottom:10px;}
+.c-hero-card .chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-yellow);}
+.c-hero-card h3{margin:0 0 4px;font-size:16px;font-weight:700;}
+.c-hero-card p{margin:0 0 12px;font-size:12.5px;opacity:.85;font-family:'Inter';font-weight:400;}
+.c-progress{height:6px;background:rgba(255,255,255,.25);border-radius:100px;overflow:hidden;margin-bottom:12px;}
+.c-progress i{display:block;height:100%;width:65%;background:var(--c-yellow);border-radius:100px;}
+.c-hero-card .cta{background:#fff;color:var(--c-blue);border:0;border-radius:100px;padding:10px 16px;font-weight:700;font-size:12.5px;display:inline-flex;align-items:center;gap:7px;}
+
+.c-section-title{font-size:14.5px;font-weight:700;margin:4px 0 10px;display:flex;justify-content:space-between;align-items:center;}
+.c-section-title span.link{font-family:'Inter';font-size:12px;font-weight:600;color:var(--c-blue);cursor:pointer;}
+
+.c-list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px;}
+.c-list-item{background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05);cursor:pointer;}
+.c-list-item .lic{width:38px;height:38px;border-radius:12px;background:var(--c-blue-soft);color:var(--c-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.c-list-item .info{flex:1;min-width:0;}
+.c-list-item .info .t{font-weight:700;font-size:13px;font-family:'Inter';}
+.c-list-item .info .s{font-size:11.5px;color:var(--c-text2);font-family:'Inter';}
+.c-list-item .amt{font-weight:700;font-size:13px;}
+.c-list-item .chev{color:#B7BEC9;transition:transform .15s;font-size:13px;}
+.c-list-item.open .chev{transform:rotate(90deg);}
+.c-list-detail{display:none;padding:12px 14px 4px;margin-top:2px;font-family:'Inter';}
+.c-list-item.open + .c-list-detail{display:block;}
+.c-list-detail .kv{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;color:var(--c-text2);}
+.c-list-detail .kv b{color:var(--c-text);font-weight:600;}
+.c-detail-actions{display:flex;gap:8px;margin-top:8px;}
+
+.badge-c{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:100px;}
+.badge-c::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.badge-c.blue{background:var(--c-blue-soft);color:var(--c-blue);}
+.badge-c.green{background:var(--c-green-soft);color:var(--c-green);}
+.badge-c.yellow{background:var(--c-yellow-soft);color:#8A6300;}
+
+/* desktop-safe grid instead of full-bleed stretch */
+.c-grid{display:grid;grid-template-columns:1fr;gap:24px;}
+@container (min-width:761px){.c-grid{grid-template-columns:1.3fr .9fr;align-items:start;}}
+.c-col-side{display:flex;flex-direction:column;}
+
+.c-form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+@container (max-width:640px){.c-form-row{grid-template-columns:1fr;}}
+.c-field label{display:block;font-size:12px;font-weight:600;color:var(--c-text2);margin-bottom:6px;font-family:'Inter';}
+.c-field input{width:100%;border:0;border-bottom:2px solid #D7E3F7;background:transparent;padding:8px 2px;font-size:13.5px;color:var(--c-text);font-family:'Inter';}
+.c-field input:focus{outline:0;border-color:var(--c-blue);}
+.c-field.error input{border-color:var(--c-red);}
+.c-field .err-msg{font-size:11px;color:var(--c-red);margin-top:5px;font-family:'Inter';}
+.c-field.valid input{border-color:var(--c-green);}
+.c-field .ok-msg{font-size:11px;color:var(--c-green);margin-top:5px;font-family:'Inter';}
+
+.btn-c{border:0;border-radius:100px;font-weight:700;font-size:12.5px;padding:11px 18px;display:inline-flex;align-items:center;gap:7px;}
+.btn-c-primary{background:var(--c-blue);color:#fff;}
+.btn-c-neutral{background:#F0F2F6;color:var(--c-text);}
+.btn-c-warning{background:var(--c-yellow-soft);color:#8A6300;}
+.btn-c-danger{background:var(--c-red-soft);color:var(--c-red);}
+.btn-c .spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+.btn-c-neutral .spin,.btn-c-warning .spin{border-color:rgba(0,0,0,.15);border-top-color:currentColor;}
+
+.c-fab{position:sticky;bottom:14px;margin-left:auto;width:fit-content;display:flex;justify-content:flex-end;padding-right:20px;max-width:1040px;margin:0 auto;}
+.c-fab button{width:52px;height:52px;border-radius:50%;background:var(--c-blue);color:#fff;border:0;box-shadow:0 10px 22px rgba(47,111,237,.35);display:flex;align-items:center;justify-content:center;font-size:19px;}
+
+/* customer bottom taskbar — mobile only */
+#customer-app .c-taskbar{display:none;position:absolute;left:0;right:0;bottom:0;height:62px;background:#fff;border-top:1px solid #EEF0F3;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 -6px 20px rgba(16,24,40,.06);z-index:120;}
+#customer-app .c-tab-item{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--c-text2);font-size:10px;font-weight:600;font-family:'Inter';padding:6px 4px;flex:1;}
+#customer-app .c-tab-item i{font-size:17px;}
+#customer-app .c-tab-item.active{color:var(--c-blue);}
+#customer-app .c-tab-center{width:50px;height:50px;border-radius:50%;background:var(--c-blue);color:#fff;border:0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;margin-top:-30px;box-shadow:0 10px 22px rgba(47,111,237,.35);}
+@container (max-width:640px){
+  #customer-app .c-taskbar{display:flex;}
+  #customer-app .c-fab{display:none;}
+  #customer-app .c-body{padding-bottom:86px;}
+}
+
+/* =========================================================
+   SHARED overlays: modal, toast, spinner
+   ========================================================= */
+.overlay-back{position:absolute;inset:0;background:rgba(16,20,30,.44);display:none;align-items:center;justify-content:center;z-index:1000;}
+.overlay-back.show{display:flex;}
+.confirm-modal{background:#fff;border-radius:14px;width:380px;max-width:92vw;padding:22px;box-shadow:0 20px 50px rgba(16,24,40,.25);}
+.confirm-modal.mobile-sheet{position:absolute;left:0;right:0;bottom:0;width:100%;max-width:none;border-radius:20px 20px 0 0;padding:10px 20px 26px;animation:sheetUp .22s ease-out;}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-handle{width:36px;height:4px;background:#E2E5EA;border-radius:100px;margin:0 auto 14px;}
+.confirm-modal .icon-wrap{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:17px;}
+.confirm-modal .icon-wrap.danger{background:#FEF0EE;color:#D92D20;}
+.confirm-modal .icon-wrap.warning{background:#FFF6E5;color:#9A5B00;}
+.confirm-modal h4{margin:0 0 6px;font-size:15px;font-weight:700;}
+.confirm-modal p{margin:0 0 18px;font-size:12.5px;color:#667085;line-height:1.5;}
+.confirm-modal .actions{display:flex;gap:8px;justify-content:flex-end;}
+.confirm-modal.mobile-sheet .actions{flex-direction:column-reverse;}
+.confirm-modal.mobile-sheet .actions button{width:100%;justify-content:center;padding:12px;}
+
+.toast-stack{position:absolute;top:16px;right:16px;z-index:1200;display:flex;flex-direction:column;gap:8px;max-width:320px;}
+.toast{background:#fff;border-radius:10px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start;box-shadow:0 10px 28px rgba(16,24,40,.14);border-left:4px solid #ccc;animation:toastIn .18s ease-out;font-size:12.5px;}
+@keyframes toastIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.toast.success{border-color:var(--success);}
+.toast.error{border-color:var(--danger);}
+.toast.warning{border-color:var(--yellow);}
+.toast b{display:block;font-size:12.5px;margin-bottom:1px;}
+.toast .tx-icon{flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+.toast.success .tx-icon{background:var(--success);}
+.toast.error .tx-icon{background:var(--danger);}
+.toast.warning .tx-icon{background:var(--yellow);}
+
+/* customer toast — a bold filled capsule with an overlapping icon badge and a bouncy
+   entrance. Deliberately very different from the admin toast (white card, top-right,
+   thin colour bar): this one is bottom-anchored, pill-shaped, and fully coloured. */
+.c-toast-stack{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:1400;display:flex;flex-direction:column-reverse;gap:8px;width:88%;max-width:340px;align-items:center;}
+@container (min-width:761px){.c-toast-stack{bottom:26px;}}
+.c-toast{position:relative;color:#fff;border-radius:100px;padding:12px 18px 12px 50px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 16px 34px rgba(16,24,40,.28);font-size:12px;width:100%;animation:cToastPop .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes cToastPop{from{opacity:0;transform:translateY(18px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.c-toast.success{background:linear-gradient(135deg,#22B573,#16A34A);}
+.c-toast.error{background:linear-gradient(135deg,#EE5A5A,#D92D20);}
+.c-toast.warning{background:linear-gradient(135deg,#FFC845,#F5A623);color:#3D2E00;}
+.c-toast .c-tx-icon{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:15px;}
+.c-toast.warning .c-tx-icon{background:rgba(61,46,0,.14);}
+.c-toast b{display:block;font-size:12.5px;font-weight:800;}
+.c-toast span.msg{opacity:.9;font-family:'Inter';font-weight:500;font-size:11.5px;}
+
+.spinner-overlay{position:absolute;inset:0;z-index:1300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(255,255,255,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.spinner-overlay.show{display:flex;}
+.spin-mark{width:52px;height:52px;animation:markspin 1s linear infinite;}
+@keyframes markspin{to{transform:rotate(360deg)}}
+.spinner-overlay .msg{font-size:12.5px;font-weight:600;color:#344055;}
+.mark-svg rect{fill:#1E56E8;}
+.mark-svg path{fill:#fff;}
+.mark-svg circle{fill:#F5A623;}
+
+/* =========================================================
+   CUSTOMER SHELL — persistent curved sidebar on desktop,
+   off-canvas drawer on mobile. Main content becomes a
+   rounded floating card on desktop to match the sidebar.
+   ========================================================= */
+#customer-app .c-shell{position:relative;display:flex;min-height:640px;}
+#customer-app .c-main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;}
+
+@container (min-width:761px){
+  /* the sidebar + content no longer float as separate elevated cards — instead the
+     whole shell sits inside one plain white frame (thin black outline, no shadow).
+     the gap between the two panes, and the padding around them, is what shows that
+     white frame; the panes themselves keep the app's usual gradient background so
+     nothing about them reads as a "card" on top of the page. */
+  #customer-app{padding:18px;}
+  #customer-app .c-shell{
+    gap:16px;
+    padding:16px;
+    background:#fff;
+    border:1px solid #14171F;
+    border-radius:30px;
+  }
+  #customer-app .c-drawer-backdrop{display:none !important;}
+  #customer-app .c-hamburger{display:none;}
+  #customer-app .c-drawer{
+    position:static;
+    transform:none !important;
+    top:auto;left:auto;bottom:auto;
+    width:236px;
+    flex-shrink:0;
+    align-self:stretch;
+    height:auto;
+    box-shadow:none;
+    background:linear-gradient(180deg,#CFE3FF 0%, #EAF3FF 55%, #FFFFFF 100%);
+  }
+  #customer-app .c-main{
+    background:linear-gradient(180deg,#CFE3FF 0%, #EAF3FF 55%, #FFFFFF 100%);
+    border-radius:22px;
+    box-shadow:none;
+    overflow:hidden;
+  }
+  #customer-app .c-topbar{max-width:none;margin:0;padding:20px 26px 8px;}
+  #customer-app .c-body{max-width:none;margin:0;padding:14px 26px 26px;}
+}
+</style>
+</head>
+<body>
+
+<div class="meta-toolbar">
+  <span class="label">Theme</span>
+  <div class="grp" id="themeGrp">
+    <button data-theme="admin" class="active">Admin dashboard</button>
+    <button data-theme="customer">Customer dashboard</button>
+  </div>
+  <span class="label">Viewport</span>
+  <div class="grp" id="deviceGrp">
+    <button data-device="desktop" class="active">Desktop</button>
+    <button data-device="mobile">Mobile</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="demo-btn" onclick="showToast('success')">Success toast</button>
+  <button class="demo-btn" onclick="showToast('error')">Error toast</button>
+  <button class="demo-btn" onclick="showToast('warning')">Warning toast</button>
+  <button class="demo-btn" onclick="showSpinner()">Full-page loader</button>
+</div>
+
+<div class="stage">
+  <div class="device-frame" id="frame">
+
+    <!-- ============ ADMIN APP ============ -->
+    <div class="app-view active" id="admin-app">
+      <div class="mobile-backdrop" onclick="closeAdminSidebar()"></div>
+      <aside class="sidebar" id="adminSidebar">
+        <div class="sb-top">
+          <svg class="mark-svg" viewBox="0 0 32 32" width="26" height="26"><rect width="32" height="32" rx="8"/><path d="M11 22V10h4.5c3 0 4.8 1.7 4.8 4.4 0 2.1-1.1 3.6-3 4.1l3.2 3.5h-2.9l-2.8-3.2h-1.1V22H11zm2.7-5.3h1.6c1.5 0 2.3-.7 2.3-1.9s-.8-1.9-2.3-1.9h-1.6v3.8z"/><circle cx="25" cy="8" r="3"/></svg>
+          <span class="name sb-label">AfProsPos</span>
+        </div>
+        <div class="sb-groupname">Operations</div>
+        <div class="sb-item active"><i class="bi bi-grid-1x2-fill"></i><span class="sb-label">Dashboard</span></div>
+        <div class="sb-item"><i class="bi bi-tools"></i><span class="sb-label">Repairs</span></div>
+        <div class="sb-item"><i class="bi bi-receipt"></i><span class="sb-label">Sales / POS</span></div>
+        <div class="sb-item"><i class="bi bi-box-seam"></i><span class="sb-label">Inventory</span></div>
+        <div class="sb-item"><i class="bi bi-credit-card-2-front"></i><span class="sb-label">Payments</span></div>
+        <div class="sb-groupname">Business</div>
+        <div class="sb-item"><i class="bi bi-shop"></i><span class="sb-label">Multi-shop</span></div>
+        <div class="sb-item"><i class="bi bi-bar-chart-line"></i><span class="sb-label">Reports</span></div>
+        <div class="sb-item"><i class="bi bi-people"></i><span class="sb-label">Staff & roles</span></div>
+        <div class="sb-bottom">
+          <button class="sb-collapse-btn" onclick="document.getElementById('admin-app').classList.toggle('sb-collapsed')">
+            <i class="bi bi-chevron-bar-left"></i><span class="sb-label">Collapse sidebar</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <button class="hamburger-btn" onclick="openAdminSidebar()"><i class="bi bi-list"></i></button>
+          <div class="shop-switch"><i class="bi bi-shop"></i><span class="txt">Ikeja branch</span> <i class="bi bi-chevron-down" style="font-size:9px"></i></div>
+          <div class="search-wrap"><i class="bi bi-search"></i><input class="search" placeholder="Search repairs, sales, customers…"></div>
+          <div class="top-right">
+            <div class="bell"><i class="bi bi-bell"></i><span class="dot"></span></div>
+            <div class="avatar">AO</div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <h1>Repair jobs</h1>
+              <p>All active and recent repair jobs across Ikeja branch</p>
+            </div>
+            <button class="btn btn-primary" onclick="btnLoad(this,'New repair job created')"><i class="bi bi-plus-lg"></i> New repair job</button>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat-card"><div class="l">Active repairs</div><div class="v">128</div><div class="d">↑ 6 today</div></div>
+            <div class="stat-card"><div class="l">Awaiting parts</div><div class="v">14</div></div>
+            <div class="stat-card"><div class="l">Ready for collection</div><div class="v">9</div></div>
+            <div class="stat-card"><div class="l">Revenue this week</div><div class="v">₦842,300</div></div>
+          </div>
+
+          <div class="a-table-wrap">
+            <div class="a-table-toolbar">
+              <input placeholder="Filter by device, customer, technician…">
+              <div class="spacer" style="flex:1"></div>
+              <button class="btn btn-neutral" onclick="simulateSkeleton()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+              <button class="btn btn-warning" onclick="openConfirm('warning','Clear resolved jobs?','Resolved repair jobs older than 30 days will be archived from this view. This cannot be undone from here.')"><i class="bi bi-trash3"></i> Clear resolved</button>
+            </div>
+
+            <table class="a-table" id="adminTable">
+              <thead><tr><th style="width:20px"><input type="checkbox"></th><th>Device</th><th>Customer</th><th>Status</th><th>Technician</th><th>Cost</th><th>Updated</th><th></th></tr></thead>
+              <tbody id="adminTbody">
+                <tr><td><input type="checkbox"></td><td>iPhone 13 Pro · Screen</td><td>Chidinma A.</td><td><span class="badge b-blue">In progress</span></td><td>Femi K.</td><td>₦45,000</td><td>2h ago</td><td><button class="row-menu"><i class="bi bi-three-dots"></i></button></td></tr>
+                <tr><td><input type="checkbox"></td><td>Tecno Spark 10 · Battery</td><td>Uche N.</td><td><span class="badge b-yellow">Awaiting parts</span></td><td>Femi K.</td><td>₦12,500</td><td>5h ago</td><td><button class="row-menu"><i class="bi bi-three-dots"></i></button></td></tr>
+                <tr><td><input type="checkbox"></td><td>Samsung A54 · Charging port</td><td>Blessing O.</td><td><span class="badge b-green">Ready for collection</span></td><td>Ibrahim S.</td><td>₦18,000</td><td>1d ago</td><td><button class="row-menu"><i class="bi bi-three-dots"></i></button></td></tr>
+                <tr><td><input type="checkbox"></td><td>iPhone 11 · Diagnosis</td><td>Tolu A.</td><td><span class="badge b-grey">Received</span></td><td>Unassigned</td><td>—</td><td>2d ago</td><td><button class="row-menu"><i class="bi bi-three-dots"></i></button></td></tr>
+              </tbody>
+            </table>
+
+            <div class="a-cards" id="adminCards">
+              <div class="a-card-row">
+                <div class="a-card-head" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="main-info"><span class="device">iPhone 13 Pro · Screen</span><span class="badge b-blue">In progress</span></div>
+                  <button class="a-card-toggle"><i class="bi bi-chevron-down"></i></button>
+                </div>
+                <div class="a-card-detail">
+                  <div class="kv"><span>Customer</span><b>Chidinma A.</b></div>
+                  <div class="kv"><span>Technician</span><b>Femi K.</b></div>
+                  <div class="kv"><span>Cost</span><b>₦45,000</b></div>
+                  <div class="kv"><span>Updated</span><b>2h ago</b></div>
+                  <div class="a-card-actions">
+                    <button class="btn btn-neutral" style="flex:1;justify-content:center" onclick="btnLoad(this)"><i class="bi bi-pencil"></i> Edit</button>
+                    <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="openConfirm('danger','Delete this repair job?','This will permanently remove the job and its history. This action cannot be undone.')"><i class="bi bi-trash3"></i> Delete</button>
+                  </div>
+                </div>
+              </div>
+              <div class="a-card-row">
+                <div class="a-card-head" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="main-info"><span class="device">Tecno Spark 10 · Battery</span><span class="badge b-yellow">Awaiting parts</span></div>
+                  <button class="a-card-toggle"><i class="bi bi-chevron-down"></i></button>
+                </div>
+                <div class="a-card-detail">
+                  <div class="kv"><span>Customer</span><b>Uche N.</b></div>
+                  <div class="kv"><span>Technician</span><b>Femi K.</b></div>
+                  <div class="kv"><span>Cost</span><b>₦12,500</b></div>
+                  <div class="kv"><span>Updated</span><b>5h ago</b></div>
+                  <div class="a-card-actions">
+                    <button class="btn btn-neutral" style="flex:1;justify-content:center" onclick="btnLoad(this)"><i class="bi bi-pencil"></i> Edit</button>
+                    <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="openConfirm('danger','Delete this repair job?','This will permanently remove the job and its history. This action cannot be undone.')"><i class="bi bi-trash3"></i> Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="a-table-foot">
+              <span>Showing 1–4 of 128</span>
+              <div class="pager"><button><i class="bi bi-chevron-left"></i></button><button>1</button><button>2</button><button><i class="bi bi-chevron-right"></i></button></div>
+            </div>
+          </div>
+
+          <div class="a-form-section">
+            <h2>Log a business expense</h2>
+            <p class="sub">Recorded expenses appear on the shop's monthly financial report.</p>
+            <div class="a-banner"><i class="bi bi-exclamation-triangle-fill"></i> Two expenses this week are missing a receipt attachment. They'll be flagged in the audit export.</div>
+            <div class="a-form-row">
+              <div class="field"><label>Expense title</label><input placeholder="e.g. Shop generator fuel"></div>
+              <div class="field error"><label>Amount (₦)</label><input value="abc"><div class="err-msg"><i class="bi bi-exclamation-circle"></i> Enter a valid amount</div></div>
+            </div>
+            <div class="a-form-row">
+              <div class="field valid"><label>Category</label><input value="Utilities"><div class="ok-msg"><i class="bi bi-check-circle"></i> Looks good</div></div>
+              <div class="field"><label>Date</label><input placeholder="dd/mm/yyyy"></div>
+            </div>
+            <div class="a-form-row full">
+              <div class="field"><label>Notes (optional)</label><textarea rows="3" placeholder="Any extra context for the accountant…"></textarea></div>
+            </div>
+            <div class="a-form-actions">
+              <button class="btn btn-primary" onclick="btnLoad(this,'Expense saved')">Save expense</button>
+              <button class="btn btn-neutral">Cancel</button>
+              <div class="spacer" style="flex:1"></div>
+              <button class="btn btn-danger solid" onclick="openConfirm('danger','Delete this shop?','This permanently removes Ikeja branch, its staff assignments, and its inventory records.')"><i class="bi bi-trash3"></i> Delete shop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CUSTOMER APP ============ -->
+    <div class="app-view" id="customer-app">
+      <div class="c-shell">
+        <div class="c-drawer-backdrop" onclick="closeCustDrawer()"></div>
+        <div class="c-drawer" id="custDrawer">
+          <div class="c-drawer-brand">
+            <svg class="mark-svg" viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="8"/><path d="M11 22V10h4.5c3 0 4.8 1.7 4.8 4.4 0 2.1-1.1 3.6-3 4.1l3.2 3.5h-2.9l-2.8-3.2h-1.1V22H11zm2.7-5.3h1.6c1.5 0 2.3-.7 2.3-1.9s-.8-1.9-2.3-1.9h-1.6v3.8z"/><circle cx="25" cy="8" r="3"/></svg>
+            <span class="name">AfProsPos</span>
+          </div>
+          <div class="c-drawer-item active"><i class="bi bi-house-door-fill"></i> Home</div>
+          <div class="c-drawer-item"><i class="bi bi-tools"></i> Repairs</div>
+          <div class="c-drawer-item"><i class="bi bi-bag-check"></i> Orders</div>
+          <div class="c-drawer-item"><i class="bi bi-shop"></i> Shops</div>
+          <div class="c-drawer-item"><i class="bi bi-person"></i> Profile</div>
+          <div class="c-drawer-item"><i class="bi bi-bell"></i> Notifications</div>
+          <div class="c-drawer-foot">
+            <div class="c-drawer-item"><i class="bi bi-box-arrow-right"></i> Log out</div>
+          </div>
+        </div>
+
+        <div class="c-main">
+          <div class="c-topbar">
+            <button class="c-hamburger" onclick="openCustDrawer()"><i class="bi bi-list"></i></button>
+            <div class="c-avatar">A</div>
+            <div class="c-greet">Hi, Aisha<small>Wuse II, Abuja</small></div>
+            <div class="c-bell"><i class="bi bi-bell"></i><span class="ydot"></span></div>
+          </div>
+
+          <div class="c-body">
+            <div class="c-grid">
+              <div class="c-col-main">
+                <div class="c-hero-card">
+                  <span class="chip">In progress</span>
+                  <h3>iPhone 13 Pro — Screen repair</h3>
+                  <p>Femi K. is working on your device · Ready by Thu, 4 Sep</p>
+                  <div class="c-progress"><i></i></div>
+                  <button class="cta" onclick="btnLoad(this,'Opening payment…')">Pay down payment ₦20,000 <i class="bi bi-arrow-right"></i></button>
+                </div>
+
+                <div class="c-section-title">Order history <span class="link">See all</span></div>
+                <div class="c-list" id="custList">
+                  <div>
+                    <div class="c-list-item" onclick="this.classList.toggle('open')">
+                      <div class="lic"><i class="bi bi-phone"></i></div>
+                      <div class="info"><div class="t">Samsung A54 · Purchase</div><div class="s">12 Aug · Ikeja branch</div></div>
+                      <div class="amt">₦185,000</div>
+                      <div class="chev"><i class="bi bi-chevron-right"></i></div>
+                    </div>
+                    <div class="c-list-detail">
+                      <div class="kv"><span>Payment method</span><b>Bank transfer</b></div>
+                      <div class="kv"><span>Warranty</span><b>6 months</b></div>
+                      <div class="kv"><span>Status</span><b><span class="badge-c green">Completed</span></b></div>
+                      <div class="c-detail-actions">
+                        <button class="btn-c btn-c-neutral" onclick="btnLoad(this)">View invoice</button>
+                        <button class="btn-c btn-c-primary" onclick="btnLoad(this)">Reorder</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="c-list-item" onclick="this.classList.toggle('open')">
+                      <div class="lic"><i class="bi bi-tools"></i></div>
+                      <div class="info"><div class="t">Tecno Camon · Repair</div><div class="s">3 Aug · Wuse branch</div></div>
+                      <div class="amt">₦9,500</div>
+                      <div class="chev"><i class="bi bi-chevron-right"></i></div>
+                    </div>
+                    <div class="c-list-detail">
+                      <div class="kv"><span>Technician</span><b>Ibrahim S.</b></div>
+                      <div class="kv"><span>Balance due</span><b>₦0</b></div>
+                      <div class="kv"><span>Status</span><b><span class="badge-c blue">Collected</span></b></div>
+                      <div class="c-detail-actions">
+                        <button class="btn-c btn-c-neutral" onclick="btnLoad(this)">View invoice</button>
+                        <button class="btn-c btn-c-danger" onclick="openConfirm('danger','Remove from history?','This only hides the order from your dashboard — your shop keeps the record.')">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="c-col-side">
+                <div class="c-section-title">Edit profile</div>
+                <div class="c-form-row">
+                  <div class="c-field"><label>Full name</label><input value="Aisha Bello"></div>
+                  <div class="c-field error"><label>Phone number</label><input value="080123"><div class="err-msg">Enter a valid 11-digit number</div></div>
+                </div>
+                <div class="c-form-row">
+                  <div class="c-field valid"><label>Email</label><input value="aisha.bello@email.com"><div class="ok-msg">Verified</div></div>
+                  <div class="c-field"><label>Preferred branch</label><input value="Wuse II"></div>
+                </div>
+                <div class="c-detail-actions" style="margin:6px 0 26px;">
+                  <button class="btn-c btn-c-primary" onclick="btnLoad(this,'Profile updated')">Save changes</button>
+                  <button class="btn-c btn-c-neutral">Cancel</button>
+                </div>
+
+                <div class="c-section-title">Notifications <span class="link" onclick="openConfirm('warning','Clear all notifications?','You will no longer see these updates in your notification list.')">Clear all</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="c-fab"><button onclick="btnLoad(this)"><i class="bi bi-plus-lg"></i></button></div>
+
+          <nav class="c-taskbar" id="custTaskbar">
+            <button class="c-tab-item active" onclick="setTab(this)"><i class="bi bi-house-door-fill"></i><span>Home</span></button>
+            <button class="c-tab-item" onclick="setTab(this)"><i class="bi bi-tools"></i><span>Repairs</span></button>
+            <button class="c-tab-center" onclick="btnLoad(this)"><i class="bi bi-plus-lg"></i></button>
+            <button class="c-tab-item" onclick="setTab(this)"><i class="bi bi-bag-check"></i><span>Orders</span></button>
+            <button class="c-tab-item" onclick="setTab(this)"><i class="bi bi-person"></i><span>Profile</span></button>
+          </nav>
+        </div>
+      </div>
+      <div class="c-toast-stack" id="cToastStack"></div>
+    </div>
+
+    <div class="overlay-back" id="overlayBack">
+      <div class="confirm-modal" id="confirmModal">
+        <div class="sheet-handle" id="sheetHandle" style="display:none"></div>
+        <div class="icon-wrap" id="confirmIcon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <h4 id="confirmTitle">Are you sure?</h4>
+        <p id="confirmBody">This action cannot be undone.</p>
+        <div class="actions">
+          <button class="btn btn-neutral" onclick="closeConfirm()" id="confirmCancelBtn">Cancel</button>
+          <button class="btn btn-danger solid" onclick="confirmYes()" id="confirmYesBtn">Yes, continue</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-stack" id="toastStack"></div>
+    <div class="spinner-overlay" id="spinnerOverlay">
+      <svg class="mark-svg spin-mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M11 22V10h4.5c3 0 4.8 1.7 4.8 4.4 0 2.1-1.1 3.6-3 4.1l3.2 3.5h-2.9l-2.8-3.2h-1.1V22H11zm2.7-5.3h1.6c1.5 0 2.3-.7 2.3-1.9s-.8-1.9-2.3-1.9h-1.6v3.8z"/><circle cx="25" cy="8" r="3"/></svg>
+      <div class="msg">Loading…</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let state={theme:'admin',device:'desktop'};
+
+document.getElementById('themeGrp').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  state.theme=b.dataset.theme;
+  document.querySelectorAll('#themeGrp button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('.app-view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(state.theme+'-app').classList.add('active');
+});
+
+document.getElementById('deviceGrp').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  state.device=b.dataset.device;
+  document.querySelectorAll('#deviceGrp button').forEach(x=>x.classList.toggle('active',x===b));
+  document.getElementById('frame').classList.toggle('mobile',state.device==='mobile');
+});
+
+function openAdminSidebar(){document.getElementById('adminSidebar').classList.add('mobile-open');document.getElementById('admin-app').classList.add('sidebar-open');}
+function closeAdminSidebar(){document.getElementById('adminSidebar').classList.remove('mobile-open');document.getElementById('admin-app').classList.remove('sidebar-open');}
+function openCustDrawer(){document.getElementById('customer-app').classList.add('drawer-open');}
+function closeCustDrawer(){document.getElementById('customer-app').classList.remove('drawer-open');}
+
+function setTab(btn){
+  document.querySelectorAll('#customer-app .c-tab-item').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function btnLoad(btn,successMsg){
+  if(btn.dataset.loading)return;
+  const original=btn.innerHTML;
+  btn.dataset.loading='1'; btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span> Please wait…';
+  setTimeout(()=>{
+    btn.innerHTML=original; btn.disabled=false; delete btn.dataset.loading;
+    if(successMsg) showToast('success', successMsg);
+  },1000);
+}
+
+function simulateSkeleton(){
+  const tbody=document.getElementById('adminTbody');
+  const rows=[...tbody.children];
+  const originals=rows.map(r=>r.innerHTML);
+  rows.forEach(r=>{
+    r.innerHTML='<td colspan="8" style="padding:12px 14px;"><div class="skel" style="height:14px;width:'+(40+Math.random()*40)+'%"></div></td>';
+  });
+  setTimeout(()=>rows.forEach((r,i)=>r.innerHTML=originals[i]),1100);
+}
+
+let pendingAction=null;
+function openConfirm(kind,title,body){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmBody').textContent=body;
+  const icon=document.getElementById('confirmIcon');
+  const yes=document.getElementById('confirmYesBtn');
+  icon.className='icon-wrap '+(kind==='warning'?'warning':'danger');
+  icon.innerHTML=kind==='warning'?'<i class="bi bi-exclamation-triangle-fill"></i>':'<i class="bi bi-trash3-fill"></i>';
+  yes.className='btn '+(kind==='warning'?'btn-warning':'btn-danger solid');
+  yes.textContent=kind==='warning'?'Yes, clear it':'Yes, delete';
+  pendingAction=kind;
+
+  const modal=document.getElementById('confirmModal');
+  const handle=document.getElementById('sheetHandle');
+  if(state.device==='mobile'){modal.classList.add('mobile-sheet'); handle.style.display='block';}
+  else{modal.classList.remove('mobile-sheet'); handle.style.display='none';}
+  document.getElementById('overlayBack').classList.add('show');
+}
+function closeConfirm(){document.getElementById('overlayBack').classList.remove('show');}
+function confirmYes(){
+  closeConfirm();
+  showToast(pendingAction==='warning'?'warning':'error', pendingAction==='warning'?'Cleared successfully':'Deleted successfully');
+}
+document.getElementById('overlayBack').addEventListener('click',e=>{if(e.target.id==='overlayBack')closeConfirm();});
+
+function showToast(kind,msg){
+  const map={
+    success:{icon:'bi-check-lg',title:'Success',def:'Action completed successfully.'},
+    error:{icon:'bi-x-lg',title:'Error',def:'Something went wrong. Please try again.'},
+    warning:{icon:'bi-exclamation-triangle-fill',title:'Heads up',def:'This needs your attention.'}
+  };
+  const m=map[kind];
+  if(state.theme==='customer'){
+    const el=document.createElement('div');
+    el.className='c-toast '+kind;
+    el.innerHTML='<div class="c-tx-icon"><i class="bi '+m.icon+'"></i></div><div><b>'+m.title+'</b><span class="msg"> '+(msg||m.def)+'</span></div>';
+    const stack=document.getElementById('cToastStack');
+    stack.appendChild(el);
+    setTimeout(()=>{el.style.transition='.22s';el.style.opacity='0';el.style.transform='translateY(10px) scale(.97)';setTimeout(()=>el.remove(),220);},3200);
+  }else{
+    const el=document.createElement('div');
+    el.className='toast '+kind;
+    el.innerHTML='<div class="tx-icon"><i class="bi '+m.icon+'"></i></div><div><b>'+m.title+'</b>'+(msg||m.def)+'</div>';
+    document.getElementById('toastStack').appendChild(el);
+    setTimeout(()=>{el.style.transition='.25s';el.style.opacity='0';el.style.transform='translateY(-6px)';setTimeout(()=>el.remove(),250);},3200);
+  }
+}
+
+function showSpinner(){
+  const ov=document.getElementById('spinnerOverlay');
+  ov.classList.add('show');
+  setTimeout(()=>ov.classList.remove('show'),1400);
+}
+</script>
+</body>
+</html>

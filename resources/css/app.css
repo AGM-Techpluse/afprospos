@@ -1,0 +1,88 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: var(--font-admin);
+    --font-admin-base: var(--font-admin);
+    --font-customer-display: var(--font-customer-display);
+    --font-customer-ui: var(--font-customer-ui);
+    --font-mono: var(--font-mono);
+
+    /* Admin Colors */
+    --color-admin-bg: var(--a-bg);
+    --color-admin-surface: var(--a-surface);
+    --color-admin-border: var(--a-border);
+    --color-admin-border-strong: var(--a-border2);
+    --color-admin-text: var(--a-text);
+    --color-admin-text2: var(--a-text2);
+    --color-admin-text3: var(--a-text3);
+    --color-admin-blue: var(--a-blue);
+    --color-admin-blue-soft: var(--a-blue-soft);
+    --color-admin-yellow: var(--a-yellow);
+    --color-admin-yellow-soft: var(--a-yellow-soft);
+    --color-admin-yellow-text: var(--a-yellow-text);
+    --color-admin-red: var(--a-red);
+    --color-admin-red-soft: var(--a-red-soft);
+    --color-admin-green: var(--a-green);
+    --color-admin-green-soft: var(--a-green-soft);
+    --color-admin-table-head: var(--a-table-head);
+    --color-admin-hover: var(--a-hover);
+    --color-admin-focus: var(--a-focus);
+    --color-admin-border-warning: var(--a-border-warning);
+    --color-admin-border-danger: var(--a-border-danger);
+    --color-admin-border-success: var(--a-border-success);
+    --color-admin-overlay: var(--a-overlay);
+
+    /* Customer Colors */
+    --color-customer-page-start: var(--c-page-start);
+    --color-customer-page-mid: var(--c-page-mid);
+    --color-customer-page-end: var(--c-page-end);
+    --color-customer-text: var(--c-text);
+    --color-customer-text2: var(--c-text2);
+    --color-customer-blue: var(--c-blue);
+    --color-customer-blue-soft: var(--c-blue-soft);
+    --color-customer-yellow: var(--c-yellow);
+    --color-customer-yellow-soft: var(--c-yellow-soft);
+    --color-customer-red: var(--c-red);
+    --color-customer-red-soft: var(--c-red-soft);
+    --color-customer-green: var(--c-green);
+    --color-customer-green-soft: var(--c-green-soft);
+    --color-customer-input-border: var(--c-input-border);
+    --color-customer-divider: var(--c-divider);
+    --color-customer-muted-icon: var(--c-muted-icon);
+    --color-customer-overlay: var(--c-overlay);
+    --color-customer-shell-border: var(--c-shell-border);
+    --color-customer-focus: var(--c-focus);
+
+    /* Shared UI Semantic Layer Colors (Used by shared components like Icon) */
+    --color-ui-bg: var(--ui-bg);
+    --color-ui-surface: var(--ui-surface);
+    --color-ui-text: var(--ui-text);
+    --color-ui-text-secondary: var(--ui-text-secondary);
+    --color-ui-border: var(--ui-border);
+    --color-ui-accent: var(--ui-accent);
+    --color-ui-focus: var(--ui-focus);
+
+    /* Radii */
+    --radius-admin-input: var(--a-radius-input);
+    --radius-admin-button: var(--a-radius-button);
+    --radius-admin-card: var(--a-radius-card);
+    --radius-admin-modal: var(--a-radius-modal);
+    
+    --radius-customer-item: var(--c-radius-item);
+    --radius-customer-card: var(--c-radius-card);
+    --radius-customer-hero: var(--c-radius-hero);
+    --radius-customer-drawer: var(--c-radius-drawer);
+    --radius-customer-shell: var(--c-radius-shell);
+    --radius-customer-pill: var(--c-radius-pill);
+
+    --radius-ui-control: var(--ui-radius-control);
+
+    /* Shadows */
+    --shadow-admin-modal: var(--a-shadow-modal);
+    --shadow-customer-soft: var(--c-shadow-soft);
+    --shadow-customer-strong: var(--c-shadow-strong);
+}

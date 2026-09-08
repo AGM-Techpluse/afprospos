@@ -1,0 +1,243 @@
+/* =========================================================
+   AfProsPos Design System Tokens
+   tokens.css
+   ========================================================= */
+
+:root {
+  /* ---------- Primitive colors ---------- */
+  --color-white: #FFFFFF;
+  --color-black: #101828;
+
+  --color-blue-600: #1E56E8;
+  --color-blue-050: #EAF0FF;
+
+  --color-yellow-500: #F5A623;
+  --color-yellow-050: #FFF6E5;
+  --color-yellow-800: #9A5B00;
+
+  --color-red-600: #D92D20;
+  --color-red-050: #FEF0EE;
+
+  --color-green-600: #16A34A;
+  --color-green-050: #EAF8EE;
+
+  /* ---------- Neutral ---------- */
+  --neutral-025: #FAFBFC;
+  --neutral-050: #F5F6F8;
+  --neutral-100: #F2F3F6;
+  --neutral-200: #E4E7EC;
+  --neutral-300: #D0D5DD;
+  --neutral-400: #98A2B3;
+  --neutral-600: #667085;
+  --neutral-900: #101828;
+
+  /* ---------- Typography ---------- */
+  --font-admin:
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  --font-customer-display:
+    "Plus Jakarta Sans",
+    system-ui,
+    sans-serif;
+
+  --font-customer-ui:
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  --font-mono:
+    "JetBrains Mono",
+    Consolas,
+    monospace;
+
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* ---------- Type ---------- */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 19px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 34px;
+
+  /* ---------- Line height ---------- */
+  --leading-xs: 16px;
+  --leading-sm: 17px;
+  --leading-base: 19px;
+  --leading-md: 20px;
+  --leading-lg: 22px;
+  --leading-xl: 26px;
+  --leading-2xl: 28px;
+  --leading-3xl: 34px;
+  --leading-4xl: 40px;
+
+  /* ---------- Spacing ---------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------- Motion ---------- */
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 220ms;
+  --motion-toast: 300ms;
+
+  --ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ---------- Admin semantic tokens ---------- */
+  --a-bg: #F5F6F8;
+  --a-surface: #FFFFFF;
+  --a-border: #E4E7EC;
+  --a-border2: #D0D5DD;
+  --a-text: #101828;
+  --a-text2: #667085;
+  --a-text3: #98A2B3;
+
+  --a-blue: #1E56E8;
+  --a-blue-soft: #EAF0FF;
+
+  --a-yellow: #F5A623;
+  --a-yellow-soft: #FFF6E5;
+  --a-yellow-text: #9A5B00;
+
+  --a-red: #D92D20;
+  --a-red-soft: #FEF0EE;
+
+  --a-green: #16A34A;
+  --a-green-soft: #EAF8EE;
+
+  --a-table-head: #FAFBFC;
+  --a-hover: #F2F3F6;
+  --a-focus: #C7D6FC;
+  --a-border-warning: #F5D999;
+  --a-border-danger: #F6C6C1;
+  --a-border-success: #D5F0DD;
+  --a-overlay: rgba(16, 20, 30, .44);
+  --a-shadow-modal: 0 8px 24px rgba(16,20,30,.18);
+
+  --a-radius-input: 4px;
+  --a-radius-button: 6px;
+  --a-radius-card: 8px;
+  --a-radius-modal: 14px;
+
+  /* ---------- Customer semantic tokens ---------- */
+  --c-page-start: #CFE3FF;
+  --c-page-mid: #EAF3FF;
+  --c-page-end: #FFFFFF;
+
+  --c-text: #1B1F27;
+  --c-text2: #636B78;
+
+  --c-blue: #2F6FED;
+  --c-blue-soft: #E7EFFF;
+
+  --c-yellow: #FFC845;
+  --c-yellow-soft: #FFF6DF;
+
+  --c-red: #E24444;
+  --c-red-soft: #FDECEC;
+
+  --c-green: #1FA463;
+  --c-green-soft: #E8F8EF;
+
+  --c-input-border: #D7E3F7;
+  --c-divider: #EEF0F3;
+  --c-muted-icon: #B7BEC9;
+  --c-overlay: rgba(16, 20, 30, .40);
+  --c-shell-border: #14171F;
+  --c-focus: #B9CFFF;
+
+  --c-shadow-soft: 0 2px 10px rgba(16,20,30,.08);
+  --c-shadow-strong: 0 10px 30px rgba(16,20,30,.16);
+
+  --c-radius-item: 14px;
+  --c-radius-card: 16px;
+  --c-radius-hero: 22px;
+  --c-radius-drawer: 22px;
+  --c-radius-shell: 30px;
+  --c-radius-pill: 100px;
+
+  --c-gradient-page:
+    linear-gradient(
+      180deg,
+      #CFE3FF 0%,
+      #EAF3FF 38%,
+      #FFFFFF 72%
+    );
+
+  --c-gradient-hero:
+    linear-gradient(
+      135deg,
+      #2F6FED,
+      #1E56E8
+    );
+}
+
+/* ---------- Semantic UI layer per theme ---------- */
+[data-theme="admin"] {
+  --ui-bg: var(--a-bg);
+  --ui-surface: var(--a-surface);
+  --ui-text: var(--a-text);
+  --ui-text-secondary: var(--a-text2);
+  --ui-border: var(--a-border);
+  --ui-accent: var(--a-blue);
+  --ui-focus: var(--a-focus);
+  --ui-radius-control: var(--a-radius-button);
+}
+
+[data-theme="customer"] {
+  --ui-bg: var(--c-page-mid);
+  --ui-surface: #FFFFFF;
+  --ui-text: var(--c-text);
+  --ui-text-secondary: var(--c-text2);
+  --ui-border: var(--c-input-border);
+  --ui-accent: var(--c-blue);
+  --ui-focus: var(--c-focus);
+  --ui-radius-control: var(--c-radius-pill);
+}
+
+/* ---------- Mobile typography aliases ---------- */
+@media (max-width: 639px) {
+  :root {
+    --text-xs: 10px;
+    --text-sm: 11px;
+    --text-base: 12px;
+    --text-md: 13px;
+    --text-lg: 15px;
+    --text-xl: 18px;
+    --text-2xl: 21px;
+    --text-3xl: 26px;
+    --text-4xl: 32px;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
