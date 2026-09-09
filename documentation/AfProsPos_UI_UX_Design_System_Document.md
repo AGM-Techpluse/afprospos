@@ -7,7 +7,7 @@
 **Source Prototype:** `AfProsPos_Design_Preview (2).html`  
 **Status:** BINDING — Development Blueprint / Design-System Source of Truth  
 **Companion document:** AfProsPos Codebase Principles & Naming Conventions (CPNC) — governs component placement (`Pages/`, `Components/`, `Features/`) and the Frontend Constraints this document's tokens plug into  
-**Date:** September 3, 2026 (Revision 2 — governance + consistency pass)
+**Date:** September 9, 2026 (Revision 3 — page-level layout specification + elevation-contradiction fix)
 
 > This document codifies the visual language and interaction behavior demonstrated in the supplied working HTML/CSS prototype. The prototype is treated as the visual reference implementation. Where the prototype uses a literal value inside a demonstration-only utility, this document converts that value into an explicit design token or semantic variable so production components do not accumulate raw color literals.
 
@@ -39,6 +39,20 @@ Revision 1 transcribed the prototype faithfully but left several tokens referenc
 11. Adds an **AI Pre-Flight Checklist** (Appendix D) and a **Master Token Reference** (Appendix E), mirroring the CPNC's enforcement appendices.
 
 Every fix above is called out inline at its section with a short "**Revision 2 fix:**" marker so the reasoning stays visible rather than being silently absorbed into the prose.
+
+## Revision 3 — What Changed and Why
+
+Revision 3 responds to a concrete production defect: an implementation put a shadow on the staff (Admin) login form. Tracing it back, the design system itself told the implementer to do that — §8.8's Admin Auth Shell said the form sits in a card with "standard borders and shadows," which directly contradicts §6.1 ("the only Admin surface permitted a shadow is the confirmation modal") and Invariant #19 (§33 — "Forms never require decorative elevated cards"). An implementer, human or AI, following §8.8 literally produces exactly the defect that shipped. That is a documentation defect, not an implementation defect, and Revision 3 fixes it at the source rather than only in the one screen where it surfaced.
+
+Revision 3 also closes the second gap this document had: it specified a *system* (tokens, components, states) but never specified how that system composes into the actual screens the product needs — a repair page, a checkout page, a login page. A correct token and a correct component do not guarantee a correct page if nothing states which components a given page uses, in what arrangement, or in what states. This pass adds that missing layer.
+
+Specifically, this revision:
+
+1. **Fixes the Admin Auth Shell elevation contradiction (§8.8)** — the login/auth form no longer carries a shadow; it uses the same border-driven flatness as every other Admin surface, consistent with §6.1 and Invariant #19.
+2. **Adds §14C, Page-Level Layout Specifications** — concrete, composable layouts (region diagrams, component manifests, states, responsive behavior) for the specific screens this document previously left to prose-level generality: Admin and Customer authentication, the POS checkout page, repair intake/diagnosis, the repair workflow/detail page, the customer repair tracker, the customer payment page, inventory list/detail, and both dashboards. Every component referenced in §14C already exists in this document's component system (§8–§13) or in the ADD §5A file tree — §14C composes, it does not invent new primitives.
+3. **Cross-references ADD §5A** — the new Frontend Page, Component & Feature File Structure section added to the ADD in this same pass — so a page-layout spec here and a file path there stay in lockstep rather than drifting into two documents that disagree about what a page is called.
+
+As with Revision 2, every fix is called out inline with a **Revision 3 fix:** marker.
 
 ---
 
@@ -1259,9 +1273,14 @@ Authentication pages (Login, Register, Password Reset) MUST NOT use the full Mas
 Instead, they use dedicated minimal shells (`AdminAuthShell` and `CustomerAuthShell`):
 
 ## Admin Auth Shell
+
+> **Revision 3 fix:** Revision 1/2 specified "standard borders and **shadows**" here. That directly contradicted §6.1 ("the only Admin surface permitted a shadow is the confirmation modal, via `--a-shadow-modal`") and Invariant #19 (§33 — "Forms never require decorative elevated cards"), and is the traced root cause of a real defect: an implementation followed this section literally and shipped an elevated staff login form. This section is corrected to agree with §6.1/§10.1/Invariant #19 rather than override them.
+
 - `min-h-screen`, `bg-admin-bg`, centered content vertically and horizontally.
-- Forms are placed inside an `admin-surface` card with standard borders and shadows.
+- The form sits in a bounded `admin-surface` panel using a 1px `--a-border` and `--a-radius-card` (8px) only. **No `box-shadow` anywhere in `AdminAuthShell` or its form panel** — this is the same flat, border-driven surface treatment as every other Admin content area (§6.1, §10.1).
+- Panel width follows the standard Admin form constraint (§10.2 — max 640px); a login form's actual field count will render narrower in practice, typically ~360–400px, single column regardless of viewport (a login form never needs the two-column form grid).
 - No navigation, no sidebar.
+- See §14C.1 for the full page-level layout (logo/heading placement, field order, error/loading states).
 
 ## Customer Auth Shell
 - `min-h-screen`, `bg-white`, `text-customer-text`.
@@ -2435,6 +2454,327 @@ List/table card = spans 12 columns, placed below stat cards and charts
 - Stat cards are flat/border-driven per Admin's elevation rule (§6.1) — a dashboard is not an exception to "flat by default."
 - A stat card's primary number uses `--text-2xl`/`--font-bold` (§4.4/§4.3); its label uses `--text-sm`/`--a-text2` — do not let the number and label compete for the same visual weight.
 - Charts consume the same status/semantic color tokens as everything else (a "completed repairs" trend line uses `--a-green`, not an arbitrary chart-library default palette) — a chart's colors are still subject to the Zero Raw Value Rule (§2.2).
+
+---
+
+# 14C. Page-Level Layout Specifications
+
+> **Revision 3 addition.** Every earlier section defines the *system* — tokens, components, states, responsive rules. This section defines how that system composes into specific, named product screens. Nothing below introduces a new color, radius, spacing, or motion value; every layout is built entirely from components and tokens already defined in §2–§14B. File paths reference the ADD §5A Frontend Page, Component & Feature File Structure — the two documents describe the same pages and must be read together. Each spec covers: purpose, layout regions, the component/feature manifest, states (§23), and responsive behavior (§14).
+
+## 14C.1 Admin Staff Login
+
+**File:** `Pages/Admin/Auth/Login.tsx` · **Shell:** `AdminAuthShell` (§8.8)
+
+**Purpose:** authenticate staff before any shop-scoped data is exposed. Nothing on this page is shop-scoped — there is no shop switcher, no navigation, no notification bell.
+
+```text
+Desktop (≥ 640px) and Mobile — identical single-column layout, centered:
+
+┌──────────────────────────────────────┐
+│                                        │  bg-admin-bg (--a-bg), min-h-screen
+│              [ AfProsPos logo ]        │
+│                                        │
+│         ┌────────────────────┐        │
+│         │  Sign in            │        │  admin-surface panel
+│         │  (--text-xl, bold)  │        │  1px --a-border, --a-radius-card (8px)
+│         │                     │        │  NO shadow (see §8.8 Revision 3 fix)
+│         │  Email               │        │  max-width ~380px
+│         │  [___________]      │        │
+│         │                     │        │
+│         │  Password            │        │
+│         │  [___________]      │        │
+│         │                     │        │
+│         │  [ ] Remember me     │        │
+│         │                     │        │
+│         │  [   Sign in    ]   │        │  AdminButton, tone=primary, full width
+│         │                     │        │
+│         │  Forgot password?    │        │  text link, --a-blue
+│         └────────────────────┘        │
+│                                        │
+└──────────────────────────────────────┘
+```
+
+**Component manifest:** `AdminAuthShell`, `AdminInput` × 2, `AdminButton` (primary, full-width), `FormField`/`FormErrorMessage` (§10.4), a plain text `Link` for "Forgot password?". No `AdminSidebar`, `AdminTopbar`, or `ConnectivityIndicator` — those belong to the authenticated shell only.
+
+**States:**
+- **Default** — empty fields, no validation shown.
+- **Field error** — per-field red border + message, §10.4 pattern (e.g. "Enter your email address").
+- **Submit error (general)** — §10.5 General Server/Mismatch banner above the form, e.g. "Incorrect email or password." Do not reveal whether the email exists (standard auth-enumeration hygiene) — the copy is identical whether the email or the password was wrong.
+- **Loading** — the Sign in button enters its §11.5 loading micro-interaction (`disabled`, spinner, "Please wait…") immediately on submit; the rest of the form is not disabled (a user should still be able to see what they typed).
+- **Deactivated account** — a staff member deactivated per ADD §1 must not reach the dashboard even with correct credentials; render the same general submit-error banner rather than a distinct "deactivated" message that would leak account-status information to an attacker.
+
+**Responsive:** this page does not transform at 640px — it is single-column at every width by design, since a login form never needs the two-column grid (§10.2) or a data-table transformation.
+
+## 14C.2 Customer Login / Register
+
+**Files:** `Pages/Customer/Auth/Login.tsx`, `Pages/Customer/Auth/Register.tsx` · **Shell:** `CustomerAuthShell` (§8.8)
+
+```text
+┌──────────────────────────────────────┐
+│  [ logo ]  AfProsPos                   │  minimal top header, bg-white
+│                                        │
+│                                        │
+│     Welcome back                       │  --font-customer-display, --text-3xl
+│     Track your repairs and orders      │  --c-text2, --text-md
+│                                        │
+│     Phone number or email              │  underline field (§10.3)
+│     ──────────────────────             │
+│                                        │
+│     Password                           │
+│     ──────────────────────             │
+│                                        │
+│     (  Sign in  )                      │  CustomerButton, pill, full width
+│                                        │
+│     New here? Create an account →      │  link to Register.tsx
+│                                        │
+└──────────────────────────────────────┘
+```
+
+**Component manifest:** `CustomerAuthShell`, `CustomerInput` (underline model, §10.3), `CustomerButton` (primary, pill). No `CustomerDrawer`, `CustomerTaskbar`, or `CustomerFab` — unauthenticated users get no navigation chrome per §8.8.
+
+**Register.tsx** repeats the same shell with the additional fields the BRD requires for customer identity (name, phone, email, password + confirmation) in the same underline form anatomy, still single column, still no card. Both pages sit directly on `bg-white`, per §8.8 — never `--c-gradient-page`; the gradient page background is reserved for the authenticated Customer shell (§8.4) so a returning customer visually recognizes "I am now inside my account" the moment they land on the dashboard after login.
+
+**States:** identical pattern to §14C.1 (field error, general submit-error banner, loading button) but using Customer error copy tone (§21 — friendly, specific) and the Customer field-error visual (§10.4's red underline, not a red box border).
+
+## 14C.3 Admin POS Checkout (Sales)
+
+**File:** `Pages/Admin/Sales/Checkout.tsx` · **Shell:** `AdminShell` · **Feature components:** `Features/Sales/{POSCart,ProductSearch,CheckoutTotals,CheckoutExpiryTimer}.tsx`
+
+**Purpose:** the highest-frequency, highest-stakes Admin screen — a cashier builds a cart against live, reserved inventory (ADD §15) under a real expiry clock. This page justifies the heaviest use of interactive React state in the product (ADD §25.2) precisely because it is the one screen that is not simple CRUD.
+
+```text
+Desktop (≥ 1024px) — two-column working layout:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ AdminTopbar (shop switcher fixed to the shop this checkout        │
+│              belongs to — cannot be changed mid-checkout)         │
+├─────────────────┬───────────────────────────────────────────────┤
+│ ProductSearch     │  POSCart                                       │
+│ (left, ~40%)      │  (right, ~60%)                                 │
+│                   │                                                 │
+│ [ search box   ]  │  Customer: [ walk-in ▾ ] or [ lookup ]          │
+│                   │  ──────────────────────────────────────         │
+│ ○ Product result   │  1× iPhone 12 (IMEI 3591...)     ₦185,000     │
+│   [+ Add]          │  2× Screen protector               ₦4,000     │
+│ ○ Product result   │  ──────────────────────────────────────         │
+│   [+ Add]          │  Subtotal                        ₦189,000     │
+│                   │  Discount                          -₦5,000     │
+│  (serialized       │  ──────────────────────────────────────         │
+│   products open    │  Total                           ₦184,000     │
+│   SerializedUnit-   │                                                 │
+│   Picker on add)   │  Payment method: [ Cash ▾ ]                     │
+│                   │  CheckoutExpiryTimer: 14:32 remaining           │
+│                   │                                                 │
+│                   │  [        Complete sale        ]  primary CTA  │
+└─────────────────┴───────────────────────────────────────────────┘
+```
+
+- `CheckoutExpiryTimer` is a live countdown reflecting the server-issued checkout expiry (ADD §15/§16) — it is a *display* of server truth, not a client-owned timer; on expiry it disables the cart and shows the §10.5 general banner ("This checkout expired — start a new one"), it does not silently keep accepting input past the server's deadline.
+- Adding a serialized (IMEI-tracked) product opens `SerializedUnitPicker` (ADD §5A.4) as a modal/slide-over (§14B.5) rather than navigating away from the cart — leaving this page loses cart-building context.
+- The primary CTA is singular per Principle 5 (§1.2) — "Complete sale" is the one dominant action; "Cancel checkout" is a Neutral-tier button, visually subordinate, placed away from the primary CTA so a mis-tap cannot cancel an in-progress sale.
+- `CheckoutTotals` renders money via the monospace stack (§4.2) for scannability, consistent with §4.2's currency-figure guidance.
+
+**States:**
+- **Empty cart** — `AdminEmptyState` ("Search or scan a product to begin") in the cart pane; "Complete sale" is disabled (§11.6) until at least one line item exists.
+- **Insufficient stock** — attempting to add more than `Available` (ADD §15.4) shows an inline error on that product's search result, not a page-level banner — the failure is local to one product, not the whole cart.
+- **Reservation conflict** (another cashier took the last unit between search and add) — §10.5 general banner: "That item was just reserved by another sale — showing updated availability," and the product list re-queries. This must read the server's rejection, never assume success and roll back client-side.
+- **Submitting** — "Complete sale" enters the §11.5 loading state; the entire cart becomes read-only (`pointer-events: none` per §11.6) to prevent a double-submit racing the same reservation the button is committing.
+- **Offline** — per §14A.3, "Complete sale" is disabled with the offline explanation banner if payment method requires online verification (card/in-app); a configured offline-safe cash sale (ADD §24.1) remains available and queues per §14A.2.
+
+**Responsive (< 1024px):** the two-column layout collapses to a single column — `ProductSearch` becomes a full-width search-then-results flow, and adding a product transitions to the `POSCart` view (a tab/step switch, not a page navigation) rather than trying to show both panes at once. This is a `< lg` collapse in addition to the general `< 640px` mobile model, because a POS cart genuinely needs more room than a typical table before its two-pane layout still works.
+
+## 14C.4 Admin Repair Intake & Diagnosis
+
+**Files:** `Pages/Admin/Repairs/Create.tsx` (intake), `Pages/Admin/Repairs/Diagnosis.tsx` · **Feature:** `Features/Repairs/DiagnosisChecklist.tsx`
+
+**Intake (`Create.tsx`)** uses the standard Admin form anatomy (§10.2) directly on the page surface — no card, two-column desktop grid, one column mobile:
+
+```text
+Section: Customer
+  [ Customer lookup / walk-in ]   [ Phone number ]
+
+Section: Device
+  [ Device type ▾ ]               [ Brand ▾ ]
+  [ Model ]                       [ IMEI / serial ]
+  [ Reported issue (textarea, full width) ]
+
+  [        Create repair job        ]   primary CTA
+```
+
+**Diagnosis (`Diagnosis.tsx`)** is not a form in the CRUD sense — it is a structured checklist matching the domain model in ADD §17.2 (per-component Working/Faulty/Not Tested/Unable to Test), rendered by `DiagnosisChecklist`:
+
+```text
+┌───────────────────────────────────────────────┐
+│ Repair #RJ-00412 — iPhone 12, IMEI 3591...       │  AdminPageHead
+│ badge-info "Diagnosing"                          │
+├───────────────────────────────────────────────┤
+│ Component        Working  Faulty  Not tested  Unable │
+│ Screen              ○       ●        ○          ○    │
+│ Battery             ○       ○        ●          ○    │
+│ Face ID             ○       ○        ○          ●    │
+│ Camera               ●       ○        ○          ○    │
+│                                                   │
+│ Diagnosis notes                                    │
+│ [_______________________________________________]  │
+│                                                   │
+│ Outcome:  ( Repairable )  ( Unrepairable )  ( Further assessment ) │
+│                                                   │
+│ Estimated cost: [ ₦______ ]   (shown to customer)  │
+│                                                   │
+│ [   Save diagnosis   ]                             │
+└───────────────────────────────────────────────┘
+```
+
+- Each component row is a segmented control, not four separate checkboxes — exactly one state per component is selectable at a time, matching the domain model's per-component enum (ADD §17.2) rather than allowing an invalid multi-select state to exist in the UI at all.
+- "Outcome" is a required single choice before "Save diagnosis" is enabled — this is not optional/inferred from the component grid, because ADD §17.2 treats it as an explicit final decision, not a derived value.
+- This page does **not** let the technician reserve parts — per ADD §17.3, parts reservation is a separate action gated on repairability + authorization, and appears only after diagnosis is saved and the job reaches the appropriate state (see §14C.5).
+
+**States:** `Skeleton` while the repair job loads; a saved-but-unsynced diagnosis while offline shows the §14A.2 sync badge on the page head rather than blocking the technician from continuing to work.
+
+## 14C.5 Admin Repair Workflow / Detail Page
+
+**File:** `Pages/Admin/Repairs/Show.tsx` · **Feature:** `Features/Repairs/{PartsReservationPicker,RepairStatusStepper}.tsx`
+
+This is the technician's and the accountant's single source of truth for one repair job across its whole lifecycle (ADD §17.1: Received → Diagnosing → Awaiting Authorization → In Progress → Completed/Failed → Ready for Collection → Collected). It is intentionally one page, not a page per state, because the value of this screen is seeing the whole job at once.
+
+```text
+┌───────────────────────────────────────────────────────┐
+│ Repair #RJ-00412 — iPhone 12          badge-info "In progress" │
+│ Customer: Amaka O. · Technician: Chidi                    │
+├───────────────────────────────────────────────────────┤
+│ RepairStatusStepper (§14B.6 pattern, Admin-styled)         │
+│ Received ● ─ Diagnosed ● ─ Authorized ● ─ In progress ○ ─ Ready │
+├───────────────────────────────────────────────────────┤
+│ Financial status         │  Parts                          │
+│ Down payment: ₦20,000     │  PartsReservationPicker           │
+│ Balance due: ₦45,000      │   ✓ Screen assembly (reserved)   │
+│ badge-warning "Balance     │   ✓ Battery (reserved)           │
+│  due before release"       │                                 │
+├───────────────────────────────────────────────────────┤
+│ ActivityTimeline (§14B.7) — one entry per domain event:      │
+│  ● Repair diagnosed         Chidi · 3 Sep, 11:40am           │
+│  ● Down payment confirmed   Customer · 3 Sep, 11:52am        │
+│  ● Parts reserved           Chidi · 3 Sep, 12:05pm           │
+├───────────────────────────────────────────────────────┤
+│ [ Mark completed ]  [ Mark failed ]  [ Release device ]       │
+└───────────────────────────────────────────────────────┘
+```
+
+- Action buttons at the bottom are contextual to the current state — e.g. "Release device" renders `disabled` (§11.6) with an inline helper explaining *why* ("Outstanding balance of ₦45,000") whenever `hasOutstandingBalance()` is true, per ADD §17.1/CPNC boolean-method naming, rather than being hidden — hiding it would make the release rule invisible instead of just unavailable, and staff would not learn a device is release-blocked until they went looking for a button that isn't there.
+- "Release device" with an outstanding balance is never silently allowed from this page — an authorized override (ADD §17.1) is a separate, explicitly audited action reached through its own Confirmation Modal (§12.1) with `kind="warning"`, requiring a typed reason, never a same-click bypass of the disabled state.
+- The Parts panel reuses `PartsReservationPicker`, which itself calls the same Inventory reservation contract as the POS cart's `SerializedUnitPicker` (ADD §15) — this page does not reimplement reservation UI from scratch.
+
+**States:** `Skeleton` on initial load (matching the region layout, per §13.1 — not one giant rectangle); the Parts panel shows a job-blocking-shortage banner (§10.5-style, yellow-soft) distinct from the general low-stock alert, per the Implementation Plan's Phase 6 exit criteria, when a required part is unavailable.
+
+## 14C.6 Customer Repair Tracker
+
+**File:** `Pages/Customer/Repairs/Show.tsx` · **Feature:** reuses `RepairStatusStepper` in its Customer variant (§14B.6)
+
+```text
+┌──────────────────────────────────────┐
+│ CustomerShell (drawer/taskbar per device) │
+├──────────────────────────────────────┤
+│  iPhone 12 repair                       │  --text-3xl, --font-customer-display
+│  Reported: Cracked screen                │
+│                                        │
+│  ● Received         3 Sep, 9:02am        │  vertical stepper, mobile
+│  │                                     │
+│  ● Diagnosed        3 Sep, 11:40am       │
+│  │  "Screen and battery need replacing"  │  technician-visible diagnosis note
+│  │                                     │
+│  ◉ In progress                          │  current step, pulsing ring (§14B.6)
+│  │                                     │
+│  ○ Ready for collection                  │
+│                                        │
+│  ┌─────────────────────────────┐      │  CustomerHeroCard, shadow: --c-shadow-soft
+│  │ Balance due: ₦45,000          │      │
+│  │ (  Pay now  )                 │      │  primary pill CTA → Pages/Customer/Payments/Show.tsx
+│  └─────────────────────────────┘      │
+└──────────────────────────────────────┘
+```
+
+- This page is read-only status display (§14B.6) — the customer cannot edit diagnosis or status here; the one interactive element is the "Pay now" CTA, which is the single dominant action per Principle 5, and it is the only place this page asks the customer to do anything.
+- The balance-due card is a `CustomerHeroCard` (§8.4/§14B), the one intentional elevated Customer surface for this page — this is correct per the Customer theme's floating-surface philosophy (§6.1) and is not the same rule as Admin (§8.8's fix applies to Admin only; Customer forms and hero cards are allowed shadows by design).
+- If diagnosis is still pending, the "Diagnosed" step renders as the current (pulsing) step with no note yet, rather than being hidden — a customer should always see where their repair currently stands, never a stepper that jumps steps.
+
+## 14C.7 Customer Payment Page
+
+**File:** `Pages/Customer/Payments/Show.tsx` · **Feature:** `Features/Payments/{PaymentMethodSwitcher,PaymentStatusBadge,BankTransferProofUpload}.tsx`
+
+```text
+┌──────────────────────────────────────┐
+│  Pay for repair #RJ-00412                │
+│  Amount due: ₦45,000                     │  --text-2xl, monospace amount
+│                                        │
+│  How would you like to pay?              │
+│  ( Card / in-app )  ( Bank transfer )  ( POS terminal — in store ) │  PaymentMethodSwitcher
+│                                        │
+│  [ selected method's fields/instructions ]│
+│                                        │
+│  PaymentStatusBadge: "Waiting for payment" │  reflects ADD §45's state model exactly
+│                                        │
+│  (   Pay ₦45,000   )                      │  primary pill CTA
+└──────────────────────────────────────┘
+```
+
+- `PaymentStatusBadge` renders literally the backend `PaymentStatus` values from ADD §45 — `pending` → "Waiting for payment," `payment_pending_confirmation` → "Transfer received — awaiting confirmation," `confirmed` → "Payment confirmed," `disputed` → "Payment under review," `exception` → "Payment requires assistance." This page must never display "Paid" for `payment_pending_confirmation`, per ADD §45's explicit prohibition.
+- Selecting "Bank transfer" reveals `BankTransferProofUpload` and switches the primary CTA to "I've made the transfer" rather than "Pay ₦45,000" — submitting does not mark the payment paid; it transitions it to `payment_pending_confirmation` per ADD §12, and the status badge updates to reflect that, not to "confirmed."
+- A card/in-app payment redirect (Paystack et al.) leaves this page entirely for the provider's hosted flow and returns to this same page afterward; per ADD §14.2 and §25.3, the returned page must re-fetch and display server-confirmed status — it must never render "confirmed" purely because the browser came back from a "success" redirect URL.
+- This page is the canonical location for the frontend rule in ADD §45 — if a future page needs to show payment status, it links here rather than re-implementing a status display.
+
+## 14C.8 Admin Inventory — List & Detail
+
+**Files:** `Pages/Admin/Inventory/Products/{Index,Show}.tsx`
+
+`Index.tsx` is the standard Admin responsive data pattern (§9) with no deviation — `AdminFilterBar` (§14B.4) above `AdminTable`, transforming to row-cards below 640px (§9.5). Above `lg`, offer the Master–Detail Split (§14B.1) as a view toggle, since triaging a large catalog benefits from it exactly as the pattern describes.
+
+`Show.tsx` (product detail):
+
+```text
+┌───────────────────────────────────────────────┐
+│ iPhone 12 128GB Black             badge-success "In stock" │
+├───────────────────────────────────────────────┤
+│ AdminStatCard row: On hand │ Reserved │ Available │ Low-stock threshold │
+├───────────────────────────────────────────────┤
+│ SKU: SKU-IP12-128-BLK        (monospace)          │
+│ Cost price: ₦150,000 · Markup: 22% · Selling: ₦183,000 │
+├───────────────────────────────────────────────┤
+│ Serialized units (if applicable)                    │
+│  IMEI 3591...  status: reserved (checkout #4821)      │
+│  IMEI 3592...  status: available                     │
+├───────────────────────────────────────────────┤
+│ ActivityTimeline — stock movements (received, sold, adjusted, transferred) │
+└───────────────────────────────────────────────┘
+```
+
+`Available` is always rendered as the computed value the server returns (`on_hand - reserved`, ADD §15.4) — this page never computes it client-side from `on_hand` and `reserved` independently, so a display bug here can never disagree with the value the reservation engine actually enforces.
+
+## 14C.9 Admin Dashboard
+
+**File:** `Pages/Admin/Dashboard/Index.tsx`
+
+Uses the Dashboard Widget Grid exactly as specified in §14B.8 — stat cards (Open repairs, Today's sales, Pending disputes, Low-stock items) spanning 3 columns each, one or two chart cards below, a "Needs attention" list/table card spanning full width surfacing anything requiring action across modules (disputed payments, awaiting-parts jobs, sync conflicts) rather than requiring the owner to check five separate pages. No new widget shape is introduced here beyond §14B.8's grid — this page is a composition, not a new pattern.
+
+## 14C.10 Customer Dashboard / Home
+
+**File:** `Pages/Customer/Dashboard/Index.tsx`
+
+```text
+┌──────────────────────────────────────┐
+│  Hi, Amaka                              │  --font-customer-display, --text-3xl
+│                                        │
+│  CustomerHeroCard: active repair status  │  reuses §14C.6's stepper in summary form
+│  "iPhone 12 — In progress"               │  tap → Pages/Customer/Repairs/Show.tsx
+│                                        │
+│  Recent orders                           │  CustomerListItem × N
+│  ○ Order #ORD-2291        ₦45,000         │
+│  ○ Order #ORD-2288        ₦12,500         │
+│                                        │
+│  ( View all activity )                    │
+└──────────────────────────────────────┘
+```
+
+The hero card summarizes at most the customer's single most-relevant open item (an in-progress repair, an unpaid balance) — per Principle 5, this page does not compete for attention with multiple hero cards; if there is no active repair, the hero card is replaced by a lower-emphasis empty state (§24) inviting the customer to book one, not omitted outright, since the page should never look broken/incomplete.
 
 ---
 

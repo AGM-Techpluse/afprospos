@@ -1,8 +1,10 @@
 # AfProsPos Implementation Plan
 
 **Status:** Proposed implementation plan  
-**Date:** September 3, 2026  
-**Basis:** BRD v1.0, BLD v1.1, ADD, DBDD, UI/UX Design System, and CPNC
+**Date:** September 3, 2026 (Revision 2, September 9, 2026 — added per-phase "Key files" listings; see §4)  
+**Basis:** BRD v1.0, BLD v1.1, ADD (incl. §5A Frontend Page/Component/Feature File Structure), DBDD, UI/UX Design System (incl. §14C Page-Level Layout Specifications), and CPNC
+
+Revision 2 responds to a specific gap: earlier phase breakdowns in §4 described *what* each phase does but never named the files it produces, which left an implementer to guess file placement instead of checking it against a plan. Every phase in §4 now closes with a "Key files" list of representative (not exhaustive) paths, grounded directly in the ADD's canonical backend tree (§5), the new ADD §5A frontend tree, and the UI/UX Design System's new §14C page-level layouts — so a file this plan calls for and a file the ADD/UI-UX docs define are the same file, not two documents describing similar things differently.
 
 ## 1. Delivery Approach
 
@@ -187,6 +189,23 @@ The work packages below expand the phases into sequenced implementation tasks. A
 5. **Build enforcement first.** Configure formatting, static analysis, TypeScript checking, frontend lint, test database lifecycle, migrations in CI, and architectural tests. CI must fail for domain framework imports, cross-module ORM imports, invalid `*Record` placement, raw component hex values, and `react-router-dom`.
 6. **Prove the wiring.** Implement one harmless command and one read query end-to-end to prove Route -> Controller -> DTO -> Handler -> Domain -> Infrastructure and the query equivalent.
 
+**Key files (representative, not exhaustive; see ADD §5/§5A for the full canonical tree):**
+
+```text
+domain/Shared/Domain/ValueObjects/{ShopId,CustomerId,StaffId,Money,CorrelationId,IdempotencyKey}.php
+domain/Shared/Domain/Contracts/{Clock,DomainEvent,AggregateId}.php
+domain/Shared/Application/DTOs/, domain/Shared/Application/Services/
+app/Support/Clock/{Clock,SystemClock}.php
+app/Support/Transactions/Atomic.php
+app/Support/Idempotency/, app/Support/Authorization/, app/Support/Serialization/
+app/Providers/{AppServiceProvider,DomainServiceProvider,PaymentServiceProvider,EventServiceProvider,RepositoryServiceProvider}.php
+app/Http/Middleware/{EnsureStaffIsActive,ResolveShopContext,EnsurePermission,VerifyWebhookSignature,EnsureIdempotencyKey}.php
+app/Http/Responses/InertiaErrorResponse.php
+routes/{web,admin,customer,api,webhooks,channels,console}.php
+config/{afprospos,payments,notifications,inventory,offline,tenancy}.php
+tests/Architecture/{DomainHasNoHttpDependenciesArchTest,DomainHasNoEloquentDependenciesArchTest,NoClientSideRouterArchTest}.php
+```
+
 ### Phase 1 work breakdown - Shared Kernel, authentication, shop context, and RBAC
 
 1. **Create the initial schema.** Implement `shops`, `customers`, `staff`, roles, permissions, staff-role assignments, and staff-shop assignments in DBDD order. Apply only permitted Shared Kernel/intra-module foreign keys, uniqueness constraints, and shop-query indexes.
@@ -195,6 +214,35 @@ The work packages below expand the phases into sequenced implementation tasks. A
 4. **Make shop scope mandatory.** Implement active-shop selection, owner all-shop scope, route middleware, and handler validation. Reject client-supplied IDs that are not in the actor's authorised scope.
 5. **Deliver staff administration.** Build the staff list/search/create/edit/role assignment/shop assignment/deactivate command and query paths, policies, Admin pages, and audit records.
 6. **Prove persona isolation.** Test every role, cross-shop rejection, multi-role union, customer admin-route rejection, deactivated-session rejection, and history-preserving role changes.
+
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_shops_table.php
+database/migrations/..._create_customers_table.php
+database/migrations/..._create_staff_table.php
+database/migrations/..._create_roles_table.php
+database/migrations/..._create_permissions_table.php
+database/migrations/..._create_staff_role_assignments_table.php
+database/migrations/..._create_staff_shop_assignments_table.php
+domain/Identity/Domain/Entities/{Staff,Customer}.php
+domain/Identity/Application/Commands/{AuthenticateStaff,AuthenticateCustomer,DeactivateStaff}.php
+domain/RBAC/Domain/Entities/{Role,Permission}.php
+domain/RBAC/Domain/ValueObjects/EffectivePermissionSet.php
+domain/RBAC/Application/Commands/{AssignStaffRole,GrantShopAccess,DeactivateStaff}.php
+domain/Shop/Domain/Entities/Shop.php
+domain/Shop/Application/Commands/{CreateShop,SwitchActiveShop}.php
+app/Http/Middleware/ResolveShopContext.php (real implementation, not a stub)
+app/Http/Controllers/Admin/{StaffController,DashboardController}.php
+Pages/Admin/Auth/{Login,ForgotPassword,ResetPassword}.tsx   -- see UI/UX §14C.1 for the layout spec
+Pages/Admin/Staff/{Index,Create,Edit,Show}.tsx
+Pages/Admin/Staff/Roles/{Index,Create,Edit}.tsx
+Pages/Admin/Shops/{Index,Create,Edit,Show}.tsx
+Pages/Customer/Auth/{Login,Register,ForgotPassword,ResetPassword}.tsx   -- see UI/UX §14C.2
+Components/Admin/AdminAuthShell.tsx, Components/Customer/CustomerAuthShell.tsx
+tests/Feature/Admin/StaffCannotAccessAnotherShopTest.php
+tests/Feature/Admin/DeactivatedStaffSessionRejectionTest.php
+```
 
 ### Phase 2 work breakdown - Shared UI design system and application shells
 
@@ -205,6 +253,24 @@ The work packages below expand the phases into sequenced implementation tasks. A
 5. **Build responsive data patterns.** Implement desktop table, mobile accordion row card, status display, filter/sort controls, and two-column-to-one-column form transformations at 640px.
 6. **Automate UI conformance.** Add checks for keyboard access, visible focus, labels, reduced motion, Bootstrap Icons, prohibited emoji, raw hex, client router imports, and visual review against the supplied prototype.
 
+**Key files (representative, not exhaustive; every path below is defined in UI/UX §15/§8.8/§14A and ADD §5A.3-5A.5):**
+
+```text
+resources/css/tokens.css
+tailwind.config.js
+Components/Admin/{AdminButton,AdminInput,AdminSelect,AdminTextarea,AdminBadge,AdminTable,
+  AdminRowCard,AdminSidebar,AdminTopbar,AdminShell,AdminAuthShell,AdminPageHead,AdminStatCard,
+  AdminEmptyState,AdminPagination,AdminFilterBar}.tsx
+Components/Customer/{CustomerButton,CustomerInput,CustomerListItem,CustomerDrawer,CustomerTaskbar,
+  CustomerHeroCard,CustomerShell,CustomerAuthShell,CustomerEmptyState,CustomerFab}.tsx
+Components/Feedback/{ConfirmDialog,Toast,AlertBanner,Skeleton,BlockingLoader,ConnectivityIndicator}.tsx
+Components/Tables/{ResponsiveDataTable,StatusStepper}.tsx
+Components/Layout/{MasterDetailSplit,SlideOverPanel,ActivityTimeline}.tsx
+hooks/{useConfirm,useToast,useOnlineStatus}.ts
+```
+
+Exit criteria for this phase are satisfied only when the Admin and Customer Auth Shells specifically match UI/UX §8.8 — no shadow on the Admin login form (Revision 3 fix) — since that page is the first thing every persona sees and the cheapest place to catch a token/elevation regression before it propagates to every later screen.
+
 ### Phase 3 work breakdown - Inventory foundation and reservation engine
 
 1. **Implement catalogue and SKU data.** Create product/category/SKU migrations and domain objects covering shop code, brand, condition, category-specific specs, cost price, markup percentage, editable selling price, SKU generation, uniqueness, and CSV import validation/error results.
@@ -214,6 +280,31 @@ The work packages below expand the phases into sequenced implementation tasks. A
 5. **Implement locking and expiry.** Apply the documented stable lock order and `SELECT ... FOR UPDATE`; lock exact units for serialized stock and shop/SKU levels for quantity stock. Add safe deadlock retry, exactly-once release/consume, and expired reservation handling.
 6. **Deliver operational UI/jobs.** Build catalogue search/detail, bulk import results, adjustment, transfer, serialized-unit, and low-stock screens. Add low-stock detection, release-expired-reservations, and reconciliation console commands that delegate to handlers.
 7. **Prove allocation safety.** Test SKU/IMEI uniqueness, required adjustment reason, movement correctness, low-stock calculation, consume/release behavior, and the two real-MySQL concurrent last-unit scenarios.
+
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_inventory_products_table.php
+database/migrations/..._create_inventory_skus_table.php
+database/migrations/..._create_inventory_items_table.php
+database/migrations/..._create_inventory_stock_levels_table.php
+database/migrations/..._create_inventory_transfers_table.php
+domain/Inventory/Domain/Entities/{Product,Sku,InventoryItem,InventoryStockLevel,InventoryTransfer}.php
+domain/Inventory/Domain/Policies/{ReservationPolicy,TransferPolicy}.php
+domain/Inventory/Domain/Services/{ReservationService,StockAvailability,SkuGenerator}.php
+domain/Inventory/Application/Commands/{ReceiveStock,AdjustStock,TransferInventory,ReserveInventory,ConsumeInventory,ReleaseInventory}.php
+domain/Inventory/Application/Contracts/InventoryReservationService.php
+domain/Inventory/Infrastructure/Persistence/Eloquent/{ProductRecord,SkuRecord,InventoryItemRecord,InventoryStockLevelRecord,InventoryTransferRecord}.php
+app/Console/Commands/Inventory/{ReleaseExpiredReservations,DetectLowStock}.php
+app/Http/Controllers/Admin/InventoryController.php
+Pages/Admin/Inventory/Products/{Index,Create,Edit,Show}.tsx   -- see UI/UX §14C.8
+Pages/Admin/Inventory/Import/{Create,Results}.tsx
+Pages/Admin/Inventory/Stock/{Index,Adjust,LowStock}.tsx
+Pages/Admin/Inventory/Transfers/{Index,Create,Show}.tsx
+Features/Inventory/{SerializedUnitPicker,StockLevelBadge,CsvImportPreview}.tsx
+tests/Feature/Inventory/Concurrency/TwoRequestsReservingLastSerializedUnitConcurrencyTest.php
+tests/Feature/Inventory/Concurrency/TwoRequestsReservingLastNonSerializedQuantityConcurrencyTest.php
+```
 
 ### Phase 4 work breakdown - Sales/POS checkout and sale completion
 
@@ -226,6 +317,24 @@ The work packages below expand the phases into sequenced implementation tasks. A
 7. **Handle expiry correctly.** Schedule expiry to lock open checkouts, release each reservation only once, emit a checkout-expired event, and route a late payment confirmation into the Payments exception workflow.
 8. **Prove sale integrity.** Test pricing snapshots, insufficient-stock rollback, walk-in/customer paths, conversion, invoice data, release-on-expiry, and checkout-expiry versus payment-confirmation concurrency.
 
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_sales_checkouts_table.php
+database/migrations/..._create_sales_checkout_items_table.php
+database/migrations/..._create_sales_checkout_adjustments_table.php
+database/migrations/..._create_sales_sales_table.php
+domain/Sales/Domain/Entities/{SalesCheckout,SalesCheckoutItem,Sale}.php
+domain/Sales/Domain/ValueObjects/{CheckoutId,SaleId,InvoiceNumber}.php
+domain/Sales/Domain/Services/{CheckoutPricingService,CheckoutReservationPolicy}.php
+domain/Sales/Application/Commands/{CreateCheckout,AddCheckoutItem,ApplyDiscount,ExpireCheckout,CreateSaleFromPaidCheckout}.php
+domain/Sales/Infrastructure/Persistence/Eloquent/{SalesCheckoutRecord,SaleRecord}.php
+app/Http/Controllers/Admin/SalesController.php
+Pages/Admin/Sales/{Checkout,Index,Show,Receipt}.tsx   -- see UI/UX §14C.3 for the full page layout
+Features/Sales/{POSCart,ProductSearch,CheckoutTotals,CheckoutExpiryTimer}.tsx
+tests/Feature/Sales/Concurrency/CheckoutExpiryRacingPaymentConfirmationConcurrencyTest.php
+```
+
 ### Phase 5 work breakdown - Payments, gateways, and payment operations
 
 1. **Implement the payment domain.** Add payment method, payable reference, payment amount, provider reference, idempotency key, transaction aggregate, state-transition policy, and business exceptions. Only normalised internal states may drive domain behavior.
@@ -235,6 +344,30 @@ The work packages below expand the phases into sequenced implementation tasks. A
 5. **Implement bank-transfer operations.** Capture proof/reference, move to `payment_pending_confirmation`, provide authorised staff confirmation/rejection/dispute queues, and show the distinct pending state to the customer.
 6. **Implement refunds and exceptions.** Handle duplicate or late callbacks, disputes, human decisions, refunds capped at confirmed amounts, provider ambiguity, and exception queues with mandatory audit records.
 7. **Deliver payment UX and certification.** Build customer pay/instructions/history/status pages and Admin reconciliation/dispute pages. Run every provider through the common contract suite, invalid-signature and replay tests, and the required payment concurrency tests.
+
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_payments_transactions_table.php
+domain/Payments/Domain/Entities/PaymentTransaction.php
+domain/Payments/Domain/Enums/{PaymentMethod,PaymentStatus}.php
+domain/Payments/Application/Commands/{InitiatePayment,ConfirmPayment,MarkBankTransferPending,
+  OpenPaymentDispute,ResolvePaymentDispute,RejectPayment,ProcessProviderWebhook,RefundPayment}.php
+domain/Payments/Application/Contracts/{PaymentGateway,PaymentGatewayFactory,PaymentConfirmationReader}.php
+domain/Payments/Infrastructure/Gateways/Paystack/PaystackGateway.php
+domain/Payments/Infrastructure/Gateways/Tranzix/TranzixGateway.php
+domain/Payments/Infrastructure/Gateways/ManualBankTransfer/ManualBankTransferGateway.php
+domain/Payments/Infrastructure/Persistence/Eloquent/PaymentTransactionRecord.php
+app/Http/Controllers/Webhooks/{PaystackWebhookController,TranzixWebhookController}.php
+app/Http/Controllers/Admin/PaymentController.php, app/Http/Controllers/Customer/PaymentController.php
+app/Http/Middleware/VerifyWebhookSignature.php (real signature verification, not a stub)
+Pages/Admin/Payments/{Index,Show,Disputes/Index,Disputes/Show}.tsx
+Pages/Customer/Payments/{Show,History,BankTransferInstructions}.tsx   -- see UI/UX §14C.7
+Features/Payments/{PaymentMethodSwitcher,PaymentStatusBadge,BankTransferProofUpload}.tsx
+tests/Contract/Paystack/PaystackGatewayContractTest.php
+tests/Contract/Tranzix/TranzixGatewayContractTest.php
+tests/Feature/Payments/Concurrency/PaymentConfirmationRacingManualDisputeConcurrencyTest.php
+```
 
 ### Phase 6 work breakdown - Repair and collection lifecycle
 
@@ -246,6 +379,29 @@ The work packages below expand the phases into sequenced implementation tasks. A
 6. **Enforce device release.** Prohibit collection where a balance is outstanding except through an authorised override that records actor, reason, and audit event.
 7. **Deliver technician/customer UI and tests.** Build technician intake/diagnosis/parts/work/collection screens, customer tracker/payment screens, and resolution queues. Test all transition, parts-timing, payment-release, deadline, and storage-fee policies.
 
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_repair_jobs_table.php
+database/migrations/..._create_repair_diagnoses_table.php
+database/migrations/..._create_repair_parts_reservations_table.php
+database/migrations/..._create_collection_cases_table.php
+database/migrations/..._create_collection_case_events_table.php
+domain/Repair/Domain/Entities/{RepairJob,RepairDiagnosis,RepairPartReservation}.php
+domain/Repair/Domain/Services/{RepairCostCalculator,RepairAuthorizationPolicy}.php
+domain/Repair/Domain/Policies/DeviceReleasePolicy.php
+domain/Repair/Application/Commands/{CreateRepairJob,CompleteDiagnosis,ReserveRepairParts,StartRepair,CompleteRepair,FailRepair,ReleaseRepairDevice}.php
+domain/Repair/Infrastructure/Persistence/Eloquent/RepairJobRecord.php
+domain/Collection/Domain/Entities/CollectionCase.php
+app/Console/Commands/Repairs/{ExpireRepairAuthorizations,ProcessCollectionDeadlines}.php
+app/Http/Controllers/Admin/RepairController.php, app/Http/Controllers/Customer/RepairController.php
+Pages/Admin/Repairs/{Index,Create,Show,Diagnosis,Parts,Collection}.tsx   -- see UI/UX §14C.4 and §14C.5
+Pages/Admin/Collection/{Index,Show}.tsx
+Pages/Customer/Repairs/{Index,Show}.tsx   -- see UI/UX §14C.6
+Features/Repairs/{DiagnosisChecklist,PartsReservationPicker,RepairStatusStepper}.tsx
+tests/Feature/Admin/TechnicianCannotReservePartsBeforeAuthorizationTest.php
+```
+
 ### Phase 7 work breakdown - Warranty, returns, and trade-in
 
 1. **Implement policy configuration.** Create shop-scoped/effective-dated warranty and return-window settings, coverage/exclusions, and immutable snapshots of the policy used for each decision.
@@ -253,6 +409,23 @@ The work packages below expand the phases into sequenced implementation tasks. A
 3. **Implement returns/refunds.** Add return reasons/evidence, inspection/approval/rejection, stock disposition, and Payments refund handoff. No return workflow may mutate a confirmed payment directly.
 4. **Implement trade-in.** Capture assessment, configurable offer, acceptance/decline, inventory intake, credit/swap linkage, and staff-authorisation decisions.
 5. **Deliver queues and proof.** Build customer claim/return history and staff assessment/resolution views. Test invalid source sale, expired window, excluded damage, unauthorised approval, refund failure, and trade-in transitions.
+
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_warranty_policies_table.php
+database/migrations/..._create_warranty_claims_table.php
+database/migrations/..._create_return_requests_table.php
+database/migrations/..._create_trade_in_assessments_table.php
+domain/Warranty/Domain/Entities/{WarrantyClaim,ReturnRequest,TradeInAssessment}.php
+domain/Warranty/Application/Commands/{CreateWarrantyClaim,AssessClaim,ResolveClaim,ApproveRefund,AssessTradeIn}.php
+Pages/Admin/Warranty/Claims/{Index,Show}.tsx
+Pages/Admin/Warranty/Returns/{Index,Show}.tsx
+Pages/Admin/Warranty/TradeIns/{Index,Show}.tsx
+Pages/Customer/Warranty/Claims/{Index,Create,Show}.tsx
+Pages/Customer/Warranty/Returns/{Index,Create}.tsx
+Features/Warranty/EligibilityChecklist.tsx
+```
 
 ### Phase 8 work breakdown - Event-driven operational modules
 
@@ -264,6 +437,36 @@ The work packages below expand the phases into sequenced implementation tasks. A
 6. **Implement Finance.** Add expense categories/entries, immutable financial-ledger projection entries, rebuild/reconciliation tools, and shop/consolidated reports traceable back to source IDs.
 7. **Prove idempotency/history.** Test outbox replay, notification retries, audit/ledger immutability, commission reversal, referral fraud rejection, reward stacking, and financial projection traceability.
 
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_notification_events_table.php
+database/migrations/..._create_notification_delivery_attempts_table.php
+database/migrations/..._create_commission_ledger_entries_table.php
+database/migrations/..._create_referrals_table.php
+database/migrations/..._create_marketing_campaigns_table.php
+database/migrations/..._create_marketing_rewards_table.php
+database/migrations/..._create_marketing_store_credit_ledger_entries_table.php
+database/migrations/..._create_marketing_vouchers_table.php
+database/migrations/..._create_expenses_table.php
+database/migrations/..._create_reporting_financial_ledger_entries_table.php
+database/migrations/..._create_audit_logs_table.php
+domain/Notifications/Infrastructure/Channels/Email/{EmailChannel,Resend/ResendMailer,Smtp/SmtpMailer}.php
+domain/Notifications/Infrastructure/Channels/{WhatsApp,Sms,InApp}/...
+domain/Notifications/Application/Services/NotificationEngine.php
+domain/Commission/, domain/Referral/, domain/Marketing/, domain/Finance/, domain/Audit/
+  (each filled in from the CPNC Appendix C skeleton, per module)
+app/Console/Commands/Notifications/RetryFailedNotifications.php
+Pages/Admin/Commission/{Index,Show}.tsx
+Pages/Admin/Referrals/Index.tsx
+Pages/Admin/Marketing/Campaigns/{Index,Create,Show}.tsx, Pages/Admin/Marketing/Vouchers/Index.tsx, Pages/Admin/Marketing/StoreCredit/Index.tsx
+Pages/Admin/Notifications/Index.tsx
+Pages/Admin/Finance/Expenses/{Index,Create}.tsx
+Pages/Admin/Audit/Index.tsx
+Pages/Customer/Referrals/Index.tsx, Pages/Customer/Notifications/Index.tsx
+Features/Notifications/NotificationInbox.tsx, Features/Marketing/DiscountStackPreview.tsx
+```
+
 ### Phase 9 work breakdown - Offline/PWA, reporting depth, and operations
 
 1. **Implement safe PWA foundations.** Add a manifest, service worker, cache policy, offline page, update prompt, and approved local-storage protection. Do not cache sensitive content without an explicit security decision.
@@ -274,6 +477,22 @@ The work packages below expand the phases into sequenced implementation tasks. A
 6. **Operationalise the product.** Configure the production reverse proxy (e.g., Nginx/Cloudflare) to serve the single Laravel monolith on the primary domain, with path-based routing for `/admin/*`, `/customer/*`, `/api/*`, and `/webhooks/*`. Add logs, metrics, alert thresholds, integrity checks, queue/provider monitoring, backup/binlog recovery, restore drills, deployment health checks, and runbooks.
 7. **Prove offline and recovery behavior.** Test duplicate UUID handling, preserved conflicts, unauthorised sync rejection, report-scope permissions, and a simulated restore procedure.
 
+**Key files (representative, not exhaustive):**
+
+```text
+database/migrations/..._create_sync_outbox_entries_table.php
+database/migrations/..._create_sync_conflicts_table.php
+domain/Sync/Domain/Entities/SyncOutboxEntry.php
+app/Console/Commands/Sync/ProcessPendingSync.php
+app/Http/Controllers/Api/SyncController.php
+Pages/Admin/Sync/Conflicts/{Index,Show}.tsx
+Pages/Admin/Reports/{Sales,Repairs,Inventory,Commission}.tsx
+Pages/Admin/Finance/Reports/{ProfitAndLoss,ShopComparison}.tsx
+Features/Sync/{OfflineSyncStatus,ConflictResolutionPanel}.tsx   -- see UI/UX §14A
+Components/Feedback/ConnectivityIndicator.tsx (wired to real connectivity state)
+public/manifest.json, public/service-worker.js (or the framework-generated equivalent)
+```
+
 ### Phase 10 work breakdown - System hardening and release certification
 
 1. **Close the executable test matrix.** Link BRD/BLD critical rules to unit, feature, contract, migration, architecture, and real-concurrency tests. Require all of them in CI.
@@ -281,6 +500,16 @@ The work packages below expand the phases into sequenced implementation tasks. A
 3. **Test performance and resilience.** Load-test inventory, POS, webhooks, queues, and reports; inject provider, queue, and database failures; verify safe retry and degraded behavior.
 4. **Rehearse release operations.** Execute production-like migration/forward-remediation rehearsals, reconcile import data, restore a backup, confirm worker/scheduler supervision, configure alerts, and finalise runbooks.
 5. **Run the pilot.** Enable a bounded set of pilot shops and personas, collect evidence and feedback without bypassing audit controls, resolve defects, perform final UX/accessibility/rule review, and document formal acceptance.
+
+**Key files (representative, not exhaustive):**
+
+```text
+tests/Architecture/*ArchTest.php                 (full boundary-rule suite, ADD §53 / CPNC §4.5)
+tests/Unit/Domain/**/*Test.php                    (every state machine, calculator, and policy)
+tests/Feature/{Admin,Customer}/**/*Test.php       (every persona-scoped use case)
+tests/Contract/**/*ContractTest.php               (every provider, full case list per CPNC §6.5)
+tests/Feature/**/Concurrency/*ConcurrencyTest.php (the full concurrency matrix, ADD §43.3)
+```
 
 ## 5. Migration and Integration Order
 

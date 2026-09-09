@@ -636,6 +636,315 @@ tests/
 
 ---
 
+# 5A. Exact Frontend Page, Component & Feature File Structure
+
+Section 5 fixes the backend source tree to file-level precision — every module lists its actual entity, command, and repository filenames. The frontend tree in §5 stops at `Pages/Admin/` and `Pages/Customer/`, which leaves an implementer (human or AI) to invent page names ad hoc. That gap is not cosmetic: the CPNC's Zero Dead Code & File Reuse Directive (§1) exists precisely to stop an implementer from inventing a file location that isn't already agreed, and a missing frontend tree makes every new page a fresh naming decision instead of a lookup. This section is the frontend's equivalent of §5 — authoritative for `resources/js/`, cross-referenced by the CPNC §5.2 (Pages/Components/Features contract) and by the UI/UX Design System Document §15 (Component Architecture) and §14C (Page-Level Layout Specifications).
+
+Every page listed below is one Inertia entry point mapping 1:1 to one Controller action (CPNC §5.2) — it composes `Components/` and `Features/` and contains no business logic. A page appearing here does not imply it is in scope for an early phase; the Implementation Plan's per-phase "Key files" listings state which phase actually creates each file.
+
+## 5A.1 `resources/js/Pages/Admin/`
+
+```text
+Pages/Admin/
+├── Auth/
+│   ├── Login.tsx
+│   ├── ForgotPassword.tsx
+│   ├── ResetPassword.tsx
+│   └── TwoFactorChallenge.tsx
+│
+├── Dashboard/
+│   └── Index.tsx
+│
+├── Shops/
+│   ├── Index.tsx
+│   ├── Create.tsx
+│   ├── Edit.tsx
+│   └── Show.tsx
+│
+├── Staff/
+│   ├── Index.tsx
+│   ├── Create.tsx
+│   ├── Edit.tsx
+│   ├── Show.tsx
+│   └── Roles/
+│       ├── Index.tsx
+│       ├── Create.tsx
+│       └── Edit.tsx
+│
+├── Inventory/
+│   ├── Products/
+│   │   ├── Index.tsx
+│   │   ├── Create.tsx
+│   │   ├── Edit.tsx
+│   │   └── Show.tsx
+│   ├── Import/
+│   │   ├── Create.tsx
+│   │   └── Results.tsx
+│   ├── Stock/
+│   │   ├── Index.tsx
+│   │   ├── Adjust.tsx
+│   │   └── LowStock.tsx
+│   └── Transfers/
+│       ├── Index.tsx
+│       ├── Create.tsx
+│       └── Show.tsx
+│
+├── Sales/
+│   ├── Checkout.tsx
+│   ├── Index.tsx
+│   ├── Show.tsx
+│   └── Receipt.tsx
+│
+├── Payments/
+│   ├── Index.tsx
+│   ├── Show.tsx
+│   └── Disputes/
+│       ├── Index.tsx
+│       └── Show.tsx
+│
+├── Repairs/
+│   ├── Index.tsx
+│   ├── Create.tsx
+│   ├── Show.tsx
+│   ├── Diagnosis.tsx
+│   ├── Parts.tsx
+│   └── Collection.tsx
+│
+├── Collection/
+│   ├── Index.tsx
+│   └── Show.tsx
+│
+├── Warranty/
+│   ├── Claims/
+│   │   ├── Index.tsx
+│   │   └── Show.tsx
+│   ├── Returns/
+│   │   ├── Index.tsx
+│   │   └── Show.tsx
+│   └── TradeIns/
+│       ├── Index.tsx
+│       └── Show.tsx
+│
+├── Commission/
+│   ├── Index.tsx
+│   └── Show.tsx
+│
+├── Referrals/
+│   └── Index.tsx
+│
+├── Marketing/
+│   ├── Campaigns/
+│   │   ├── Index.tsx
+│   │   ├── Create.tsx
+│   │   └── Show.tsx
+│   ├── Vouchers/
+│   │   └── Index.tsx
+│   └── StoreCredit/
+│       └── Index.tsx
+│
+├── Notifications/
+│   └── Index.tsx
+│
+├── Finance/
+│   ├── Expenses/
+│   │   ├── Index.tsx
+│   │   └── Create.tsx
+│   └── Reports/
+│       ├── ProfitAndLoss.tsx
+│       └── ShopComparison.tsx
+│
+├── Reports/
+│   ├── Sales.tsx
+│   ├── Repairs.tsx
+│   ├── Inventory.tsx
+│   └── Commission.tsx
+│
+├── Audit/
+│   └── Index.tsx
+│
+└── Sync/
+    └── Conflicts/
+        ├── Index.tsx
+        └── Show.tsx
+```
+
+## 5A.2 `resources/js/Pages/Customer/`
+
+```text
+Pages/Customer/
+├── Auth/
+│   ├── Login.tsx
+│   ├── Register.tsx
+│   ├── ForgotPassword.tsx
+│   └── ResetPassword.tsx
+│
+├── Dashboard/
+│   └── Index.tsx
+│
+├── Repairs/
+│   ├── Index.tsx
+│   └── Show.tsx
+│
+├── Orders/
+│   ├── Index.tsx
+│   └── Show.tsx
+│
+├── Payments/
+│   ├── Show.tsx
+│   ├── History.tsx
+│   └── BankTransferInstructions.tsx
+│
+├── Warranty/
+│   ├── Claims/
+│   │   ├── Index.tsx
+│   │   ├── Create.tsx
+│   │   └── Show.tsx
+│   └── Returns/
+│       ├── Index.tsx
+│       └── Create.tsx
+│
+├── Referrals/
+│   └── Index.tsx
+│
+├── Notifications/
+│   └── Index.tsx
+│
+├── Shops/
+│   └── Index.tsx
+│
+└── Profile/
+    ├── Show.tsx
+    └── Edit.tsx
+```
+
+Each `Index.tsx` composes the theme's responsive data pattern (UI/UX §9); each `Show.tsx` composes the theme's detail-page pattern (UI/UX §14C); `Create.tsx`/`Edit.tsx` compose the theme's form anatomy (UI/UX §10.2/§10.3).
+
+## 5A.3 `resources/js/Components/` (design-system primitives)
+
+```text
+Components/
+├── Admin/
+│   ├── AdminButton.tsx
+│   ├── AdminInput.tsx
+│   ├── AdminSelect.tsx
+│   ├── AdminTextarea.tsx
+│   ├── AdminBadge.tsx
+│   ├── AdminTable.tsx
+│   ├── AdminRowCard.tsx
+│   ├── AdminSidebar.tsx
+│   ├── AdminTopbar.tsx
+│   ├── AdminShell.tsx
+│   ├── AdminAuthShell.tsx
+│   ├── AdminPageHead.tsx
+│   ├── AdminStatCard.tsx
+│   ├── AdminEmptyState.tsx
+│   ├── AdminPagination.tsx
+│   └── AdminFilterBar.tsx
+│
+├── Customer/
+│   ├── CustomerButton.tsx
+│   ├── CustomerInput.tsx
+│   ├── CustomerListItem.tsx
+│   ├── CustomerDrawer.tsx
+│   ├── CustomerTaskbar.tsx
+│   ├── CustomerHeroCard.tsx
+│   ├── CustomerShell.tsx
+│   ├── CustomerAuthShell.tsx
+│   ├── CustomerEmptyState.tsx
+│   └── CustomerFab.tsx
+│
+├── Feedback/
+│   ├── ConfirmDialog.tsx
+│   ├── Toast.tsx
+│   ├── AlertBanner.tsx
+│   ├── Skeleton.tsx
+│   ├── BlockingLoader.tsx
+│   └── ConnectivityIndicator.tsx
+│
+├── Icons/
+│   └── Icon.tsx
+│
+├── Forms/
+│   ├── FormField.tsx
+│   ├── FormErrorMessage.tsx
+│   └── FormSuccessMessage.tsx
+│
+├── Tables/
+│   ├── ResponsiveDataTable.tsx
+│   └── StatusStepper.tsx
+│
+└── Layout/
+    ├── MasterDetailSplit.tsx
+    ├── SlideOverPanel.tsx
+    └── ActivityTimeline.tsx
+```
+
+This tree reconciles with UI/UX §15 — that section owns the *design-system rationale* for each primitive; this section owns the *file location*. Where the two ever disagree on a path, this ADD section is authoritative, consistent with §5's precedence over prose elsewhere in this document.
+
+## 5A.4 `resources/js/Features/` (domain-specific, one folder per module needing interactive UI)
+
+```text
+Features/
+├── Sales/
+│   ├── POSCart.tsx
+│   ├── ProductSearch.tsx
+│   ├── CheckoutTotals.tsx
+│   └── CheckoutExpiryTimer.tsx
+│
+├── Inventory/
+│   ├── SerializedUnitPicker.tsx
+│   ├── StockLevelBadge.tsx
+│   └── CsvImportPreview.tsx
+│
+├── Payments/
+│   ├── PaymentMethodSwitcher.tsx
+│   ├── PaymentStatusBadge.tsx
+│   └── BankTransferProofUpload.tsx
+│
+├── Repairs/
+│   ├── DiagnosisChecklist.tsx
+│   ├── PartsReservationPicker.tsx
+│   └── RepairStatusStepper.tsx
+│
+├── Warranty/
+│   └── EligibilityChecklist.tsx
+│
+├── Marketing/
+│   └── DiscountStackPreview.tsx
+│
+├── Sync/
+│   ├── OfflineSyncStatus.tsx
+│   └── ConflictResolutionPanel.tsx
+│
+└── Notifications/
+    └── NotificationInbox.tsx
+```
+
+A component's placement test (Components/ vs. Features/<Module>/) is defined in CPNC §5.2 — do not re-derive it here; apply that test before adding a file to either tree.
+
+## 5A.5 Supporting frontend folders
+
+```text
+resources/js/
+├── hooks/
+│   ├── useConfirm.ts
+│   ├── useToast.ts
+│   └── useOnlineStatus.ts
+├── stores/
+│   └── (local, per-Feature React state only — never a client-side source of business truth, §25.3)
+├── types/
+│   ├── admin.ts
+│   ├── customer.ts
+│   └── shared.ts
+└── lib/
+    ├── route.ts         (Ziggy/Inertia route() helper wiring)
+    └── money.ts          (minor-unit formatting for display only — never a source of monetary truth)
+```
+
+**Rule:** A new page, component, or feature is added *to* this tree, not beside it. If a task requires a file that does not appear here, the correct response — per CPNC Appendix A question 2 — is to add it to this section in the same change set that creates the file, not to invent an undocumented location.
+
+---
+
 # 6. Shared Kernel
 
 The Shared Kernel should be deliberately small.
