@@ -1,5 +1,8 @@
 import { FormEvent } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, Head } from '@inertiajs/react';
+import CustomerAuthShell from '../../Components/Customer/CustomerAuthShell';
+import CustomerInput from '../../Components/Customer/Forms/CustomerInput';
+import CustomerButton from '../../Components/Customer/Forms/CustomerButton';
 
 export default function CustomerRegister() {
     const { data, setData, post, processing, errors } = useForm({
@@ -16,51 +19,74 @@ export default function CustomerRegister() {
     }
 
     return (
-        <form onSubmit={submit}>
-            <h1>Create your account</h1>
+        <CustomerAuthShell>
+            <Head title="Sign up" />
+            
+            <div className="max-w-md w-full mx-auto">
+                <h1 className="text-xl font-bold text-customer-text mb-6">
+                    Create your account
+                </h1>
 
-            <label>
-                Name
-                <input value={data.name} onChange={(e) => setData('name', e.target.value)} />
-            </label>
-            {errors.name && <div role="alert">{errors.name}</div>}
+                <form onSubmit={submit}>
+                    <CustomerInput
+                        label="Full name"
+                        type="text"
+                        required
+                        value={data.name}
+                        onChange={(e: any) => setData('name', e.target.value)}
+                        error={errors.name}
+                        placeholder="e.g. Aisha Bello"
+                    />
 
-            <label>
-                Phone number
-                <input value={data.phone} onChange={(e) => setData('phone', e.target.value)} />
-            </label>
-            {errors.phone && <div role="alert">{errors.phone}</div>}
+                    <CustomerInput
+                        label="Phone number"
+                        type="text"
+                        required
+                        value={data.phone}
+                        onChange={(e: any) => setData('phone', e.target.value)}
+                        error={errors.phone}
+                        placeholder="e.g. 08012345678"
+                    />
 
-            <label>
-                Email (optional)
-                <input
-                    type="email"
-                    value={data.email}
-                    onChange={(e) => setData('email', e.target.value)}
-                />
-            </label>
+                    <CustomerInput
+                        label="Email address"
+                        type="email"
+                        required
+                        value={data.email}
+                        onChange={(e: any) => setData('email', e.target.value)}
+                        error={errors.email}
+                        placeholder="e.g. customer@example.com"
+                    />
 
-            <label>
-                Password
-                <input
-                    type="password"
-                    value={data.password}
-                    onChange={(e) => setData('password', e.target.value)}
-                />
-            </label>
+                    <CustomerInput
+                        label="Password"
+                        type="password"
+                        required
+                        value={data.password}
+                        onChange={(e: any) => setData('password', e.target.value)}
+                        error={errors.password}
+                    />
 
-            <label>
-                Confirm password
-                <input
-                    type="password"
-                    value={data.password_confirmation}
-                    onChange={(e) => setData('password_confirmation', e.target.value)}
-                />
-            </label>
+                    <CustomerInput
+                        label="Confirm password"
+                        type="password"
+                        required
+                        value={data.password_confirmation}
+                        onChange={(e: any) => setData('password_confirmation', e.target.value)}
+                    />
 
-            <button type="submit" disabled={processing}>
-                Create account
-            </button>
-        </form>
+                    <div className="mt-8">
+                        <CustomerButton 
+                            type="submit" 
+                            className="w-full"
+                            isLoading={processing}
+                            loadingText="Creating account..."
+                        >
+                            Sign up
+                        </CustomerButton>
+                    </div>
+                </form>
+            </div>
+        </CustomerAuthShell>
     );
 }

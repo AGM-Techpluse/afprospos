@@ -10,8 +10,12 @@ use Domain\Shared\Domain\ValueObjects\CustomerId;
 interface CustomerRepository
 {
     public function findByPhone(string $phone): ?CustomerAccount;
+    
+    public function findByEmail(string $email): ?CustomerAccount;
 
     public function existsWithPhone(string $phone): bool;
+
+    public function existsWithEmail(string $email): bool;
 
     public function verifyPassword(CustomerId $id, string $plainPassword): bool;
 

@@ -37,12 +37,12 @@ final class CustomerAuthController
     {
         try {
             $this->authenticate->handle(new AuthenticateCustomerCommand(
-                phone: $request->string('phone')->toString(),
+                email: $request->string('email')->toString(),
                 password: $request->string('password')->toString(),
                 remember: $request->boolean('remember'),
             ));
         } catch (InvalidCredentials $exception) {
-            throw ValidationException::withMessages(['phone' => $exception->getMessage()]);
+            throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         }
 
         $request->session()->regenerate();

@@ -1252,6 +1252,23 @@ The main page content must reserve sufficient bottom padding:
 
 so the taskbar does not obscure interactive content.
 
+# 8.8 Authentication Shells
+
+Authentication pages (Login, Register, Password Reset) MUST NOT use the full Master Shell (`AdminShell` or `CustomerShell`) because they should not expose internal navigation, sidebars, or taskbars to unauthenticated users.
+
+Instead, they use dedicated minimal shells (`AdminAuthShell` and `CustomerAuthShell`):
+
+## Admin Auth Shell
+- `min-h-screen`, `bg-admin-bg`, centered content vertically and horizontally.
+- Forms are placed inside an `admin-surface` card with standard borders and shadows.
+- No navigation, no sidebar.
+
+## Customer Auth Shell
+- `min-h-screen`, `bg-white`, `text-customer-text`.
+- Minimal top header displaying only the company logo and name.
+- Forms flow directly onto the page surface (no encapsulating cards).
+- No bottom taskbar, no drawer navigation.
+
 ---
 
 # 9. Tables & Data Display — Desktop Grids vs Mobile Accordion Cards

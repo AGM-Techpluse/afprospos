@@ -24,6 +24,18 @@ final class EloquentCustomerRepository implements CustomerRepository
         return CustomerRecord::query()->where('phone', $phone)->exists();
     }
 
+    public function findByEmail(string $email): ?CustomerAccount
+    {
+        $record = CustomerRecord::query()->where('email', $email)->first();
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
+    public function existsWithEmail(string $email): bool
+    {
+        return CustomerRecord::query()->where('email', $email)->exists();
+    }
+
     public function verifyPassword(CustomerId $id, string $plainPassword): bool
     {
         $record = CustomerRecord::query()->findOrFail($id->value);

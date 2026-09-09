@@ -6,7 +6,7 @@ import CustomerButton from '../../Components/Customer/Forms/CustomerButton';
 
 export default function CustomerLogin() {
     const { data, setData, post, processing, errors } = useForm({
-        phone: '',
+        email: '',
         password: '',
         remember: false,
     });
@@ -27,17 +27,19 @@ export default function CustomerLogin() {
 
                 <form onSubmit={submit}>
                     <CustomerInput
-                        label="Phone number"
-                        type="text"
-                        value={data.phone}
-                        onChange={(e: any) => setData('phone', e.target.value)}
-                        error={errors.phone}
-                        placeholder="e.g. 08012345678"
+                        label="Email address"
+                        type="email"
+                        required
+                        value={data.email}
+                        onChange={(e: any) => setData('email', e.target.value)}
+                        error={errors.email}
+                        placeholder="e.g. customer@example.com"
                     />
 
                     <CustomerInput
                         label="Password"
                         type="password"
+                        required
                         value={data.password}
                         onChange={(e: any) => setData('password', e.target.value)}
                         error={errors.password}

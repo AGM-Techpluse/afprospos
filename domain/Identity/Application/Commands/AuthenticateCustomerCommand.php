@@ -7,7 +7,7 @@ namespace Domain\Identity\Application\Commands;
 final readonly class AuthenticateCustomerCommand
 {
     public function __construct(
-        public string $phone,
+        public string $email,
         public string $password,
         public bool $remember,
     ) {}

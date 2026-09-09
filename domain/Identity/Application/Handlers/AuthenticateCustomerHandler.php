@@ -18,7 +18,7 @@ final class AuthenticateCustomerHandler
 
     public function handle(AuthenticateCustomerCommand $command): void
     {
-        $account = $this->customers->findByPhone($command->phone);
+        $account = $this->customers->findByEmail($command->email);
 
         if ($account === null || ! $this->customers->verifyPassword($account->id(), $command->password)) {
             throw InvalidCredentials::make();
