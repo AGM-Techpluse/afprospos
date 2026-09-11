@@ -13,6 +13,7 @@ use Domain\Shop\Application\Commands\UpdateShopCommand;
 use Domain\Shop\Application\Handlers\CreateShopHandler;
 use Domain\Shop\Application\Handlers\SwitchActiveShopHandler;
 use Domain\Shop\Application\Handlers\UpdateShopHandler;
+use Domain\Shop\Application\Queries\ShopAnalyticsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Domain\Shop\Domain\Exceptions\DuplicateShopSkuPrefixCode;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +33,7 @@ final class ShopController
 {
     public function __construct(
         private readonly ShopDirectoryQuery $shopDirectory,
+        private readonly ShopAnalyticsQuery $shopAnalytics,
         private readonly CreateShopHandler $createShop,
         private readonly UpdateShopHandler $updateShop,
         private readonly SwitchActiveShopHandler $switchShop,
@@ -65,6 +67,7 @@ final class ShopController
 
         return Inertia::render('Admin/Shops/Show', [
             'shop' => $shopDetail,
+            'analytics' => $this->shopAnalytics->forShop($shop),
         ]);
     }
 

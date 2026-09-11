@@ -27,7 +27,7 @@ type Paginated<T> = {
 
 interface StaffIndexProps {
     staff: Paginated<StaffRow>;
-    filters: { search: string; status: string; role: string };
+    filters: { search: string; status: string; role: string; shop_id: number | null };
     availableRoles: string[];
 }
 
@@ -61,7 +61,7 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
     const [refreshing, setRefreshing] = useState(false);
     const skipNextFetch = useRef(true);
 
-    const hasActiveFilters = Boolean(filters.search || filters.status || filters.role);
+    const hasActiveFilters = Boolean(filters.search || filters.status || filters.role || filters.shop_id);
 
     useEffect(() => {
         if (skipNextFetch.current) {
@@ -72,7 +72,7 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
         const timeout = setTimeout(() => {
             router.get(
                 '/admin/staff',
-                { search: search || undefined, status: status || undefined, role: role || undefined },
+                { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: filters.shop_id ?? undefined },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 350);
@@ -83,7 +83,7 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
     function goToPage(page: number) {
         router.get(
             '/admin/staff',
-            { search: search || undefined, status: status || undefined, role: role || undefined, page },
+            { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: filters.shop_id ?? undefined, page },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     }
@@ -114,7 +114,13 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
 
             <AdminPageHead
                 title="Staff"
-                description="Manage staff accounts, roles, and shop access."
+                description={
+                    filters.shop_id
+                        ? `Staff with access to Shop #${filters.shop_id}.`
+                        : 'Manage staff accounts, roles, and shop access.'
+                }
+                backHref={filters.shop_id ? `/admin/shops/${filters.shop_id}` : undefined}
+                backLabel="Back to shop"
                 actions={<AdminButton onClick={() => router.visit('/admin/staff/create')}>New staff</AdminButton>}
             />
 
