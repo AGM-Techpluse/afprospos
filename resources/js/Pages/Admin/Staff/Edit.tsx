@@ -31,7 +31,12 @@ export default function StaffEdit({ staffMember }: { staffMember: StaffMember })
         <AdminShell>
             <Head title={`Edit ${staffMember.name}`} />
 
-            <AdminPageHead title={`Edit ${staffMember.name}`} description="Update this staff member's contact details." />
+            <AdminPageHead
+                title={`Edit ${staffMember.name}`}
+                description="Update this staff member's contact details."
+                backHref={`/admin/staff/${staffMember.id}`}
+                backLabel="Back to staff member"
+            />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">
                 <form onSubmit={submit}>

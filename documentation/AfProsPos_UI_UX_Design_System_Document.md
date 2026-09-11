@@ -7,7 +7,7 @@
 **Source Prototype:** `AfProsPos_Design_Preview (2).html`  
 **Status:** BINDING — Development Blueprint / Design-System Source of Truth  
 **Companion document:** AfProsPos Codebase Principles & Naming Conventions (CPNC) — governs component placement (`Pages/`, `Components/`, `Features/`) and the Frontend Constraints this document's tokens plug into  
-**Date:** September 9, 2026 (Revision 6 — Customer Shell visual correction; Profile moved off the Dashboard)
+**Date:** September 11, 2026 (Revision 7 — Admin type-scale/component-size bump; §28 tokens.css blueprint resynced with the shipped file)
 
 > This document codifies the visual language and interaction behavior demonstrated in the supplied working HTML/CSS prototype. The prototype is treated as the visual reference implementation. Where the prototype uses a literal value inside a demonstration-only utility, this document converts that value into an explicit design token or semantic variable so production components do not accumulate raw color literals.
 
@@ -94,6 +94,21 @@ Specifically, this revision:
 3. **Reverts part of Revision 5, corrects §14C.10**: Edit Profile is removed from the Dashboard and moves to its own page (`Pages/Customer/Profile/Show.tsx`, unelevated per §10.1 — the same treatment as the Admin/Customer auth forms). The Dashboard's side column instead shows a read-only Account summary card (name/phone/email, real data, no form) linking to the Profile page — not a form, so it can be elevated without contradiction. The hero card's empty state also picks up the same blue gradient treatment as its active-repair state, rather than a separate white/bordered look, for visual consistency regardless of data state.
 
 As with prior revisions, every fix is called out inline with a **Revision 6 fix:** marker.
+
+## Revision 7 — What Changed and Why
+
+Two changes, both scoped to the Admin theme only (Customer is untouched by either):
+
+**Sizing:** a session working through the Admin Inventory screens live (not just reviewing static mockups) found the whole shell reading noticeably small for all-day desktop use — confirmed with a direct 100%-vs-110%-browser-zoom side-by-side comparison, which made the size gap unambiguous rather than a matter of taste. This compounds an earlier, previously undocumented ~8% bump the Admin type scale and component tokens already carried (see the `tokens.css` blueprint's own inline comments below, which referenced "bumped ~8%" without a corresponding revision note here — Revision 7 closes that gap retroactively as well as adding the new bump). A further ~10% is applied on top of the already-bumped values: `--a-text-*` (13/14/15/17/19/23px), and every Admin component token that carries a literal text or padding size (`--a-btn-*`, `--a-table-cell-*`, `--a-field-*`, `--a-nav-item-*`, `--a-sidebar-width*`, `--a-topbar-height`, `--a-drawer-width`, `--a-content-padding-x`). Radii are deliberately untouched — corner-rounding wasn't the source of the "too small" complaint, only text/spacing was, so scaling radii too would be a change nobody asked for.
+
+**Documentation drift:** while making the above change, this section's `tokens.css` blueprint (§28, reproduced below) turned out to already be stale independent of the sizing question — it was missing the Admin typography scale, all Admin/Customer component tokens (Layer 4), the five shared `--ui-*` component tokens (`--ui-modal-width`, `--ui-radius-sheet`, `--ui-loader-size`, `--ui-loader-blur`, `--ui-toast-width`), `--c-focus`/`--c-shadow-soft`/`--c-shadow-strong`, and the entire `[data-theme="admin"]`/`[data-theme="customer"]` semantic resolution block — all of which existed in the shipped `resources/css/tokens.css` (added across Revisions 2–6's fixes) but were never written back into this document's own code sample. The blueprint below is now a verbatim copy of the shipped file, not a frozen Revision-1 snapshot, so the two cannot silently diverge again without the drift being visible in a diff.
+
+Specifically, this revision:
+
+1. Bumps the Admin typography scale and every Admin component token with a literal size by ~10% (values listed above), on top of the pre-existing ~8% bump.
+2. Replaces §28's `tokens.css` code block wholesale with the current, actual contents of `resources/css/tokens.css` — closing a real doc/code gap, not just adding the new numbers.
+
+As with prior revisions, the fix is called out inline with a **Revision 7 fix:** marker where it lands on a specific subsection.
 
 ---
 
@@ -3490,8 +3505,21 @@ The following is the recommended production token organization.
   --motion-slow: 220ms;
   --motion-toast: 300ms;
 
-  --ease-standard: cubic-bezier(.2, .8, .2, 1);
-  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --motion-ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --motion-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ---------- Shared (theme-agnostic) component tokens ---------- */
+  /* §12.2 desktop confirmation modal width; the doc gives one universal
+     value, not a per-theme one, so this lives outside the [data-theme] blocks. */
+  --ui-modal-width: 380px;
+  /* §12.3 mobile confirmation sheet radius (distinct from --a-radius-modal/
+     --c-radius-drawer, which are for other surfaces). */
+  --ui-radius-sheet: 20px;
+  /* §13.2/§13.3 full-screen blocking wait: site-mark size and backdrop blur. */
+  --ui-loader-size: 52px;
+  --ui-loader-blur: 6px;
+  /* §12.6 Customer toast max-width ("max ≈ 340px") */
+  --ui-toast-width: 340px;
 
   /* ---------- Admin semantic tokens ---------- */
   --a-bg: #F5F6F8;
@@ -3520,10 +3548,13 @@ The following is the recommended production token organization.
   --a-focus: #C7D6FC;
   --a-border-warning: #F5D999;
   --a-border-danger: #F6C6C1;
+  --a-border-success: #D5F0DD;
   --a-overlay: rgba(16, 20, 30, .44);
+  --a-shadow-modal: 0 8px 24px rgba(16,20,30,.18);
 
   --a-radius-input: 4px;
   --a-radius-button: 6px;
+  --a-radius-badge: 4px;
   --a-radius-card: 8px;
   --a-radius-modal: 14px;
 
@@ -3540,6 +3571,7 @@ The following is the recommended production token organization.
 
   --c-yellow: #FFC845;
   --c-yellow-soft: #FFF6DF;
+  --c-yellow-text: #9A5B00;
 
   --c-red: #E24444;
   --c-red-soft: #FDECEC;
@@ -3551,6 +3583,10 @@ The following is the recommended production token organization.
   --c-divider: #EEF0F3;
   --c-muted-icon: #B7BEC9;
   --c-overlay: rgba(16, 20, 30, .40);
+  --c-focus: #B9CFFF;
+
+  --c-shadow-soft: 0 2px 10px rgba(16,20,30,.08);
+  --c-shadow-strong: 0 10px 30px rgba(16,20,30,.16);
 
   --c-radius-item: 14px;
   --c-radius-card: 16px;
@@ -3572,10 +3608,132 @@ The following is the recommended production token organization.
       #2F6FED,
       #1E56E8
     );
+
+  /* ---------- Admin typography scale (Layer 4) ----------
+     The prototype's literal sizes (§ throughout) read as too small for
+     all-day desktop use once built and used for real — bumped ~8% over
+     both the shared base scale and the prototype's own component
+     baselines per direct user feedback, then bumped a further ~10% on
+     top of that (Revision 7) after a side-by-side 100%-vs-110%-browser-
+     zoom comparison confirmed the larger size reads better. Admin-only:
+     the shared --text-xs/sm/base/... tokens (and Customer, which
+     aliases them) are untouched. */
+  --a-text-xs: 13px;
+  --a-text-sm: 14px;
+  --a-text-base: 15px;
+  --a-text-md: 17px;
+  --a-text-lg: 19px;
+  --a-text-xl: 23px;
+
+  /* ---------- Admin component tokens (Layer 4) ---------- */
+  --a-sidebar-width: 242px;
+  --a-sidebar-width-collapsed: 70px;
+  --a-topbar-height: 57px;
+  --a-drawer-width: 253px;
+  --a-content-padding-x: 24px;
+  --a-btn-text-size: 15px;
+  --a-btn-padding-x: 14px;
+  --a-btn-padding-y: 8px;
+  --a-table-cell-text-size: 15px;
+  --a-table-cell-padding-y: 11px;
+  --a-table-cell-padding-x: 15px;
+  /* prototype ".field input,.field select,.field textarea" baseline, bumped ~8% then a further ~10% (Revision 7, see typography scale note above) */
+  --a-field-text-size: 15px;
+  --a-field-padding-x: 11px;
+  --a-field-padding-y: 9px;
+  /* §8.1 "Navigation item" prototype baseline, bumped ~8% then a further ~10% (Revision 7) */
+  --a-nav-item-padding-y: 8px;
+  --a-nav-item-padding-x: 9px;
+  --a-nav-item-gap: 11px;
+  --a-nav-item-icon-width: 18px;
+  --a-nav-item-text-size: 15px;
+
+  /* ---------- Customer component tokens (Layer 4) ---------- */
+  --c-header-height-desktop: 72px;
+  --c-header-height-mobile: 60px;
+  --c-taskbar-height: 62px;
+  --c-content-bottom-padding: 86px;
+  /* §8.5/§8.6: persistent 236px sidebar on desktop, 248px off-canvas
+     drawer card on mobile. */
+  --c-sidebar-width-desktop: 236px;
+  --c-drawer-width-mobile: 248px;
+  --c-btn-text-size: 12.5px;
+  --c-btn-padding-x: 18px;
+  --c-btn-padding-y: 11px;
+  --c-caption-size: 13px;
+  --c-field-text-size: 14px;
+}
+
+/* ---------- Semantic UI layer per theme ---------- */
+[data-theme="admin"] {
+  --ui-bg: var(--a-bg);
+  --ui-surface: var(--a-surface);
+  --ui-text: var(--a-text);
+  --ui-text-secondary: var(--a-text2);
+  --ui-border: var(--a-border);
+  --ui-accent: var(--a-blue);
+  --ui-focus: var(--a-focus);
+  --ui-radius-control: var(--a-radius-button);
+
+  --ui-info: var(--a-blue);
+  --ui-info-soft: var(--a-blue-soft);
+  --ui-success: var(--a-green);
+  --ui-success-soft: var(--a-green-soft);
+  --ui-warning: var(--a-yellow);
+  --ui-warning-soft: var(--a-yellow-soft);
+  --ui-warning-text: var(--a-yellow-text);
+  --ui-danger: var(--a-red);
+  --ui-danger-soft: var(--a-red-soft);
+
+  --ui-overlay: var(--a-overlay);
+  --ui-shadow-modal: var(--a-shadow-modal);
+
+  --ui-skeleton-base: var(--a-hover);
+  --ui-skeleton-highlight: var(--a-surface);
+
+  /* Admin-only type-scale bump so every bare text-xs/sm/base/md/lg/xl
+     utility used anywhere inside the Admin shell picks it up
+     automatically, not just the explicit text-admin-* utilities — CSS
+     custom properties resolve per the DOM cascade, so overriding the
+     shared tokens here (Customer is untouched) reaches every Tailwind
+     utility built on top of them without hunting down every call site.
+     See the --a-text-* definitions above for the numbers. */
+  --text-xs: var(--a-text-xs);
+  --text-sm: var(--a-text-sm);
+  --text-base: var(--a-text-base);
+  --text-md: var(--a-text-md);
+  --text-lg: var(--a-text-lg);
+  --text-xl: var(--a-text-xl);
+}
+
+[data-theme="customer"] {
+  --ui-bg: var(--c-page-mid);
+  --ui-surface: #FFFFFF;
+  --ui-text: var(--c-text);
+  --ui-text-secondary: var(--c-text2);
+  --ui-border: var(--c-input-border);
+  --ui-accent: var(--c-blue);
+  --ui-focus: var(--c-focus);
+  --ui-radius-control: var(--c-radius-pill);
+
+  --ui-info: var(--c-blue);
+  --ui-info-soft: var(--c-blue-soft);
+  --ui-success: var(--c-green);
+  --ui-success-soft: var(--c-green-soft);
+  --ui-warning: var(--c-yellow);
+  --ui-warning-soft: var(--c-yellow-soft);
+  --ui-warning-text: var(--c-yellow-text);
+  --ui-danger: var(--c-red);
+  --ui-danger-soft: var(--c-red-soft);
+
+  --ui-overlay: var(--c-overlay);
+  --ui-shadow-modal: var(--c-shadow-strong);
+
+  --ui-skeleton-base: var(--c-divider);
+  --ui-skeleton-highlight: #FFFFFF;
 }
 
 /* ---------- Mobile typography aliases ---------- */
-
 @media (max-width: 639px) {
   :root {
     --text-xs: 10px;
@@ -3591,7 +3749,6 @@ The following is the recommended production token organization.
 }
 
 /* ---------- Reduced motion ---------- */
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

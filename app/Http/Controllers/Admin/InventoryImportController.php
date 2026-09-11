@@ -13,6 +13,7 @@ use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * BRD INV-01: fixed, documented CSV columns —
@@ -40,6 +41,18 @@ final class InventoryImportController
             'shops' => $this->shops->all(),
             'expectedHeader' => self::EXPECTED_HEADER,
         ]);
+    }
+
+    /** Downloadable starting point for BRD INV-01's CSV format — the header plus one serialized and one non-serialized worked example row. */
+    public function template(): StreamedResponse
+    {
+        return response()->streamDownload(function (): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, self::EXPECTED_HEADER);
+            fputcsv($handle, ['Apple', 'iPhone 15', 'Phones', 'new', '400000', '15', '', '123456789012345', '']);
+            fputcsv($handle, ['Anker', 'PowerCore 10000', 'Accessories', 'new', '15000', '20', '25', '', '5']);
+            fclose($handle);
+        }, 'afprospos-product-import-template.csv', ['Content-Type' => 'text/csv']);
     }
 
     public function store(ImportProductsRequest $request): Response

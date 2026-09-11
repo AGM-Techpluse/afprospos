@@ -54,6 +54,8 @@ export default function StaffCreate({ availableRoles, shops }: CreateStaffProps)
             <AdminPageHead
                 title="New staff member"
                 description="Create a staff account and optionally assign starting roles and shop access."
+                backHref="/admin/staff"
+                backLabel="Back to staff"
             />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">

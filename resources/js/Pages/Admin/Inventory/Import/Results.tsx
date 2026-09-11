@@ -22,6 +22,8 @@ export default function ImportResults({ results }: { results: ImportRowResult[] 
             <AdminPageHead
                 title="Import results"
                 description={`${succeeded} row(s) succeeded, ${failed} failed — one bad row never affects the rest of the batch.`}
+                backHref="/admin/inventory/import"
+                backLabel="Back to import"
                 actions={<AdminButton onClick={() => router.visit('/admin/inventory/products')}>View products</AdminButton>}
             />
 

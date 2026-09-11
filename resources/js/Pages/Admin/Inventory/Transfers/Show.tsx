@@ -37,6 +37,8 @@ export default function TransferShow({ transfer }: { transfer: Transfer }) {
             <AdminPageHead
                 title={`Transfer #${transfer.id}`}
                 description={`${transfer.sku_code} — ${transfer.brand} ${transfer.model}`}
+                backHref="/admin/inventory/transfers"
+                backLabel="Back to transfers"
                 actions={
                     transfer.status === 'in_transit' ? (
                         <>

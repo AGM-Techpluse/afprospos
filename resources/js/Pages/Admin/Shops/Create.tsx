@@ -24,7 +24,7 @@ export default function ShopCreate() {
         <AdminShell>
             <Head title="New shop" />
 
-            <AdminPageHead title="New shop" description="Add a new shop location." />
+            <AdminPageHead title="New shop" description="Add a new shop location." backHref="/admin/shops" backLabel="Back to shops" />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">
                 <form onSubmit={submit}>
