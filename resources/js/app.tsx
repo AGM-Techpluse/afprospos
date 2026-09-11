@@ -1,5 +1,7 @@
 import { createInertiaApp } from '@inertiajs/react'
 import { createRoot } from 'react-dom/client'
+import { ToastProvider } from './hooks/useToast'
+import { ConfirmProvider } from './hooks/useConfirm'
 
 type PageModule = { default: React.ComponentType }
 
@@ -15,7 +17,13 @@ createInertiaApp({
         return page
     },
     setup({ el, App, props }) {
-        createRoot(el).render(<App {...props} />)
+        createRoot(el).render(
+            <ToastProvider>
+                <ConfirmProvider>
+                    <App {...props} />
+                </ConfirmProvider>
+            </ToastProvider>
+        )
     },
 })
 

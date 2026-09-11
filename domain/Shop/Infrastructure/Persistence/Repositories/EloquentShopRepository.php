@@ -28,6 +28,14 @@ final class EloquentShopRepository implements ShopRepository
         return ShopRecord::query()->where('sku_prefix_code', $code)->exists();
     }
 
+    public function existsWithSkuPrefixCodeExcept(string $code, ShopId $exceptId): bool
+    {
+        return ShopRecord::query()
+            ->where('sku_prefix_code', $code)
+            ->where('id', '!=', $exceptId->value)
+            ->exists();
+    }
+
     public function create(
         string $name,
         string $skuPrefixCode,
@@ -47,5 +55,22 @@ final class EloquentShopRepository implements ShopRepository
         ]);
 
         return new ShopId($record->id);
+    }
+
+    public function update(
+        ShopId $id,
+        string $name,
+        string $skuPrefixCode,
+        string $address,
+        string $contactPhone,
+        string $contactEmail,
+    ): void {
+        ShopRecord::query()->findOrFail($id->value)->update([
+            'name' => $name,
+            'sku_prefix_code' => $skuPrefixCode,
+            'address' => $address,
+            'contact_phone' => $contactPhone,
+            'contact_email' => $contactEmail,
+        ]);
     }
 }

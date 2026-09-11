@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Domain\Shop\Infrastructure\Persistence\Eloquent;
 
-use Domain\Identity\Infrastructure\Persistence\Eloquent\StaffRecord;
+use Database\Factories\ShopRecordFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Database\Factories\ShopRecordFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Eloquent model for the `shops` table.
@@ -47,18 +45,5 @@ final class ShopRecord extends Model
     protected static function newFactory()
     {
         return ShopRecordFactory::new();
-    }
-
-    /**
-     * Staff members assigned to this shop.
-     */
-    public function staff(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            StaffRecord::class,
-            'staff_shop_assignments',
-            'shop_id',
-            'staff_id',
-        )->withPivot('is_primary')->withTimestamps();
     }
 }

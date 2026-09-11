@@ -24,14 +24,14 @@ final class DatabaseSeeder extends Seeder
                 'name' => 'Main Shop',
                 'address' => 'Set your real address',
                 'contact_phone' => '+2340000000000',
-                'contact_email' => '[email protected]',
+                'contact_email' => 'owner@afprospos.test',
                 'offline_policy' => ['cash_sales' => true, 'bank_transfer_confirmation' => false],
                 'status' => 'active',
             ],
         );
 
         $owner = StaffRecord::query()->firstOrCreate(
-            ['email' => '[email protected]'],
+            ['email' => 'owner@afprospos.test'],
             [
                 'name' => 'Shop Owner',
                 'phone' => '+2340000000001',

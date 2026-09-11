@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Domain\Identity\Infrastructure\Persistence\Eloquent;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -55,18 +54,5 @@ final class StaffRecord extends Authenticatable
     public function isDeactivated(): bool
     {
         return $this->status === 'deactivated';
-    }
-
-    /**
-     * Shops this staff member is assigned to.
-     */
-    public function shops(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            ShopRecord::class,
-            'staff_shop_assignments',
-            'staff_id',
-            'shop_id',
-        )->withPivot('is_primary')->withTimestamps();
     }
 }

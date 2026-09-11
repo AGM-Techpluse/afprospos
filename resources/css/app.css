@@ -54,10 +54,10 @@
     --color-customer-divider: var(--c-divider);
     --color-customer-muted-icon: var(--c-muted-icon);
     --color-customer-overlay: var(--c-overlay);
-    --color-customer-shell-border: var(--c-shell-border);
     --color-customer-focus: var(--c-focus);
+    --color-customer-yellow-text: var(--c-yellow-text);
 
-    /* Shared UI Semantic Layer Colors (Used by shared components like Icon) */
+    /* Shared UI Semantic Layer Colors (Used by shared/theme-agnostic components) */
     --color-ui-bg: var(--ui-bg);
     --color-ui-surface: var(--ui-surface);
     --color-ui-text: var(--ui-text);
@@ -65,10 +65,23 @@
     --color-ui-border: var(--ui-border);
     --color-ui-accent: var(--ui-accent);
     --color-ui-focus: var(--ui-focus);
+    --color-ui-info: var(--ui-info);
+    --color-ui-info-soft: var(--ui-info-soft);
+    --color-ui-success: var(--ui-success);
+    --color-ui-success-soft: var(--ui-success-soft);
+    --color-ui-warning: var(--ui-warning);
+    --color-ui-warning-soft: var(--ui-warning-soft);
+    --color-ui-warning-text: var(--ui-warning-text);
+    --color-ui-danger: var(--ui-danger);
+    --color-ui-danger-soft: var(--ui-danger-soft);
+    --color-ui-overlay: var(--ui-overlay);
+    --color-ui-skeleton-base: var(--ui-skeleton-base);
+    --color-ui-skeleton-highlight: var(--ui-skeleton-highlight);
 
     /* Radii */
     --radius-admin-input: var(--a-radius-input);
     --radius-admin-button: var(--a-radius-button);
+    --radius-admin-badge: var(--a-radius-badge);
     --radius-admin-card: var(--a-radius-card);
     --radius-admin-modal: var(--a-radius-modal);
     
@@ -76,13 +89,158 @@
     --radius-customer-card: var(--c-radius-card);
     --radius-customer-hero: var(--c-radius-hero);
     --radius-customer-drawer: var(--c-radius-drawer);
-    --radius-customer-shell: var(--c-radius-shell);
+    --radius-customer-pane: var(--c-radius-pane);
     --radius-customer-pill: var(--c-radius-pill);
 
     --radius-ui-control: var(--ui-radius-control);
+    --radius-ui-sheet: var(--ui-radius-sheet);
 
     /* Shadows */
     --shadow-admin-modal: var(--a-shadow-modal);
     --shadow-customer-soft: var(--c-shadow-soft);
     --shadow-customer-strong: var(--c-shadow-strong);
+    --shadow-ui-modal: var(--ui-shadow-modal);
+
+    /* Easing (named per Tailwind's --ease-* namespace so ease-standard/ease-spring
+       become real utilities). The tokens.css primitives are --motion-ease-*, not
+       --ease-*, specifically to avoid a self-referential custom property here. */
+    --ease-standard: var(--motion-ease-standard);
+    --ease-spring: var(--motion-ease-spring);
+
+    /* Admin type scale — own concrete sizes (not an alias of the shared
+       scale): bumped ~8% over both the prototype and the Customer theme,
+       admin-only, per direct user feedback that the matched-to-prototype
+       sizes strained the eyes in real use. Line-heights stay pinned to
+       the shared --leading-* tokens, which are already generous relative
+       to font-size at every one of these bumped sizes. */
+    --text-admin-xs: var(--a-text-xs);
+    --text-admin-xs--line-height: var(--leading-xs);
+    --text-admin-sm: var(--a-text-sm);
+    --text-admin-sm--line-height: var(--leading-sm);
+    --text-admin-base: var(--a-text-base);
+    --text-admin-base--line-height: var(--leading-base);
+    --text-admin-md: var(--a-text-md);
+    --text-admin-md--line-height: var(--leading-md);
+    --text-admin-lg: var(--a-text-lg);
+    --text-admin-lg--line-height: var(--leading-lg);
+    --text-admin-xl: var(--a-text-xl);
+    --text-admin-xl--line-height: var(--leading-xl);
+    --text-admin-2xl: var(--text-2xl);
+    --text-admin-2xl--line-height: var(--leading-2xl);
+    --text-admin-3xl: var(--text-3xl);
+    --text-admin-3xl--line-height: var(--leading-3xl);
+    --text-admin-4xl: var(--text-4xl);
+    --text-admin-4xl--line-height: var(--leading-4xl);
+
+    /* Customer type scale (theme alias of the shared type scale) */
+    --text-customer-xs: var(--text-xs);
+    --text-customer-xs--line-height: var(--leading-xs);
+    --text-customer-sm: var(--text-sm);
+    --text-customer-sm--line-height: var(--leading-sm);
+    --text-customer-base: var(--text-base);
+    --text-customer-base--line-height: var(--leading-base);
+    --text-customer-md: var(--text-md);
+    --text-customer-md--line-height: var(--leading-md);
+    --text-customer-lg: var(--text-lg);
+    --text-customer-lg--line-height: var(--leading-lg);
+    --text-customer-xl: var(--text-xl);
+    --text-customer-xl--line-height: var(--leading-xl);
+    --text-customer-2xl: var(--text-2xl);
+    --text-customer-2xl--line-height: var(--leading-2xl);
+    --text-customer-3xl: var(--text-3xl);
+    --text-customer-3xl--line-height: var(--leading-3xl);
+    --text-customer-4xl: var(--text-4xl);
+    --text-customer-4xl--line-height: var(--leading-4xl);
+
+    /* Component text sizes */
+    --text-admin-button: var(--a-btn-text-size);
+    --text-admin-table-cell: var(--a-table-cell-text-size);
+    --text-admin-nav: var(--a-nav-item-text-size);
+    --text-admin-field: var(--a-field-text-size);
+    --text-customer-button: var(--c-btn-text-size);
+    --text-customer-caption: var(--c-caption-size);
+    --text-customer-field: var(--c-field-text-size);
+
+    /* Component sizing: drives named width, height and padding utilities */
+    --spacing-admin-sidebar: var(--a-sidebar-width);
+    --spacing-admin-sidebar-collapsed: var(--a-sidebar-width-collapsed);
+    --spacing-admin-nav-y: var(--a-nav-item-padding-y);
+    --spacing-admin-nav-x: var(--a-nav-item-padding-x);
+    --spacing-admin-nav-gap: var(--a-nav-item-gap);
+    --spacing-admin-nav-icon: var(--a-nav-item-icon-width);
+    --spacing-admin-field-x: var(--a-field-padding-x);
+    --spacing-admin-field-y: var(--a-field-padding-y);
+    --spacing-admin-topbar: var(--a-topbar-height);
+    --spacing-admin-drawer: var(--a-drawer-width);
+    --spacing-admin-content-x: var(--a-content-padding-x);
+    --spacing-admin-btn-x: var(--a-btn-padding-x);
+    --spacing-admin-btn-y: var(--a-btn-padding-y);
+    --spacing-admin-table-cell-y: var(--a-table-cell-padding-y);
+    --spacing-admin-table-cell-x: var(--a-table-cell-padding-x);
+
+    --spacing-customer-header-desktop: var(--c-header-height-desktop);
+    --spacing-customer-header-mobile: var(--c-header-height-mobile);
+    --spacing-customer-taskbar: var(--c-taskbar-height);
+    --spacing-customer-content-bottom: var(--c-content-bottom-padding);
+    --spacing-customer-btn-x: var(--c-btn-padding-x);
+    --spacing-customer-btn-y: var(--c-btn-padding-y);
+    --spacing-customer-sidebar: var(--c-sidebar-width-desktop);
+    --spacing-customer-drawer: var(--c-drawer-width-mobile);
+    --spacing-customer-shell-padding: var(--c-shell-outer-padding);
+    --spacing-ui-modal: var(--ui-modal-width);
+    --spacing-ui-loader: var(--ui-loader-size);
+    --spacing-ui-toast: var(--ui-toast-width);
+
+    --blur-ui-loader: var(--ui-loader-blur);
+}
+
+/* Named background images live outside @theme: Tailwind v4 has no
+   named background-image theme namespace for generating bg-name utilities. */
+.bg-customer-page-gradient {
+    background-image: var(--c-gradient-page);
+}
+
+.bg-customer-hero-gradient {
+    background-image: var(--c-gradient-hero);
+}
+
+/* UI/UX §5.5 Customer Content Grid: main:side = 1.3fr:0.9fr on desktop.
+   Tailwind has no preset for a non-integer fr ratio, so this lives here
+   rather than as an arbitrary-value class on the element. */
+.customer-content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 640px) {
+    .customer-content-grid {
+        grid-template-columns: 1.3fr 0.9fr;
+        align-items: start;
+    }
+}
+
+/* Skeleton shimmer (UI/UX §13.1) lives outside @theme for the same reason as
+   the gradient above: background-position keyframe animation with a
+   percentage background-size isn't a themeable Tailwind utility category. */
+.skeleton-shimmer {
+    background-image: linear-gradient(
+        90deg,
+        var(--ui-skeleton-base) 25%,
+        var(--ui-skeleton-highlight) 37%,
+        var(--ui-skeleton-base) 63%
+    );
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.3s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer {
+        animation: none;
+    }
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
 }

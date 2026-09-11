@@ -11,6 +11,6 @@ final class DashboardController
 {
     public function __invoke(): Response
     {
-        return Inertia::render('Customer/Dashboard');
+        return Inertia::render('Customer/Dashboard/Index');
     }
 }

@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\InventoryImportController;
+use App\Http\Controllers\Admin\InventoryStockController;
+use App\Http\Controllers\Admin\InventoryTransferController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ShopController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Auth\StaffAuthController;
@@ -46,8 +51,47 @@ Route::prefix('admin')
             ->name('staff.index');
 
         Route::middleware('permission:staff.create')
+            ->get('/staff/create', [StaffController::class, 'create'])
+            ->name('staff.create');
+
+        Route::middleware('permission:staff.view')
+            ->get('/staff/roles', [RoleController::class, 'index'])
+            ->name('staff.roles.index');
+
+        Route::middleware('permission:staff.assign')
+            ->get('/staff/roles/create', [RoleController::class, 'create'])
+            ->name('staff.roles.create');
+
+        Route::middleware('permission:staff.assign')
+            ->post('/staff/roles', [RoleController::class, 'store'])
+            ->name('staff.roles.store');
+
+        Route::middleware('permission:staff.assign')
+            ->get('/staff/roles/{role}/edit', [RoleController::class, 'edit'])
+            ->name('staff.roles.edit');
+
+        Route::middleware('permission:staff.assign')
+            ->put('/staff/roles/{role}', [RoleController::class, 'update'])
+            ->name('staff.roles.update');
+
+        Route::middleware('permission:staff.create')
             ->post('/staff', [StaffController::class, 'store'])
             ->name('staff.store');
+
+        Route::middleware('permission:staff.view')
+            ->get('/staff/{staff}', [StaffController::class, 'show'])
+            ->whereNumber('staff')
+            ->name('staff.show');
+
+        Route::middleware('permission:staff.edit')
+            ->get('/staff/{staff}/edit', [StaffController::class, 'edit'])
+            ->whereNumber('staff')
+            ->name('staff.edit');
+
+        Route::middleware('permission:staff.edit')
+            ->put('/staff/{staff}', [StaffController::class, 'update'])
+            ->whereNumber('staff')
+            ->name('staff.update');
 
         Route::middleware('permission:staff.assign')
             ->post('/staff/{staff}/roles', [StaffController::class, 'assignRole'])
@@ -69,9 +113,32 @@ Route::prefix('admin')
             ->post('/staff/{staff}/deactivate', [StaffController::class, 'deactivate'])
             ->name('staff.deactivate');
 
+        Route::middleware('permission:shops.view')
+            ->get('/shops', [ShopController::class, 'index'])
+            ->name('shops.index');
+
+        Route::middleware('permission:shops.create')
+            ->get('/shops/create', [ShopController::class, 'create'])
+            ->name('shops.create');
+
         Route::middleware('permission:shops.create')
             ->post('/shops', [ShopController::class, 'store'])
             ->name('shops.store');
+
+        Route::middleware('permission:shops.view')
+            ->get('/shops/{shop}', [ShopController::class, 'show'])
+            ->whereNumber('shop')
+            ->name('shops.show');
+
+        Route::middleware('permission:shops.edit')
+            ->get('/shops/{shop}/edit', [ShopController::class, 'edit'])
+            ->whereNumber('shop')
+            ->name('shops.edit');
+
+        Route::middleware('permission:shops.edit')
+            ->put('/shops/{shop}', [ShopController::class, 'update'])
+            ->whereNumber('shop')
+            ->name('shops.update');
 
         // Not permission-gated: any authenticated staff member may switch
         // among shops they already hold an active grant for (or, for the
@@ -79,4 +146,84 @@ Route::prefix('admin')
         // SwitchActiveShopHandler via RBAC's ShopScopePolicy — this route
         // deliberately does not duplicate that check.
         Route::post('/shops/switch', [ShopController::class, 'switch'])->name('shops.switch');
+
+        /*
+        |----------------------------------------------------------------
+        | Inventory (Phase 3)
+        |----------------------------------------------------------------
+        */
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/products', [ProductController::class, 'index'])
+            ->name('inventory.products.index');
+
+        Route::middleware('permission:inventory.create')
+            ->get('/inventory/products/create', [ProductController::class, 'create'])
+            ->name('inventory.products.create');
+
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/products', [ProductController::class, 'store'])
+            ->name('inventory.products.store');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/products/{product}', [ProductController::class, 'show'])
+            ->whereNumber('product')
+            ->name('inventory.products.show');
+
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/products/{sku}/receive', [InventoryStockController::class, 'receive'])
+            ->whereNumber('sku')
+            ->name('inventory.products.receive');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/stock', [InventoryStockController::class, 'index'])
+            ->name('inventory.stock.index');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/stock/low', [InventoryStockController::class, 'lowStock'])
+            ->name('inventory.stock.low');
+
+        Route::middleware('permission:inventory.edit')
+            ->get('/inventory/stock/{sku}/{shop}/adjust', [InventoryStockController::class, 'adjustForm'])
+            ->whereNumber(['sku', 'shop'])
+            ->name('inventory.stock.adjust.form');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/stock/{sku}/{shop}/adjust', [InventoryStockController::class, 'adjust'])
+            ->whereNumber(['sku', 'shop'])
+            ->name('inventory.stock.adjust');
+
+        Route::middleware('permission:inventory.create')
+            ->get('/inventory/import', [InventoryImportController::class, 'create'])
+            ->name('inventory.import.create');
+
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/import', [InventoryImportController::class, 'store'])
+            ->name('inventory.import.store');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/transfers', [InventoryTransferController::class, 'index'])
+            ->name('inventory.transfers.index');
+
+        Route::middleware('permission:inventory.edit')
+            ->get('/inventory/transfers/create', [InventoryTransferController::class, 'create'])
+            ->name('inventory.transfers.create');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/transfers', [InventoryTransferController::class, 'store'])
+            ->name('inventory.transfers.store');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/transfers/{transfer}', [InventoryTransferController::class, 'show'])
+            ->whereNumber('transfer')
+            ->name('inventory.transfers.show');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/transfers/{transfer}/receive', [InventoryTransferController::class, 'receive'])
+            ->whereNumber('transfer')
+            ->name('inventory.transfers.receive');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/transfers/{transfer}/cancel', [InventoryTransferController::class, 'cancel'])
+            ->whereNumber('transfer')
+            ->name('inventory.transfers.cancel');
     });

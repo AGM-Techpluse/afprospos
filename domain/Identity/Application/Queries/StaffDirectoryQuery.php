@@ -14,21 +14,59 @@ use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
  */
 final class StaffDirectoryQuery
 {
-    /** @return array<int, array{id:int, name:string, email:string, phone:string, status:string, roles:string[]}> */
-    public function all(): array
+    /**
+     * @return array{data: array<int, array{id:int, name:string, email:string, phone:string, status:string, roles:string[]}>, current_page:int, last_page:int, per_page:int, total:int}
+     */
+    public function paginate(?string $search, ?string $status, ?string $role, int $page, int $perPage = 20): array
     {
-        return StaffRecord::query()
-            ->with('roles')
-            ->orderBy('name')
-            ->get()
-            ->map(static fn (StaffRecord $staff): array => [
-                'id' => $staff->id,
-                'name' => $staff->name,
-                'email' => $staff->email,
-                'phone' => $staff->phone,
-                'status' => $staff->status,
-                'roles' => $staff->getRoleNames()->all(),
-            ])
-            ->all();
+        $query = StaffRecord::query()->with('roles')->orderBy('name');
+
+        if ($search !== null && $search !== '') {
+            $query->where(function ($inner) use ($search): void {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        if ($role !== null && $role !== '') {
+            $query->whereHas('roles', function ($inner) use ($role): void {
+                $inner->where('name', $role);
+            });
+        }
+
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => $paginator->getCollection()->map(fn (StaffRecord $staff): array => $this->toArray($staff))->all(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
+    }
+
+    /** @return array{id:int, name:string, email:string, phone:string, status:string, roles:string[]}|null */
+    public function find(int $id): ?array
+    {
+        $staff = StaffRecord::query()->with('roles')->find($id);
+
+        return $staff !== null ? $this->toArray($staff) : null;
+    }
+
+    /** @return array{id:int, name:string, email:string, phone:string, status:string, roles:string[]} */
+    private function toArray(StaffRecord $staff): array
+    {
+        return [
+            'id' => $staff->id,
+            'name' => $staff->name,
+            'email' => $staff->email,
+            'phone' => $staff->phone,
+            'status' => $staff->status,
+            'roles' => $staff->getRoleNames()->all(),
+        ];
     }
 }

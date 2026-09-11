@@ -1,8 +1,8 @@
 import { FormEvent } from 'react';
-import { useForm, Head } from '@inertiajs/react';
-import CustomerAuthShell from '../../Components/Customer/CustomerAuthShell';
-import CustomerInput from '../../Components/Customer/Forms/CustomerInput';
-import CustomerButton from '../../Components/Customer/Forms/CustomerButton';
+import { useForm, Head, Link } from '@inertiajs/react';
+import CustomerAuthShell from '../../../Components/Customer/CustomerAuthShell';
+import CustomerInput from '../../../Components/Customer/Forms/CustomerInput';
+import CustomerButton from '../../../Components/Customer/CustomerButton';
 
 export default function CustomerRegister() {
     const { data, setData, post, processing, errors } = useForm({
@@ -85,6 +85,13 @@ export default function CustomerRegister() {
                             Sign up
                         </CustomerButton>
                     </div>
+
+                    <p className="text-center text-customer-caption text-customer-text2 mt-6">
+                        Already have an account?{' '}
+                        <Link href="/customer/login" className="text-customer-blue font-semibold">
+                            Sign in
+                        </Link>
+                    </p>
                 </form>
             </div>
         </CustomerAuthShell>

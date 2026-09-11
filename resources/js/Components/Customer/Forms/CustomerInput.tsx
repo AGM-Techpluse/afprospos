@@ -1,5 +1,7 @@
 import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
-import Icon from '../../Shared/Icon';
+import FormField from '../../Forms/FormField';
+import FormErrorMessage from '../../Forms/FormErrorMessage';
+import FormSuccessMessage from '../../Forms/FormSuccessMessage';
 
 interface CustomerInputProps extends InputHTMLAttributes<HTMLInputElement> {
     label: string;
@@ -35,45 +37,45 @@ const CustomerInput = forwardRef<HTMLInputElement, CustomerInputProps>(
 
         const displayError = error || internalError;
 
-        let containerClass = 'flex flex-col mb-6 relative';
         let inputBorderClass = 'border-customer-input-border focus:border-customer-blue';
-        let messageClass = '';
-
         if (displayError) {
-            containerClass += ' text-customer-red';
             inputBorderClass = 'border-customer-red focus:border-customer-red';
-            messageClass = 'text-customer-red mt-1 text-[13px]';
         } else if (success) {
-            containerClass += ' text-customer-green';
             inputBorderClass = 'border-customer-green focus:border-customer-green';
-            messageClass = 'text-customer-green mt-1 text-[13px]';
         }
 
         return (
-            <div className={containerClass}>
-                <label className="text-[13px] font-customer-ui font-semibold text-customer-text2 mb-1">
-                    {label}
-                </label>
-                <input
-                    ref={ref}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    className={`
-                        w-full bg-transparent border-0 border-b-2 px-0 py-2
-                        font-customer-ui text-[14px] text-customer-text placeholder-customer-muted-icon
-                        transition-colors duration-200 outline-none shadow-none focus:ring-0
-                        [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
-                        ${inputBorderClass}
-                        ${className}
-                    `}
-                    {...props}
-                />
-                {(displayError || success) && (
-                    <div className={messageClass}>
-                        {displayError || success}
-                    </div>
+            <FormField
+                label={label}
+                labelClassName="text-customer-caption font-customer-ui font-semibold text-customer-text2 mb-1"
+                containerClassName="flex flex-col mb-6 relative"
+            >
+                {(id) => (
+                    <>
+                        <input
+                            id={id}
+                            ref={ref}
+                            onBlur={handleBlur}
+                            onChange={handleChange}
+                            className={`
+                                w-full bg-transparent border-0 border-b-2 px-0 py-2
+                                font-customer-ui text-customer-field text-customer-text placeholder-customer-muted-icon
+                                transition-colors duration-200 outline-none shadow-none focus:ring-0
+                                [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
+                                ${inputBorderClass}
+                                ${className}
+                            `}
+                            {...props}
+                        />
+                        {displayError && (
+                            <FormErrorMessage className="mt-1 text-customer-caption">{displayError}</FormErrorMessage>
+                        )}
+                        {!displayError && success && (
+                            <FormSuccessMessage className="mt-1 text-customer-caption">{success}</FormSuccessMessage>
+                        )}
+                    </>
                 )}
-            </div>
+            </FormField>
         );
     }
 );

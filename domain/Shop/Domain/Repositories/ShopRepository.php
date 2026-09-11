@@ -13,6 +13,8 @@ interface ShopRepository
 
     public function existsWithSkuPrefixCode(string $code): bool;
 
+    public function existsWithSkuPrefixCodeExcept(string $code, ShopId $exceptId): bool;
+
     /**
      * @param  array<string, mixed>  $offlinePolicy
      */
@@ -24,4 +26,13 @@ interface ShopRepository
         string $contactEmail,
         array $offlinePolicy,
     ): ShopId;
+
+    public function update(
+        ShopId $id,
+        string $name,
+        string $skuPrefixCode,
+        string $address,
+        string $contactPhone,
+        string $contactEmail,
+    ): void;
 }

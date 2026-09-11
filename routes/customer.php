@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Auth\CustomerAuthController;
 use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')
@@ -22,5 +23,7 @@ Route::prefix('customer')
 
         Route::middleware('auth:customer')->group(function (): void {
             Route::get('/dashboard', DashboardController::class)->name('dashboard');
+            Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+            Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
         });
     });

@@ -1,8 +1,9 @@
 import { FormEvent } from 'react';
 import { useForm, Head, usePage } from '@inertiajs/react';
-import AdminInput from '../../Components/Admin/Forms/AdminInput';
-import AdminButton from '../../Components/Admin/Forms/AdminButton';
-import AdminAuthShell from '../../Components/Admin/AdminAuthShell';
+import AdminInput from '../../../Components/Admin/Forms/AdminInput';
+import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminAuthShell from '../../../Components/Admin/AdminAuthShell';
+import AlertBanner from '../../../Components/Feedback/AlertBanner';
 
 export default function StaffLogin() {
     const { data, setData, post, processing, errors } = useForm({
@@ -22,7 +23,7 @@ export default function StaffLogin() {
         <AdminAuthShell>
             <Head title="Staff Login" />
             
-            <div className="bg-admin-surface border border-admin-border rounded-lg shadow-sm w-full max-w-md p-8">
+            <div className="w-full max-w-sm">
                 <div className="flex flex-col items-center mb-8">
                     <img src={app_logo} alt={app_name} className="h-10 w-10 mb-4" />
                     <h1 className="text-2xl font-bold text-admin-text">Staff Login</h1>
@@ -30,6 +31,12 @@ export default function StaffLogin() {
                 </div>
 
                 <form onSubmit={submit}>
+                    {errors.auth && (
+                        <AlertBanner kind="danger" className="mb-5">
+                            {errors.auth}
+                        </AlertBanner>
+                    )}
+
                     <AdminInput
                         label="Email address"
                         type="email"

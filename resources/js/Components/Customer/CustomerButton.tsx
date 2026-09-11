@@ -1,13 +1,13 @@
 import React, { ButtonHTMLAttributes } from 'react';
-import Icon from '../../Shared/Icon';
+import Icon from '../Icons/Icon';
 
-interface AdminButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'neutral' | 'warning' | 'danger' | 'danger-solid';
+interface CustomerButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    variant?: 'primary' | 'neutral' | 'warning' | 'danger';
     isLoading?: boolean;
     loadingText?: string;
 }
 
-export default function AdminButton({
+export default function CustomerButton({
     variant = 'primary',
     isLoading = false,
     loadingText = 'Please wait...',
@@ -15,25 +15,22 @@ export default function AdminButton({
     children,
     disabled,
     ...props
-}: AdminButtonProps) {
-    let baseClass = 'rounded-admin-button text-[12.5px] font-semibold px-[13px] py-[7px] transition-transform duration-120 active:scale-98 flex items-center justify-center';
+}: CustomerButtonProps) {
+    let baseClass = 'rounded-customer-pill text-customer-button font-bold px-customer-btn-x py-customer-btn-y transition-transform duration-120 active:scale-98 flex items-center justify-center';
     let variantClass = '';
 
     switch (variant) {
         case 'primary':
-            variantClass = 'bg-admin-blue text-white hover:bg-blue-700';
+            variantClass = 'bg-customer-blue text-white hover:bg-blue-700'; // Need actual hover color if defined
             break;
         case 'neutral':
-            variantClass = 'bg-white border border-admin-border text-admin-text hover:bg-admin-hover';
+            variantClass = 'bg-customer-divider text-customer-text hover:bg-gray-200';
             break;
         case 'warning':
-            variantClass = 'bg-admin-yellow-soft text-admin-yellow-text hover:bg-yellow-200';
+            variantClass = 'bg-customer-yellow-soft text-customer-text hover:bg-yellow-200';
             break;
         case 'danger':
-            variantClass = 'bg-admin-red-soft text-admin-red hover:bg-red-100';
-            break;
-        case 'danger-solid':
-            variantClass = 'bg-admin-red text-white hover:bg-red-700';
+            variantClass = 'bg-customer-red-soft text-customer-red hover:bg-red-200';
             break;
     }
 

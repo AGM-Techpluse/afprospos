@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Shared\Infrastructure\Persistence\Eloquent;
 
+use Database\Factories\ShopRecordFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -45,4 +46,9 @@ final class ShopRecord extends Model
     protected $casts = [
         'offline_policy' => 'array',
     ];
+
+    protected static function newFactory()
+    {
+        return ShopRecordFactory::new();
+    }
 }

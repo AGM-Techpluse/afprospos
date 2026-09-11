@@ -9,15 +9,23 @@ use Domain\Shared\Domain\ValueObjects\CustomerId;
 
 interface CustomerRepository
 {
+    public function findById(CustomerId $id): ?CustomerAccount;
+
     public function findByPhone(string $phone): ?CustomerAccount;
-    
+
     public function findByEmail(string $email): ?CustomerAccount;
 
     public function existsWithPhone(string $phone): bool;
 
     public function existsWithEmail(string $email): bool;
 
+    public function existsWithPhoneExcept(string $phone, CustomerId $exceptId): bool;
+
+    public function existsWithEmailExcept(string $email, CustomerId $exceptId): bool;
+
     public function verifyPassword(CustomerId $id, string $plainPassword): bool;
 
     public function create(string $name, string $phone, ?string $email, string $plainPassword): CustomerId;
+
+    public function updateProfile(CustomerId $id, string $name, string $phone, ?string $email): void;
 }

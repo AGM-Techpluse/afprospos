@@ -31,6 +31,14 @@ final class EloquentStaffRepository implements StaffRepository
         return StaffRecord::query()->where('email', $email)->exists();
     }
 
+    public function existsWithEmailExcept(string $email, StaffId $exceptId): bool
+    {
+        return StaffRecord::query()
+            ->where('email', $email)
+            ->where('id', '!=', $exceptId->value)
+            ->exists();
+    }
+
     public function verifyPassword(StaffId $id, string $plainPassword): bool
     {
         $record = StaffRecord::query()->findOrFail($id->value);
@@ -49,6 +57,15 @@ final class EloquentStaffRepository implements StaffRepository
         ]);
 
         return new StaffId($record->id);
+    }
+
+    public function updateProfile(StaffId $id, string $name, string $phone, string $email): void
+    {
+        StaffRecord::query()->findOrFail($id->value)->update([
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email,
+        ]);
     }
 
     public function save(StaffAccount $staff): void

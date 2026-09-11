@@ -25,16 +25,33 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Guarded per-column: an earlier pass of this migration (under a
+        // filename since renamed) already added `password`/`remember_token`
+        // to both tables in some environments. Only `email_verified_at` is
+        // reliably still missing everywhere, but every column here stays
+        // idempotent so this migration is safe regardless of which ran.
         Schema::table('staff', function (Blueprint $table): void {
-            $table->string('password');
-            $table->rememberToken();
-            $table->timestamp('email_verified_at')->nullable();
+            if (! Schema::hasColumn('staff', 'password')) {
+                $table->string('password');
+            }
+            if (! Schema::hasColumn('staff', 'remember_token')) {
+                $table->rememberToken();
+            }
+            if (! Schema::hasColumn('staff', 'email_verified_at')) {
+                $table->timestamp('email_verified_at')->nullable();
+            }
         });
 
         Schema::table('customers', function (Blueprint $table): void {
-            $table->string('password');
-            $table->rememberToken();
-            $table->timestamp('email_verified_at')->nullable();
+            if (! Schema::hasColumn('customers', 'password')) {
+                $table->string('password');
+            }
+            if (! Schema::hasColumn('customers', 'remember_token')) {
+                $table->rememberToken();
+            }
+            if (! Schema::hasColumn('customers', 'email_verified_at')) {
+                $table->timestamp('email_verified_at')->nullable();
+            }
         });
     }
 

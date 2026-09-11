@@ -54,4 +54,14 @@ final readonly class Money
     {
         return $this->minor > $other->minor;
     }
+
+    /**
+     * Cost + (cost * percent / 100), rounded to the nearest minor unit
+     * (DBDD §14.2 `markup_percent` -> `selling_price_minor`). Half-up
+     * rounding, since a price is never allowed to under-recover cost.
+     */
+    public function withMarkupPercent(float $percent): self
+    {
+        return new self($this->minor + (int) round($this->minor * $percent / 100));
+    }
 }
