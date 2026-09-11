@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
@@ -7,7 +7,9 @@ import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import AdminInput from '../../../Components/Admin/Forms/AdminInput';
 import AlertBanner from '../../../Components/Feedback/AlertBanner';
+import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import ProductSearch from '../../../Features/Sales/ProductSearch';
+import { formatNaira } from '../../../lib/money';
 import POSCart, { CheckoutItemView } from '../../../Features/Sales/POSCart';
 import CheckoutExpiryTimer from '../../../Features/Sales/CheckoutExpiryTimer';
 
@@ -25,10 +27,19 @@ type CheckoutView = {
     items: CheckoutItemView[];
 };
 
+type RecentSale = {
+    id: number;
+    invoice_number: string;
+    total_minor: number;
+    payment_method: string;
+    created_at: string;
+};
+
 interface CheckoutPageProps {
     checkout: CheckoutView | null;
     shops: Shop[];
     checkoutReservationMinutes: number;
+    recentSales: RecentSale[];
 }
 
 const DISCOUNT_TYPES = [
@@ -57,7 +68,7 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
     }
 
     return (
-        <form onSubmit={submit} className="max-w-sm mx-auto mt-10">
+        <form onSubmit={submit}>
             <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)} error={errors.shop_id}>
                 {shops.map((shop) => (
                     <option key={shop.id} value={shop.id}>
@@ -78,7 +89,40 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
     );
 }
 
-export default function SalesCheckout({ checkout, shops }: CheckoutPageProps) {
+function RecentSales({ sales }: { sales: RecentSale[] }) {
+    if (sales.length === 0) {
+        return (
+            <div className="border border-admin-border rounded-admin-card">
+                <AdminEmptyState icon="receipt" title="No recent sales" description="Your completed sales will show up here." />
+            </div>
+        );
+    }
+
+    return (
+        <ul className="border border-admin-border rounded-admin-card divide-y divide-admin-border">
+            {sales.map((sale) => (
+                <li key={sale.id} className="flex items-center justify-between gap-3 p-4">
+                    <div className="min-w-0">
+                        <div className="text-sm font-medium text-admin-text truncate">{sale.invoice_number}</div>
+                        <div className="text-xs text-admin-text3">{new Date(sale.created_at).toLocaleString()}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <div className="text-sm font-mono text-admin-text">{formatNaira(sale.total_minor)}</div>
+                        <button
+                            type="button"
+                            onClick={() => router.visit(`/admin/sales/${sale.id}`)}
+                            className="text-xs font-semibold text-admin-blue"
+                        >
+                            View
+                        </button>
+                    </div>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+export default function SalesCheckout({ checkout, shops, recentSales }: CheckoutPageProps) {
     const confirm = useConfirm();
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,12 +132,64 @@ export default function SalesCheckout({ checkout, shops }: CheckoutPageProps) {
     const discountForm = useForm({ type: 'promotion', source_id: '1', amount_naira: '' });
     const completeForm = useForm({ payment_method: 'cash', payment_reference: '' });
 
+    const itemCount = checkout?.items.length ?? 0;
+
+    // Native browser-level unload (tab close, refresh, address-bar navigation, real back/forward) —
+    // the browser shows its own generic text regardless of what we pass; we can't use our modal here.
+    useEffect(() => {
+        if (itemCount === 0) return;
+
+        const handler = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+        };
+
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [itemCount]);
+
+    // In-app navigation away (sidebar link, browser-integrated back/forward Inertia already intercepts) —
+    // this page's own actions (add item, apply discount, complete, cancel) are POST/DELETE and are
+    // deliberately left alone; only GET visits are ever "leaving the page."
+    useEffect(() => {
+        if (itemCount === 0) return;
+
+        let allowNextVisit = false;
+
+        return router.on('before', (event) => {
+            if (event.detail.visit.method !== 'get' || allowNextVisit) {
+                allowNextVisit = false;
+                return;
+            }
+
+            event.preventDefault();
+
+            confirm({
+                kind: 'warning',
+                title: 'Leave this checkout?',
+                body: 'Your cart and reservation stay held — you can resume this checkout by opening Sales / POS again. Leaving now just navigates away from it.',
+                confirmLabel: 'Leave',
+                cancelLabel: 'Stay',
+            }).then((confirmed) => {
+                if (confirmed) {
+                    allowNextVisit = true;
+                    router.visit(event.detail.visit.url, event.detail.visit);
+                }
+            });
+        });
+    }, [itemCount, confirm]);
+
     if (checkout === null) {
         return (
             <AdminShell>
                 <Head title="New sale" />
                 <AdminPageHead title="New sale" description="Start a checkout to begin building a cart." />
-                <NewCheckoutForm shops={shops} />
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-[900px] mx-auto">
+                    <div>
+                        <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
+                        <RecentSales sales={recentSales} />
+                    </div>
+                    <NewCheckoutForm shops={shops} />
+                </div>
             </AdminShell>
         );
     }

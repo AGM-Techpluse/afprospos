@@ -17,10 +17,26 @@ final class CheckoutDetailQuery
     {
         $checkout = SalesCheckoutRecord::query()->with(['items', 'adjustments'])->find($checkoutId);
 
-        if ($checkout === null) {
-            return null;
-        }
+        return $checkout !== null ? $this->toArray($checkout) : null;
+    }
 
+    /** Lets a cashier resume the open checkout they were already building for this shop instead of losing track of it on navigation (SALE/INV-BR-06 still expires it on its own if truly abandoned). */
+    public function findOpenForCashier(int $cashierStaffId, int $shopId): ?array
+    {
+        $checkout = SalesCheckoutRecord::query()
+            ->with(['items', 'adjustments'])
+            ->where('cashier_staff_id', $cashierStaffId)
+            ->where('shop_id', $shopId)
+            ->where('status', 'open')
+            ->latest('id')
+            ->first();
+
+        return $checkout !== null ? $this->toArray($checkout) : null;
+    }
+
+    /** @return array<string, mixed> */
+    private function toArray(SalesCheckoutRecord $checkout): array
+    {
         return [
             'id' => $checkout->id,
             'shop_id' => $checkout->shop_id,
