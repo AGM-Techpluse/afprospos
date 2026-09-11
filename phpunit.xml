@@ -10,6 +10,21 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <!-- Needs a real, persistent MySQL database shared across OS
+                 processes (see Support/UsesConcurrencyDatabase.php);
+                 SQLite :memory: can't do that, so this can't be part of
+                 the default suite. Run explicitly via the Concurrency
+                 testsuite (php artisan test, testsuite flag: Concurrency). -->
+            <exclude>tests/Feature/Inventory/Concurrency</exclude>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="Architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
+        <testsuite name="Concurrency">
+            <directory>tests/Feature/Inventory/Concurrency</directory>
         </testsuite>
     </testsuites>
     <source>
