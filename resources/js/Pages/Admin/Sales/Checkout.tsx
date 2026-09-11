@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
+import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -78,6 +79,7 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
 }
 
 export default function SalesCheckout({ checkout, shops }: CheckoutPageProps) {
+    const confirm = useConfirm();
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExpired, setIsExpired] = useState(false);
@@ -135,8 +137,16 @@ export default function SalesCheckout({ checkout, shops }: CheckoutPageProps) {
         });
     }
 
-    function cancelCheckout() {
-        if (!window.confirm('Cancel this checkout and release all reserved stock?')) {
+    async function cancelCheckout() {
+        const confirmed = await confirm({
+            kind: 'danger',
+            title: 'Cancel this checkout?',
+            body: 'This releases every reserved item back to Available stock. The cart cannot be recovered after this.',
+            confirmLabel: 'Cancel checkout',
+            cancelLabel: 'Keep checkout',
+        });
+
+        if (!confirmed) {
             return;
         }
 
