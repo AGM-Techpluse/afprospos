@@ -200,6 +200,10 @@ Route::prefix('admin')
             ->post('/inventory/import', [InventoryImportController::class, 'store'])
             ->name('inventory.import.store');
 
+        Route::middleware('permission:inventory.create')
+            ->get('/inventory/import/template', [InventoryImportController::class, 'template'])
+            ->name('inventory.import.template');
+
         Route::middleware('permission:inventory.view')
             ->get('/inventory/transfers', [InventoryTransferController::class, 'index'])
             ->name('inventory.transfers.index');

@@ -38,6 +38,8 @@ export default function StockAdjust({ level }: { level: StockLevel }) {
             <AdminPageHead
                 title={`Adjust ${level.brand} ${level.model}`}
                 description={`${level.sku_code} — Shop #${level.shop_id}: ${level.on_hand} on hand, ${level.reserved} reserved, ${level.available} available.`}
+                backHref="/admin/inventory/stock"
+                backLabel="Back to stock"
             />
 
             <form onSubmit={submit} className="max-w-[640px]">

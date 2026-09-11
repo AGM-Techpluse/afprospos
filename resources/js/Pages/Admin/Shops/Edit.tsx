@@ -34,7 +34,12 @@ export default function ShopEdit({ shop }: { shop: Shop }) {
         <AdminShell>
             <Head title={`Edit ${shop.name}`} />
 
-            <AdminPageHead title={`Edit ${shop.name}`} description="Update this shop's details." />
+            <AdminPageHead
+                title={`Edit ${shop.name}`}
+                description="Update this shop's details."
+                backHref={`/admin/shops/${shop.id}`}
+                backLabel="Back to shop"
+            />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">
                 <form onSubmit={submit}>

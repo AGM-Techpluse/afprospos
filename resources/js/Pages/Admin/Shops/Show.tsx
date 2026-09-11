@@ -22,6 +22,8 @@ export default function ShopShow({ shop }: { shop: Shop }) {
             <AdminPageHead
                 title={shop.name}
                 description={shop.sku_prefix_code}
+                backHref="/admin/shops"
+                backLabel="Back to shops"
                 actions={
                     <AdminButton variant="neutral" onClick={() => router.visit(`/admin/shops/${shop.id}/edit`)}>
                         Edit

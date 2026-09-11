@@ -33,7 +33,12 @@ export default function RoleCreate({ permissionCatalog }: { permissionCatalog: P
         <AdminShell>
             <Head title="New role" />
 
-            <AdminPageHead title="New role" description="Create a role and choose the permissions it grants." />
+            <AdminPageHead
+                title="New role"
+                description="Create a role and choose the permissions it grants."
+                backHref="/admin/staff/roles"
+                backLabel="Back to roles"
+            />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">
                 <form onSubmit={submit}>

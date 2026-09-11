@@ -79,7 +79,12 @@ export default function ProductCreate({ shops }: { shops: Shop[] }) {
         <AdminShell>
             <Head title="New product" />
 
-            <AdminPageHead title="New product" description="Add a device or product to the catalog." />
+            <AdminPageHead
+                title="New product"
+                description="Add a device or product to the catalog."
+                backHref="/admin/inventory/products"
+                backLabel="Back to products"
+            />
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,640px)_320px] items-start max-w-[992px] mx-auto">
                 <form onSubmit={submit}>

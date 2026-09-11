@@ -208,38 +208,40 @@
      The prototype's literal sizes (§ throughout) read as too small for
      all-day desktop use once built and used for real — bumped ~8% over
      both the shared base scale and the prototype's own component
-     baselines, per direct user feedback. Admin-only: the shared
-     --text-xs/sm/base/... tokens (and Customer, which aliases them)
-     are untouched. */
-  --a-text-xs: 12px;
-  --a-text-sm: 13px;
-  --a-text-base: 14px;
-  --a-text-md: 15px;
-  --a-text-lg: 17px;
-  --a-text-xl: 21px;
+     baselines per direct user feedback, then bumped a further ~10% on
+     top of that (Revision 7) after a side-by-side 100%-vs-110%-browser-
+     zoom comparison confirmed the larger size reads better. Admin-only:
+     the shared --text-xs/sm/base/... tokens (and Customer, which
+     aliases them) are untouched. */
+  --a-text-xs: 13px;
+  --a-text-sm: 14px;
+  --a-text-base: 15px;
+  --a-text-md: 17px;
+  --a-text-lg: 19px;
+  --a-text-xl: 23px;
 
   /* ---------- Admin component tokens (Layer 4) ---------- */
-  --a-sidebar-width: 220px;
-  --a-sidebar-width-collapsed: 64px;
-  --a-topbar-height: 52px;
-  --a-drawer-width: 230px;
-  --a-content-padding-x: 22px;
-  --a-btn-text-size: 13.5px;
-  --a-btn-padding-x: 13px;
-  --a-btn-padding-y: 7px;
-  --a-table-cell-text-size: 13.5px;
-  --a-table-cell-padding-y: 10px;
-  --a-table-cell-padding-x: 14px;
-  /* prototype ".field input,.field select,.field textarea" baseline, bumped ~8% (see typography scale note above) */
-  --a-field-text-size: 13.5px;
-  --a-field-padding-x: 10px;
-  --a-field-padding-y: 8px;
-  /* §8.1 "Navigation item" prototype baseline, bumped ~8% */
-  --a-nav-item-padding-y: 7px;
-  --a-nav-item-padding-x: 8px;
-  --a-nav-item-gap: 10px;
-  --a-nav-item-icon-width: 16px;
-  --a-nav-item-text-size: 13.5px;
+  --a-sidebar-width: 242px;
+  --a-sidebar-width-collapsed: 70px;
+  --a-topbar-height: 57px;
+  --a-drawer-width: 253px;
+  --a-content-padding-x: 24px;
+  --a-btn-text-size: 15px;
+  --a-btn-padding-x: 14px;
+  --a-btn-padding-y: 8px;
+  --a-table-cell-text-size: 15px;
+  --a-table-cell-padding-y: 11px;
+  --a-table-cell-padding-x: 15px;
+  /* prototype ".field input,.field select,.field textarea" baseline, bumped ~8% then a further ~10% (Revision 7, see typography scale note above) */
+  --a-field-text-size: 15px;
+  --a-field-padding-x: 11px;
+  --a-field-padding-y: 9px;
+  /* §8.1 "Navigation item" prototype baseline, bumped ~8% then a further ~10% (Revision 7) */
+  --a-nav-item-padding-y: 8px;
+  --a-nav-item-padding-x: 9px;
+  --a-nav-item-gap: 11px;
+  --a-nav-item-icon-width: 18px;
+  --a-nav-item-text-size: 15px;
 
   /* ---------- Customer component tokens (Layer 4) ---------- */
   --c-header-height-desktop: 72px;

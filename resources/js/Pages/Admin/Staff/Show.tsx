@@ -78,6 +78,8 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
             <AdminPageHead
                 title={staffMember.name}
                 description={staffMember.email}
+                backHref="/admin/staff"
+                backLabel="Back to staff"
                 actions={
                     <>
                         <AdminButton variant="neutral" onClick={() => router.visit(`/admin/staff/${staffMember.id}/edit`)}>

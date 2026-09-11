@@ -55,7 +55,12 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
         <AdminShell>
             <Head title={`${sku.brand} ${sku.model}`} />
 
-            <AdminPageHead title={`${sku.brand} ${sku.model}`} description={sku.sku_code} />
+            <AdminPageHead
+                title={`${sku.brand} ${sku.model}`}
+                description={sku.sku_code}
+                backHref="/admin/inventory/products"
+                backLabel="Back to products"
+            />
 
             <div className="grid gap-6 sm:grid-cols-2">
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">

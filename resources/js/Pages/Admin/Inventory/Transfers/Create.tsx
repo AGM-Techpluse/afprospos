@@ -35,7 +35,12 @@ export default function TransferCreate({ shops }: { shops: Shop[] }) {
         <AdminShell>
             <Head title="New transfer" />
 
-            <AdminPageHead title="New transfer" description="Move stock or a specific unit between shops." />
+            <AdminPageHead
+                title="New transfer"
+                description="Move stock or a specific unit between shops."
+                backHref="/admin/inventory/transfers"
+                backLabel="Back to transfers"
+            />
 
             <form onSubmit={submit} className="max-w-[640px]">
                 <AdminInput

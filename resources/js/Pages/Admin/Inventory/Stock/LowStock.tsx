@@ -26,7 +26,8 @@ export default function LowStock({ items }: { items: LowStockItem[] }) {
             <AdminPageHead
                 title="Low stock"
                 description="SKUs whose Available quantity has fallen to or below their configured threshold (INV-BR-07)."
-                actions={<AdminButton variant="neutral" onClick={() => router.visit('/admin/inventory/stock')}>Back to stock</AdminButton>}
+                backHref="/admin/inventory/stock"
+                backLabel="Back to stock"
             />
 
             {items.length === 0 ? (
