@@ -40,4 +40,21 @@ final class SalesHistoryQuery
             'total' => $paginator->total(),
         ];
     }
+
+    /** Backs the "New sale" empty state (Admin Sales/Checkout with no active checkout) — so the page isn't a bare form. */
+    public function recentForCashier(int $cashierStaffId, int $limit = 5): array
+    {
+        return SaleRecord::query()
+            ->where('cashier_staff_id', $cashierStaffId)
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(static fn (SaleRecord $sale): array => [
+                'id' => $sale->id,
+                'total_minor' => $sale->total_minor,
+                'payment_method' => $sale->payment_method,
+                'invoice_number' => $sale->invoice_number,
+                'created_at' => $sale->created_at->toIso8601String(),
+            ])->all();
+    }
 }

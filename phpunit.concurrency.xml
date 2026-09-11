@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <!--
+        Deliberately separate from phpunit.xml: PHPUnit runs the UNION of
+        every testsuite block when no testsuite selector flag is given, so a
+        "Concurrency" suite merely listed alongside Unit/Feature/etc. in
+        one config file still runs by default regardless of any <exclude>
+        on the Feature suite — there is no "opt-in-only" testsuite construct
+        within a single config. A separate file is the only construct that
+        guarantees these tests never run as a side effect of a plain
+        `php artisan test` / `vendor/bin/phpunit` invocation.
+
+        Run explicitly: vendor/bin/phpunit -c phpunit.concurrency.xml
+        Needs a real, persistent MySQL database shared across OS processes
+        (see Tests\Support\UsesConcurrencyDatabase) — SQLite :memory: can't
+        do that.
+    -->
+    <testsuites>
+        <testsuite name="Concurrency">
+            <directory>tests/Feature/Inventory/Concurrency</directory>
+            <directory>tests/Feature/Sales/Concurrency</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_URL" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

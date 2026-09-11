@@ -64,11 +64,13 @@ final class StaffController
                 status: $request->string('status')->toString() ?: null,
                 role: $request->string('role')->toString() ?: null,
                 page: $request->integer('page', 1),
+                shopId: $request->integer('shop_id') ?: null,
             ),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'status' => $request->string('status')->toString(),
                 'role' => $request->string('role')->toString(),
+                'shop_id' => $request->integer('shop_id') ?: null,
             ],
             'availableRoles' => $this->availableRoles->names(),
         ]);

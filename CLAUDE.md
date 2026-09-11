@@ -89,6 +89,8 @@ resources/js/Features/    Domain-specific interactive components (not yet create
 
 All colors/spacing/radii flow through Tailwind theme utilities backed by CSS variables in `resources/css/tokens.css` (`bg-admin-surface`, `text-customer-blue`, etc.) — raw hex values and arbitrary Tailwind color values are forbidden outside `tokens.css`/`tailwind.config.js` itself. Icons come from Bootstrap Icons via `resources/js/Components/Icons/Icon.tsx`; no emoji as UI iconography.
 
+Charts use Chart.js (`chart.js` + `react-chartjs-2`, first added for the Shop analytics revenue chart) — reuse that, don't add a second charting library.
+
 React state may mirror server state for responsiveness but is never authoritative — a Feature must never render a final success state (e.g. "Payment Successful") without a server round-trip confirming it.
 
 **Forms are never wrapped in a decorative card** (UI/UX §10.1's Core Rule, "Invariant #19") — a `<form>` sits directly on the page (`admin-bg`/page background), never inside a bordered/shadowed `admin-surface` panel, on Admin or Customer. This has been violated and re-fixed multiple times across revisions (see the doc's own changelog) — don't reintroduce it. Bordered/surfaced containers are still fine for *data display* (tables, stat cards, a Staff/Shop detail view) — the rule is specifically about the form itself.
@@ -105,7 +107,7 @@ React state may mirror server state for responsiveness but is never authoritativ
 
 A "Cannot" feature test must assert both the HTTP rejection and that no state mutation occurred, not just the status code.
 
-Concurrency tests need a real, persistent MySQL database shared across OS processes — SQLite `:memory:` can't do that, so they're excluded from the default run (`phpunit.xml`'s `Feature` testsuite explicitly excludes `tests/Feature/Inventory/Concurrency`) and must be run explicitly: `php artisan test --testsuite=Concurrency`. They spin up a dedicated `afprospos_concurrency_test` MySQL database (never the dev `afprospos` one) and spawn real child PHP processes via `Symfony\Process` — see `tests/Feature/Inventory/Concurrency/Support/`.
+Concurrency tests need a real, persistent MySQL database shared across OS processes — SQLite `:memory:` can't do that, so they live in their own config file, `phpunit.concurrency.xml`, entirely separate from `phpunit.xml`. This is deliberate, not stylistic: PHPUnit runs the union of every `<testsuite>` block in one config file when no `--testsuite` flag is given, so a "Concurrency" suite merely excluded-then-redeclared as a sibling suite inside `phpunit.xml` still silently runs on every plain `php artisan test` (this was an actual bug for a while — the default run was quietly spinning up real MySQL and genuinely-parallel child processes on every invocation). Run them explicitly: `vendor/bin/phpunit -c phpunit.concurrency.xml` (or `php artisan test -c phpunit.concurrency.xml`). They spin up a dedicated `afprospos_concurrency_test` MySQL database (never the dev `afprospos` one) and spawn real child PHP processes via `Symfony\Process` — see `tests/Support/UsesConcurrencyDatabase.php` and each module's `Concurrency/Support/` bootstrap script.
 
 ### Config
 

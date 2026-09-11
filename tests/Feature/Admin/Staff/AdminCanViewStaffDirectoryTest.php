@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Staff;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\RBAC\Infrastructure\Persistence\Eloquent\StaffShopGrantRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -122,5 +124,41 @@ class AdminCanViewStaffDirectoryTest extends TestCase
             ->where('staff.last_page', 2)
             ->where('staff.total', 26)
             ->has('staff.data', 20));
+    }
+
+    public function test_shop_id_filter_narrows_the_directory_to_that_shops_granted_staff_plus_owners(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+
+        $shopA = ShopRecord::factory()->create();
+        $shopB = ShopRecord::factory()->create();
+
+        $cashierA = StaffRecord::factory()->create();
+        $cashierA->assignRole('Cashier');
+        StaffShopGrantRecord::query()->create([
+            'staff_id' => $cashierA->id,
+            'shop_id' => $shopA->id,
+            'granted_at' => now(),
+        ]);
+
+        $cashierB = StaffRecord::factory()->create();
+        $cashierB->assignRole('Cashier');
+        StaffShopGrantRecord::query()->create([
+            'staff_id' => $cashierB->id,
+            'shop_id' => $shopB->id,
+            'granted_at' => now(),
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->get("/admin/staff?shop_id={$shopA->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('filters.shop_id', $shopA->id)
+            // Exactly the owner (implicit all-shop access) plus the cashier explicitly granted to shop A —
+            // never the cashier granted only to shop B.
+            ->where('staff.total', 2));
     }
 }

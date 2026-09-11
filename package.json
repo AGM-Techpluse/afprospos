@@ -22,7 +22,9 @@
         "@types/react-dom": "^19.2.7",
         "@vitejs/plugin-react": "^6.1.1",
         "bootstrap-icons": "^1.13.1",
+        "chart.js": "^4.5.1",
         "react": "^19.2.8",
+        "react-chartjs-2": "^5.3.1",
         "react-dom": "^19.2.8",
         "typescript": "^7.0.2"
     }

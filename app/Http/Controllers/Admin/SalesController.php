@@ -88,13 +88,24 @@ final class SalesController
     }
 
     /** Empty-cart screen when no checkout param is given yet; otherwise the live cart. */
-    public function checkout(Request $request): Response
+    public function checkout(Request $request): Response|RedirectResponse
     {
         $checkoutId = $request->integer('checkout') ?: null;
+        $actor = app(ActorContext::class);
+
+        if ($checkoutId === null && $actor->activeShopId !== null) {
+            $resumable = $this->checkoutDetail->findOpenForCashier($actor->staffId->value, $actor->activeShopId);
+
+            if ($resumable !== null) {
+                return redirect()->route('admin.sales.checkout', ['checkout' => $resumable['id']]);
+            }
+        }
+
         $checkout = $checkoutId !== null ? $this->checkoutDetail->find($checkoutId) : null;
 
         return Inertia::render('Admin/Sales/Checkout', [
             'checkout' => $checkout,
+            'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'shops' => $this->shops->all(),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),
         ]);

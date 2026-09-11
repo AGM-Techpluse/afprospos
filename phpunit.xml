@@ -13,8 +13,12 @@
             <!-- Needs a real, persistent MySQL database shared across OS
                  processes (see Tests\Support\UsesConcurrencyDatabase);
                  SQLite :memory: can't do that, so this can't be part of
-                 the default suite. Run explicitly via the Concurrency
-                 testsuite (php artisan test, testsuite flag: Concurrency). -->
+                 the default suite. PHPUnit runs the union of every
+                 testsuite in one config file when no testsuite selector
+                 flag is given, so merely excluding these paths here is
+                 not enough on its own — they must not be declared as a
+                 sibling testsuite in THIS file at all. Run explicitly:
+                 vendor/bin/phpunit -c phpunit.concurrency.xml -->
             <exclude>tests/Feature/Inventory/Concurrency</exclude>
             <exclude>tests/Feature/Sales/Concurrency</exclude>
         </testsuite>
@@ -23,10 +27,6 @@
         </testsuite>
         <testsuite name="Architecture">
             <directory>tests/Architecture</directory>
-        </testsuite>
-        <testsuite name="Concurrency">
-            <directory>tests/Feature/Inventory/Concurrency</directory>
-            <directory>tests/Feature/Sales/Concurrency</directory>
         </testsuite>
     </testsuites>
     <source>
