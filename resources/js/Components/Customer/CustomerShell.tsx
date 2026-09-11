@@ -21,7 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { key: 'home', label: 'Home', icon: 'house-door-fill', href: '/customer/dashboard', enabled: true },
     { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/customer/dashboard', enabled: false },
-    { key: 'orders', label: 'Orders', icon: 'bag-check', href: '/customer/dashboard', enabled: false },
+    { key: 'orders', label: 'Orders', icon: 'bag-check', href: '/customer/orders', enabled: true },
     { key: 'shops', label: 'Shops', icon: 'shop', href: '/customer/dashboard', enabled: false },
     { key: 'profile', label: 'Profile', icon: 'person', href: '/customer/profile', enabled: true },
 ];
@@ -146,10 +146,13 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                     <Icon name="tools" className="text-xl mb-1" />
                     <span className="text-xs font-medium">Repairs</span>
                 </span>
-                <span className="flex flex-col items-center justify-center w-16 text-customer-muted-icon cursor-not-allowed">
+                <Link
+                    href="/customer/orders"
+                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/orders' ? 'text-customer-blue' : 'text-customer-text2'}`}
+                >
                     <Icon name="bag-check" className="text-xl mb-1" />
                     <span className="text-xs font-medium">Orders</span>
-                </span>
+                </Link>
                 <Link
                     href="/customer/profile"
                     className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/profile' ? 'text-customer-blue' : 'text-customer-text2'}`}

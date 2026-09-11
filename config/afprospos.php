@@ -25,6 +25,19 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Checkout reservation window
+    |--------------------------------------------------------------------
+    |
+    | How long a POS checkout holds its inventory reservation before the
+    | expiry worker releases it (BLD §4.4: independently configurable
+    | from repair down-payment deadlines, which use a separate,
+    | longer-scale timer).
+    |
+    */
+    'checkout_reservation_minutes' => 15,
+
+    /*
+    |--------------------------------------------------------------------
     | RBAC permission catalog
     |--------------------------------------------------------------------
     |
@@ -42,7 +55,7 @@ return [
         'staff' => ['view', 'create', 'edit', 'deactivate', 'assign'],
         'shops' => ['view', 'create', 'edit'],
         'repairs' => ['view', 'create', 'edit', 'approve'],
-        'sales' => ['view', 'create'],
+        'sales' => ['view', 'create', 'cancel'],
         'commission' => ['view', 'manage'],
         'inventory' => ['view', 'create', 'edit', 'delete'],
         'referrals' => ['view', 'manage'],
