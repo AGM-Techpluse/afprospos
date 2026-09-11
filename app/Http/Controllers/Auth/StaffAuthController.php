@@ -26,7 +26,7 @@ final class StaffAuthController
 
     public function create(): Response
     {
-        return Inertia::render('Auth/StaffLogin');
+        return Inertia::render('Admin/Auth/Login');
     }
 
     public function store(StaffLoginRequest $request): RedirectResponse
@@ -38,13 +38,15 @@ final class StaffAuthController
                 remember: $request->boolean('remember'),
             ));
         } catch (InvalidCredentials|StaffAccountDeactivated $exception) {
-            // Deliberately attached to the `email` field either way — see
-            // InvalidCredentials's doc comment on not disclosing which
-            // part of the credential pair was wrong. A deactivated
-            // account's message IS distinct (StaffAccountDeactivated),
-            // which is an accepted, narrower disclosure than "wrong
-            // password vs. unknown email".
-            throw ValidationException::withMessages(['email' => $exception->getMessage()]);
+            // Deliberately a page-level `auth` error bag key, not `email` —
+            // UI/UX §14C.1 specifies a general banner above the form, not a
+            // field-attached message, precisely so the login failure gives
+            // no visual hint about which half of the credential pair was
+            // wrong. See InvalidCredentials's doc comment for the same
+            // reasoning on the copy itself. A deactivated account's message
+            // IS distinct (StaffAccountDeactivated), which is an accepted,
+            // narrower disclosure than "wrong password vs. unknown email".
+            throw ValidationException::withMessages(['auth' => $exception->getMessage()]);
         }
 
         $request->session()->regenerate();

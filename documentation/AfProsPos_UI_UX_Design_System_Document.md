@@ -7,7 +7,7 @@
 **Source Prototype:** `AfProsPos_Design_Preview (2).html`  
 **Status:** BINDING — Development Blueprint / Design-System Source of Truth  
 **Companion document:** AfProsPos Codebase Principles & Naming Conventions (CPNC) — governs component placement (`Pages/`, `Components/`, `Features/`) and the Frontend Constraints this document's tokens plug into  
-**Date:** September 9, 2026 (Revision 3 — page-level layout specification + elevation-contradiction fix)
+**Date:** September 9, 2026 (Revision 6 — Customer Shell visual correction; Profile moved off the Dashboard)
 
 > This document codifies the visual language and interaction behavior demonstrated in the supplied working HTML/CSS prototype. The prototype is treated as the visual reference implementation. Where the prototype uses a literal value inside a demonstration-only utility, this document converts that value into an explicit design token or semantic variable so production components do not accumulate raw color literals.
 
@@ -53,6 +53,47 @@ Specifically, this revision:
 3. **Cross-references ADD §5A** — the new Frontend Page, Component & Feature File Structure section added to the ADD in this same pass — so a page-layout spec here and a file path there stay in lockstep rather than drifting into two documents that disagree about what a page is called.
 
 As with Revision 2, every fix is called out inline with a **Revision 3 fix:** marker.
+
+## Revision 4 — What Changed and Why
+
+Revision 3 fixed the *shadow* on the Admin login form but kept it wrapped in a bordered `admin-surface` panel, reasoning that Admin's flat aesthetic comes from border+surface rather than the absence of a container. In production this still rendered as a visibly boxed card sitting on the page background — the exact "decorative elevated card" Invariant #19 and §10.1's Core Rule prohibit, independent of whether that box carries a shadow. A border-bound card is still a card.
+
+Revision 4 corrects this the rest of the way:
+
+1. **Removes the Admin Auth Shell's bounding panel (§8.8)** — the login form now flows directly onto `admin-bg` with no surface fill, border, or radius, matching §10.1 literally and matching the Customer Auth Shell's existing cardless treatment.
+2. **Updates §14C.1's page-level layout diagram** to match — no panel outline around the field stack.
+
+As with prior revisions, the fix is called out inline with a **Revision 4 fix:** marker.
+
+## Revision 5 — What Changed and Why
+
+An implementation of `Pages/Customer/Dashboard/Index.tsx` matched §14C.10's ASCII diagram (greeting, hero card, recent orders, "view all activity") and was, by that narrow measure, spec-compliant — but it looked nothing like the source prototype's `#customer-app` screen (lines 542–650 of `AfProsPos_Design_Preview (2).html`), which was the actual reference this document claims to codify. Tracing the gap: §14C.10 was a simplified summary that silently dropped several things the prototype's single combined screen actually contains — the persistent 236px sidebar (vs. a plain top nav), the master-shell white frame with its 1px border and 30px radius (§8.4 describes this but §14C.10's diagram omits it entirely), and the Edit Profile / Notifications panel the prototype places directly on this screen rather than on a separate page. §14C.10 under-specified the page it was supposed to be authoritative for, and an implementation following it literally reproduced that gap.
+
+This revision corrects §14C.10 to match the prototype's actual composition, and documents one deliberate, permanent departure from the prototype: the prototype hardcodes sample data ("Aisha Bello," "iPhone 13 Pro," a completed Samsung A54 order) because it's a static visual demo. Production `Dashboard/Index.tsx` is data-driven — no backend Repairs/Orders/Notifications data exists yet for the customer portal, so every section that would show that data instead renders a real empty state (§24) sized and styled to look intentional, not broken, until that data starts flowing. That is a data-wiring difference, not a visual one — the same components render either state.
+
+Specifically:
+
+1. **Rewrites §14C.10** to describe the full combined screen: master shell + sidebar/drawer (cross-referencing §8.4/§8.5/§8.6 rather than re-deriving them), hero card (active-repair state and empty state), a quick-actions row surfacing the customer-facing feature set (request a repair, track a repair, find a shop, refer a friend) even before those flows exist, recent-order list items, an Edit Profile panel bound to the customer's real account data (name/phone/email — this is real data, not a mock, since it's the customer's own registered profile), and a Notifications panel/header dropdown.
+2. **Clarifies the empty-state contract for data-driven sections**: a section with no backend data yet renders the real §24 empty-state pattern, never a hardcoded sample row standing in for real data.
+3. **Notes the header notification bell is interactive** (opens a dropdown, not just a static icon) — the prototype's bell is decorative-only; production makes it real per §14A's existing pattern for surfacing status.
+
+As with prior revisions, every fix is called out inline with a **Revision 5 fix:** marker.
+
+## Revision 6 — What Changed and Why
+
+Two problems surfaced building Revision 5's design: one visual, one a repeat of a mistake already fixed once this session.
+
+**Visual:** the "master shell" fix removed the prototype's demo-only bordered white card correctly, but overcorrected by also flattening the sidebar and main pane into one flush, borderless rectangle. Checking against the prototype's actual desktop CSS again: the sidebar and main pane each keep their own rounding and float as distinct panels with a real gap between them and the viewport edge — that part was never demo chrome, it's the Customer theme's "floating surfaces" principle (§6.1) applied to the shell itself, and removing it along with the frame was wrong. Separately, the sidebar's gradient background was being set with `sm:bg-customer-page-gradient` — a Tailwind responsive-variant prefix applied to a hand-written plain-CSS class, which Tailwind's variant system silently ignores (variants only apply to utilities Tailwind itself generates). The sidebar was stuck on white at every breakpoint as a result. And the mobile drawer's closed position combined a `left: 12px` inset with a `translateX(-100%)` close transform — since the 12% is relative to the element's own width only, not the additional 12px offset, a 12px sliver of the "closed" drawer always remained visible.
+
+**Repeated mistake:** the Edit Profile panel Revision 5 added to the Dashboard was placed inside a shadowed white card — the same "form inside a decorative elevated card" defect Revision 3/4 fixed for the Admin login form (Invariant #19, §10.1's Core Rule), just recreated on the Customer side. The fix isn't to strip the shadow and leave a bare form sitting oddly in a two-column data grid — it's to recognize that profile editing is a big enough concern to warrant its own page, matching the ADD's original file tree (`Pages/Customer/Profile/Show.tsx`) after all.
+
+Specifically, this revision:
+
+1. **Corrects §8.4**: the sidebar and main pane are each independently rounded (`--c-radius-drawer`, 22px), shadowed floating panels (§6.1) sitting on a white page background with a real gap between them — not one flush rectangle. Fixes the responsive-variant bug by applying the gradient background unconditionally (sidebar and main pane always share it, at every breakpoint) rather than trying to vary it with a Tailwind prefix that doesn't apply to a custom class.
+2. **Corrects §8.6**: the mobile drawer sits flush against the left/top/bottom viewport edges (`inset-y-0 left-0`, rounded on the trailing edge only) rather than inset with margins — inset positioning combined with a `translateX(-100%)` close transform leaves a residual sliver visible, since the transform's percentage basis is the element's own width only. A flush resting position makes the transform exact.
+3. **Reverts part of Revision 5, corrects §14C.10**: Edit Profile is removed from the Dashboard and moves to its own page (`Pages/Customer/Profile/Show.tsx`, unelevated per §10.1 — the same treatment as the Admin/Customer auth forms). The Dashboard's side column instead shows a read-only Account summary card (name/phone/email, real data, no form) linking to the Profile page — not a form, so it can be elevated without contradiction. The hero card's empty state also picks up the same blue gradient treatment as its active-repair state, rather than a separate white/bordered look, for visual consistency regardless of data state.
+
+As with prior revisions, every fix is called out inline with a **Revision 6 fix:** marker.
 
 ---
 
@@ -420,14 +461,15 @@ These are tokenized equivalents of values demonstrated by the prototype:
 | `--c-muted-icon` | `#B7BEC9` | Chevron / tertiary icon |
 | `--c-taskbar-border` | `#EEF0F3` | Mobile taskbar separator |
 | `--c-overlay` | `rgba(16,20,30,.40)` | Drawer backdrop |
-| `--c-shell-border` | `#14171F` | Master shell 1px outline (see §8.4) |
 | `--c-focus` | `#B9CFFF` | Keyboard focus ring on Customer controls (see §18.2) |
 | `--c-shadow-soft` | `0 2px 10px rgba(16,20,30,.08)` | List item / card / drawer resting elevation |
 | `--c-shadow-strong` | `0 10px 30px rgba(16,20,30,.16)` | FAB, modal, toast — surfaces that float above interactive content |
 | `--c-gradient-page` | `linear-gradient(180deg, #CFE3FF 0%, #EAF3FF 38%, #FFFFFF 72%)` | Main page background |
 | `--c-gradient-hero` | `linear-gradient(135deg, #2F6FED, #1E56E8)` | Hero surface |
 
-> **Revision 2 fix:** `--c-shell-border` existed only inside the `tokens.css` blueprint (§28) and was undocumented here, where a developer would actually look first. `--c-focus` and `--c-shadow-strong` did not exist anywhere in Revision 1 — Accessibility (§18.2) referenced a focus token generically without a Customer-specific value, and Elevation (§6.1) described "floating surfaces are intentional" without ever assigning a shadow value to back that principle up. `--c-shadow-soft` previously said only "prototype-defined soft shadow," which is not implementable; it now has a concrete value.
+> **Revision 2 fix:** `--c-focus` and `--c-shadow-strong` did not exist anywhere in Revision 1 — Accessibility (§18.2) referenced a focus token generically without a Customer-specific value, and Elevation (§6.1) described "floating surfaces are intentional" without ever assigning a shadow value to back that principle up. `--c-shadow-soft` previously said only "prototype-defined soft shadow," which is not implementable; it now has a concrete value.
+>
+> **Revision 5 fix:** `--c-shell-border` (and `--c-radius-shell` in §6.3) are retired — see §8.4's Revision 5 fix. They backed a "master frame" that turned out to be the source prototype's presentation-tool chrome, not a real production surface.
 
 ---
 
@@ -851,7 +893,6 @@ Allowed elevated surfaces, and the token each one uses:
 --c-radius-card    16px
 --c-radius-hero    22px
 --c-radius-drawer  22px
---c-radius-shell   30px
 --c-radius-pill    100px
 ```
 
@@ -1130,38 +1171,18 @@ shop text = hidden
 
 ## Desktop
 
-The customer portal is encapsulated within a master frame:
+> **Revision 5 fix:** earlier revisions specified a "master frame" here — a white card with a 1px black border and 30px radius wrapping the entire shell, margin/padding around it on all sides. That was transcribed from the source prototype's `#customer-app` styling without noticing it's presentation-tool chrome: the prototype renders every screen inside a fixed-size `.device-frame` used to preview admin/customer and desktop/mobile side by side in one document, and the border/radius/padding was styling *that* preview frame, not a real production requirement. `--c-shell-border` and `--c-radius-shell` are retired — nothing in production consumes them.
+>
+> **Revision 6 fix:** the Revision 5 fix above overcorrected — it also flattened the sidebar and main pane into one flush, borderless rectangle, which isn't right either. The sidebar and main pane each keep their own rounding and shadow as independent floating panels; only the *outer* bordered white card was ever demo chrome. It also fixed a real bug: the sidebar's gradient background was written as `sm:bg-customer-page-gradient` — applying a Tailwind responsive prefix to a hand-written plain-CSS class, which Tailwind's variant system does not generate a rule for (variants only apply to utilities Tailwind itself produces from `@theme`). The sidebar was rendering white at every breakpoint as a result; the gradient is now applied unconditionally instead of through a variant that silently never matched.
+
+The customer shell is a two-column layout: a persistent sidebar and a main content pane, each an independently rounded, shadowed floating panel (§6.1 — floating surfaces are intentional) sitting on a plain white page background, with a real gap between them:
 
 ```text
-margin/padding around shell
-white frame
-1px black border
-30px radius
-16px internal padding
+Sidebar   — fixed/sticky left, full viewport height, width per §8.5, rounded + shadowed
+Main pane — fills the remaining width, full viewport height, rounded + shadowed
 ```
 
-Prototype:
-
-```css
-border: 1px solid #14171F;
-border-radius: 30px;
-padding: 16px;
-background: #fff;
-```
-
-Production token:
-
-```css
-border: 1px solid var(--c-shell-border);
-```
-
-where:
-
-```css
---c-shell-border: #14171F;
-```
-
-The black shell outline visually distinguishes the customer portal from the surrounding browser page.
+Both panes carry the brand gradient (`--c-gradient-page`) as their background — the same gradient, applied identically to both, at every breakpoint. They read as two distinct surfaces via their shadow and the white gap between them, not via a color difference. The page background behind/between them (the gap, and any outer padding) is plain white.
 
 ---
 
@@ -1199,7 +1220,7 @@ rounded 14px
 
 ## 8.6 Customer Mobile Drawer
 
-Prototype baseline:
+Prototype baseline (visual reference only — see the Revision 6 fix below for the production positioning):
 
 ```text
 top: 12px
@@ -1210,10 +1231,12 @@ radius: 22px
 shadow: soft/high
 ```
 
+> **Revision 6 fix:** an implementation combined this 12px inset with a `translateX(-100%)` close transform, reasoning it matched the prototype's `translateX(-130%)`. It doesn't: a percentage transform is relative to the element's own box only, not any additional positional offset, so at `left: 12px` a `translateX(-100%)` close leaves the drawer's trailing 12px permanently visible past the viewport edge — the drawer never fully closes. Production positions the drawer flush against the viewport edges instead (`top/bottom/left: 0`), rounded only on the trailing edge rather than all four corners, so `translateX(-100%)` is exact with no residual sliver. The prototype's inset "floating card" look for the closed drawer is not reproduced in production for this reason.
+
 Drawer movement:
 
 ```text
-closed: translateX(-130%)
+closed: translateX(-100%)
 open: translateX(0)
 ```
 
@@ -1223,7 +1246,7 @@ Backdrop:
 rgba(16,20,30,.40)
 ```
 
-Unlike the admin drawer, the customer drawer is **floating** and visibly separated from the viewport edges.
+Unlike the admin drawer, the customer drawer keeps its own rounding and shadow rather than being a flat flush panel — but it sits flush against the three viewport edges it opens from, not inset with margins on all sides.
 
 ---
 
@@ -1276,9 +1299,11 @@ Instead, they use dedicated minimal shells (`AdminAuthShell` and `CustomerAuthSh
 
 > **Revision 3 fix:** Revision 1/2 specified "standard borders and **shadows**" here. That directly contradicted §6.1 ("the only Admin surface permitted a shadow is the confirmation modal, via `--a-shadow-modal`") and Invariant #19 (§33 — "Forms never require decorative elevated cards"), and is the traced root cause of a real defect: an implementation followed this section literally and shipped an elevated staff login form. This section is corrected to agree with §6.1/§10.1/Invariant #19 rather than override them.
 
+> **Revision 4 fix:** Revision 3 removed the shadow but kept a bordered `admin-surface` card wrapping the form, reasoning that Admin flatness comes from border+surface rather than "no container." In production this still read as a decorative card around a form — the exact thing Invariant #19 and §10.1's Core Rule ("Forms are **not** wrapped in decorative cards... without an elevated parent") prohibit, border or not. Revision 4 removes the panel entirely: the Admin Auth Shell now follows §10.1 literally, the same as every other Admin form and the same as the Customer Auth Shell below.
+
 - `min-h-screen`, `bg-admin-bg`, centered content vertically and horizontally.
-- The form sits in a bounded `admin-surface` panel using a 1px `--a-border` and `--a-radius-card` (8px) only. **No `box-shadow` anywhere in `AdminAuthShell` or its form panel** — this is the same flat, border-driven surface treatment as every other Admin content area (§6.1, §10.1).
-- Panel width follows the standard Admin form constraint (§10.2 — max 640px); a login form's actual field count will render narrower in practice, typically ~360–400px, single column regardless of viewport (a login form never needs the two-column form grid).
+- The form flows directly onto the `admin-bg` page surface — **no bounding panel, no `admin-surface` fill, no border, no `box-shadow`**. Hierarchy comes only from spacing and typography (§10.1, §6.1, Invariant #19).
+- Content width follows the standard Admin form constraint (§10.2 — max 640px); a login form's actual field count will render narrower in practice, typically ~360–400px, single column regardless of viewport (a login form never needs the two-column form grid).
 - No navigation, no sidebar.
 - See §14C.1 for the full page-level layout (logo/heading placement, field order, error/loading states).
 
@@ -2474,22 +2499,20 @@ Desktop (≥ 640px) and Mobile — identical single-column layout, centered:
 │                                        │  bg-admin-bg (--a-bg), min-h-screen
 │              [ AfProsPos logo ]        │
 │                                        │
-│         ┌────────────────────┐        │
-│         │  Sign in            │        │  admin-surface panel
-│         │  (--text-xl, bold)  │        │  1px --a-border, --a-radius-card (8px)
-│         │                     │        │  NO shadow (see §8.8 Revision 3 fix)
-│         │  Email               │        │  max-width ~380px
-│         │  [___________]      │        │
-│         │                     │        │
-│         │  Password            │        │
-│         │  [___________]      │        │
-│         │                     │        │
-│         │  [ ] Remember me     │        │
-│         │                     │        │
-│         │  [   Sign in    ]   │        │  AdminButton, tone=primary, full width
-│         │                     │        │
-│         │  Forgot password?    │        │  text link, --a-blue
-│         └────────────────────┘        │
+│              Sign in                   │  --text-xl, bold — no panel, no border,
+│              (--text-xl, bold)         │  no fill, no shadow (see §8.8 Revision 4 fix)
+│                                        │  content max-width ~380px
+│              Email                     │
+│              [___________]            │
+│                                        │
+│              Password                  │
+│              [___________]            │
+│                                        │
+│              [ ] Remember me           │
+│                                        │
+│              [   Sign in    ]         │  AdminButton, tone=primary, full width
+│                                        │
+│              Forgot password?          │  text link, --a-blue
 │                                        │
 └──────────────────────────────────────┘
 ```
@@ -2757,24 +2780,58 @@ Uses the Dashboard Widget Grid exactly as specified in §14B.8 — stat cards (O
 
 ## 14C.10 Customer Dashboard / Home
 
-**File:** `Pages/Customer/Dashboard/Index.tsx`
+**File:** `Pages/Customer/Dashboard/Index.tsx` · **Shell:** `CustomerShell` (§8.4/§8.5/§8.6)
+
+> **Revision 5 fix:** this section previously diagrammed only the greeting/hero/orders column and omitted the shell (sidebar), a profile panel, and the notification surfaces the source prototype's `#customer-app` screen actually combines onto this page. See the Revision 5 changelog above for the full trace.
+>
+> **Revision 6 fix:** Revision 5 placed an *editable* Edit Profile form directly on this page inside a shadowed white card — recreating, on the Customer side, the exact "form inside a decorative elevated card" defect Revision 3/4 fixed for the Admin login form (Invariant #19, §10.1). The fix is not to strip the shadow and leave a bare form awkwardly sitting in a two-column data grid — it's to give profile editing its own page (`Pages/Customer/Profile/Show.tsx`, unelevated per §10.1, same treatment as the auth forms), matching the ADD's file tree. This page's side column instead shows a read-only **Account** summary card (name/phone/email, real data, no form) linking to the Profile page — since it isn't a form, it can be elevated without contradiction.
 
 ```text
-┌──────────────────────────────────────┐
-│  Hi, Amaka                              │  --font-customer-display, --text-3xl
-│                                        │
-│  CustomerHeroCard: active repair status  │  reuses §14C.6's stepper in summary form
-│  "iPhone 12 — In progress"               │  tap → Pages/Customer/Repairs/Show.tsx
-│                                        │
-│  Recent orders                           │  CustomerListItem × N
-│  ○ Order #ORD-2291        ₦45,000         │
-│  ○ Order #ORD-2288        ₦12,500         │
-│                                        │
-│  ( View all activity )                    │
-└──────────────────────────────────────┘
+Desktop (>= 640px) — sidebar and main pane are each independently rounded,
+shadowed floating panels (§8.4) on a plain white page background, not one
+flush rectangle. Both carry the page gradient:
+
+┌─────────────┬──────────────────────────────────────────────┐
+│ AfProsPos    │  [avatar] Hi, Amaka            [notif. bell ▾]│  §8.5 sidebar +
+│              │                                                │  topbar
+│ ● Home       │  ┌ Main column (1.3fr) ─────┐ ┌ Side (0.9fr)─┐│  §5.5 grid ratio
+│ ○ Repairs    │  │ CustomerHeroCard          │ │ Account      ││
+│ ○ Orders     │  │ (active-repair state, OR  │ │  name/phone/ ││
+│ ○ Shops      │  │  §24 empty state if none, │ │  email       ││
+│ ● Profile    │  │  same blue treatment      │ │  (Manage     ││
+│              │  │  either way)               │ │   profile →)││
+│              │  │ Quick actions (4-across):  │ │              ││
+│              │  │  Request a repair          │ │ Notifications││
+│              │  │  Track a repair            │ │  (§24 empty  ││
+│              │  │  Find a shop                │ │   state until││
+│              │  │  Refer a friend             │ │   real data) ││
+│              │  │ Order history              │ └──────────────┘│
+│              │  │  CustomerListItem × N, or   │                 │
+│              │  │  §24 empty state if none   │                 │
+│              │  └────────────────────────────┘                │
+│ ⏻ Log out    │  [FAB: request a repair]                       │
+└─────────────┴──────────────────────────────────────────────┘
+
+Mobile (< 640px): sidebar becomes the off-canvas drawer (§8.6); the two
+columns above collapse to one (§5.5); the FAB is replaced by the taskbar's
+center action (§8.7).
 ```
 
-The hero card summarizes at most the customer's single most-relevant open item (an in-progress repair, an unpaid balance) — per Principle 5, this page does not compete for attention with multiple hero cards; if there is no active repair, the hero card is replaced by a lower-emphasis empty state (§24) inviting the customer to book one, not omitted outright, since the page should never look broken/incomplete.
+**Component manifest:** `CustomerShell`, `CustomerHeroCard`, `CustomerListItem` × N, `CustomerEmptyState` (order history, notifications), an Account summary card (read-only — name/phone/email, a "Manage profile" link, no form), a header notification-bell dropdown, `CustomerFab`. `CustomerInput`/`CustomerButton` are used on the separate Profile page (§14C.10a below), not here.
+
+**Data contract:** this page is data-driven — nothing on it is a hardcoded sample value standing in for real data, including the prototype's own hardcoded "Aisha Bello" / "iPhone 13 Pro" / sample order, none of which are product requirements (§34). Every section backed by data that doesn't exist yet renders the real §24 empty state rather than a fabricated row:
+
+- **Hero card** — summarizes at most the customer's single most-relevant open item (an in-progress repair, an unpaid balance) — per Principle 5, this page does not compete for attention with multiple hero cards. With no active repair, it renders the §24 empty state inviting the customer to book one, not omitted outright, since the page should never look broken/incomplete — and keeps the same blue gradient treatment as the active-repair state rather than switching to a white/bordered look, so the hero card reads consistently regardless of data state.
+- **Account summary** is the one card with real data available today — the customer's own registered name/phone/email — displayed read-only with a link to the Profile page where it's actually edited.
+- **Order history** and **Notifications** (both the side-panel section and the header dropdown) render `CustomerEmptyState` until Sales/Orders and Notifications data exists for the customer portal.
+- **Quick actions** (request a repair, track a repair, find a shop, refer a friend) surface the customer-facing feature set the sidebar's disabled nav items point at, so the dashboard previews the product's shape even before those flows are built — each renders inert/"Soon" rather than linking to a page that doesn't exist yet, consistent with the disabled-nav-item pattern already used elsewhere (e.g. AdminShell's "Shops (Soon)").
+- **Notification bell** — interactive (opens a dropdown), not decorative-only as in the static prototype; reuses the empty-state pattern above until real notifications exist.
+
+## 14C.10a Customer Profile
+
+**File:** `Pages/Customer/Profile/Show.tsx` · **Shell:** `CustomerShell` (§8.4/§8.5/§8.6)
+
+The customer's own name/phone/email, editable directly on the page — no card, no border, no shadow (§10.1's Core Rule, same as every other form in the product). A page heading, a one-line description, then the field stack (`CustomerInput` × 3) and `CustomerButton` Save/Cancel. Linked from the sidebar's "Profile" item and from the Dashboard's Account summary card's "Manage profile" link.
 
 ---
 
@@ -3494,13 +3551,11 @@ The following is the recommended production token organization.
   --c-divider: #EEF0F3;
   --c-muted-icon: #B7BEC9;
   --c-overlay: rgba(16, 20, 30, .40);
-  --c-shell-border: #14171F;
 
   --c-radius-item: 14px;
   --c-radius-card: 16px;
   --c-radius-hero: 22px;
   --c-radius-drawer: 22px;
-  --c-radius-shell: 30px;
   --c-radius-pill: 100px;
 
   --c-gradient-page:

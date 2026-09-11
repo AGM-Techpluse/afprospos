@@ -30,7 +30,7 @@ final class CustomerAuthController
 
     public function createLogin(): Response
     {
-        return Inertia::render('Auth/CustomerLogin');
+        return Inertia::render('Customer/Auth/Login');
     }
 
     public function storeLogin(CustomerLoginRequest $request): RedirectResponse
@@ -42,7 +42,11 @@ final class CustomerAuthController
                 remember: $request->boolean('remember'),
             ));
         } catch (InvalidCredentials $exception) {
-            throw ValidationException::withMessages(['email' => $exception->getMessage()]);
+            // Page-level `auth` error bag key, not `email` — UI/UX §14C.2
+            // reuses §14C.1's general-banner pattern rather than a
+            // field-attached message, so failure gives no hint about which
+            // half of the credential pair was wrong.
+            throw ValidationException::withMessages(['auth' => $exception->getMessage()]);
         }
 
         $request->session()->regenerate();
@@ -52,7 +56,7 @@ final class CustomerAuthController
 
     public function createRegister(): Response
     {
-        return Inertia::render('Auth/CustomerRegister');
+        return Inertia::render('Customer/Auth/Register');
     }
 
     public function storeRegister(CustomerRegisterRequest $request): RedirectResponse

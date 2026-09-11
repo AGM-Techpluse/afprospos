@@ -760,6 +760,8 @@ DON'T:
     Put AdminButton.tsx in Features/Sales/  // ✗ it's a generic primitive, belongs in Components/Admin/
 ```
 
+**Sub-boundary within `Components/Admin/` and `Components/Customer/` (ADD §5A.3):** field components sharing the label + error/success/disabled contract (UI/UX §10) — `AdminInput`, `AdminSelect`, `AdminTextarea`, `CustomerInput`, and future field types — live in `<Theme>/Forms/`. `AdminButton`/`CustomerButton` stay flat at the theme root: UI/UX gives buttons their own section (§11), separate from forms, because a button is used far more broadly (modals, table actions, nav, standalone CTAs) than form submission. Everything else in a theme folder is flat unless a second genuine sibling in the same non-field category already exists — do not create a one-file subfolder.
+
 **Frontend authority rule (ADD §25.3):** React state may *mirror* server state for responsiveness (e.g. an optimistic "processing…" spinner), but it is never the source of truth. A payment is not `confirmed` because the React state says so — it is `confirmed` because the server returned that status, full stop. No Feature component may render a final success state (e.g. "Payment Successful") purely from a client-side callback without the server round-trip confirming it.
 
 ## 5.3 Design Tokens — Zero Raw Hex Rule

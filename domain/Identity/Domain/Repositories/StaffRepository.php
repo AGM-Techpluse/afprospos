@@ -20,9 +20,13 @@ interface StaffRepository
 
     public function existsWithEmail(string $email): bool;
 
+    public function existsWithEmailExcept(string $email, StaffId $exceptId): bool;
+
     public function verifyPassword(StaffId $id, string $plainPassword): bool;
 
     public function create(string $name, string $phone, string $email, string $plainPassword): StaffId;
+
+    public function updateProfile(StaffId $id, string $name, string $phone, string $email): void;
 
     public function save(StaffAccount $staff): void;
 }

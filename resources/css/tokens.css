@@ -100,8 +100,21 @@
   --motion-slow: 220ms;
   --motion-toast: 300ms;
 
-  --ease-standard: cubic-bezier(.2, .8, .2, 1);
-  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --motion-ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --motion-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ---------- Shared (theme-agnostic) component tokens ---------- */
+  /* §12.2 desktop confirmation modal width; the doc gives one universal
+     value, not a per-theme one, so this lives outside the [data-theme] blocks. */
+  --ui-modal-width: 380px;
+  /* §12.3 mobile confirmation sheet radius (distinct from --a-radius-modal/
+     --c-radius-drawer, which are for other surfaces). */
+  --ui-radius-sheet: 20px;
+  /* §13.2/§13.3 full-screen blocking wait: site-mark size and backdrop blur. */
+  --ui-loader-size: 52px;
+  --ui-loader-blur: 6px;
+  /* §12.6 Customer toast max-width ("max ≈ 340px") */
+  --ui-toast-width: 340px;
 
   /* ---------- Admin semantic tokens ---------- */
   --a-bg: #F5F6F8;
@@ -136,6 +149,7 @@
 
   --a-radius-input: 4px;
   --a-radius-button: 6px;
+  --a-radius-badge: 4px;
   --a-radius-card: 8px;
   --a-radius-modal: 14px;
 
@@ -152,6 +166,7 @@
 
   --c-yellow: #FFC845;
   --c-yellow-soft: #FFF6DF;
+  --c-yellow-text: #9A5B00;
 
   --c-red: #E24444;
   --c-red-soft: #FDECEC;
@@ -163,7 +178,6 @@
   --c-divider: #EEF0F3;
   --c-muted-icon: #B7BEC9;
   --c-overlay: rgba(16, 20, 30, .40);
-  --c-shell-border: #14171F;
   --c-focus: #B9CFFF;
 
   --c-shadow-soft: 0 2px 10px rgba(16,20,30,.08);
@@ -173,7 +187,6 @@
   --c-radius-card: 16px;
   --c-radius-hero: 22px;
   --c-radius-drawer: 22px;
-  --c-radius-shell: 30px;
   --c-radius-pill: 100px;
 
   --c-gradient-page:
@@ -190,6 +203,58 @@
       #2F6FED,
       #1E56E8
     );
+
+  /* ---------- Admin typography scale (Layer 4) ----------
+     The prototype's literal sizes (§ throughout) read as too small for
+     all-day desktop use once built and used for real — bumped ~8% over
+     both the shared base scale and the prototype's own component
+     baselines, per direct user feedback. Admin-only: the shared
+     --text-xs/sm/base/... tokens (and Customer, which aliases them)
+     are untouched. */
+  --a-text-xs: 12px;
+  --a-text-sm: 13px;
+  --a-text-base: 14px;
+  --a-text-md: 15px;
+  --a-text-lg: 17px;
+  --a-text-xl: 21px;
+
+  /* ---------- Admin component tokens (Layer 4) ---------- */
+  --a-sidebar-width: 220px;
+  --a-sidebar-width-collapsed: 64px;
+  --a-topbar-height: 52px;
+  --a-drawer-width: 230px;
+  --a-content-padding-x: 22px;
+  --a-btn-text-size: 13.5px;
+  --a-btn-padding-x: 13px;
+  --a-btn-padding-y: 7px;
+  --a-table-cell-text-size: 13.5px;
+  --a-table-cell-padding-y: 10px;
+  --a-table-cell-padding-x: 14px;
+  /* prototype ".field input,.field select,.field textarea" baseline, bumped ~8% (see typography scale note above) */
+  --a-field-text-size: 13.5px;
+  --a-field-padding-x: 10px;
+  --a-field-padding-y: 8px;
+  /* §8.1 "Navigation item" prototype baseline, bumped ~8% */
+  --a-nav-item-padding-y: 7px;
+  --a-nav-item-padding-x: 8px;
+  --a-nav-item-gap: 10px;
+  --a-nav-item-icon-width: 16px;
+  --a-nav-item-text-size: 13.5px;
+
+  /* ---------- Customer component tokens (Layer 4) ---------- */
+  --c-header-height-desktop: 72px;
+  --c-header-height-mobile: 60px;
+  --c-taskbar-height: 62px;
+  --c-content-bottom-padding: 86px;
+  /* §8.5/§8.6: persistent 236px sidebar on desktop, 248px off-canvas
+     drawer card on mobile. */
+  --c-sidebar-width-desktop: 236px;
+  --c-drawer-width-mobile: 248px;
+  --c-btn-text-size: 12.5px;
+  --c-btn-padding-x: 18px;
+  --c-btn-padding-y: 11px;
+  --c-caption-size: 13px;
+  --c-field-text-size: 14px;
 }
 
 /* ---------- Semantic UI layer per theme ---------- */
@@ -202,6 +267,36 @@
   --ui-accent: var(--a-blue);
   --ui-focus: var(--a-focus);
   --ui-radius-control: var(--a-radius-button);
+
+  --ui-info: var(--a-blue);
+  --ui-info-soft: var(--a-blue-soft);
+  --ui-success: var(--a-green);
+  --ui-success-soft: var(--a-green-soft);
+  --ui-warning: var(--a-yellow);
+  --ui-warning-soft: var(--a-yellow-soft);
+  --ui-warning-text: var(--a-yellow-text);
+  --ui-danger: var(--a-red);
+  --ui-danger-soft: var(--a-red-soft);
+
+  --ui-overlay: var(--a-overlay);
+  --ui-shadow-modal: var(--a-shadow-modal);
+
+  --ui-skeleton-base: var(--a-hover);
+  --ui-skeleton-highlight: var(--a-surface);
+
+  /* Admin-only type-scale bump (~8% over the shared base scale) so every
+     bare text-xs/sm/base/md/lg/xl utility used anywhere inside the Admin
+     shell picks it up automatically, not just the explicit text-admin-*
+     utilities — CSS custom properties resolve per the DOM cascade, so
+     overriding the shared tokens here (Customer is untouched) reaches
+     every Tailwind utility built on top of them without hunting down
+     every call site. See the --a-text-* definitions above for the numbers. */
+  --text-xs: var(--a-text-xs);
+  --text-sm: var(--a-text-sm);
+  --text-base: var(--a-text-base);
+  --text-md: var(--a-text-md);
+  --text-lg: var(--a-text-lg);
+  --text-xl: var(--a-text-xl);
 }
 
 [data-theme="customer"] {
@@ -213,6 +308,22 @@
   --ui-accent: var(--c-blue);
   --ui-focus: var(--c-focus);
   --ui-radius-control: var(--c-radius-pill);
+
+  --ui-info: var(--c-blue);
+  --ui-info-soft: var(--c-blue-soft);
+  --ui-success: var(--c-green);
+  --ui-success-soft: var(--c-green-soft);
+  --ui-warning: var(--c-yellow);
+  --ui-warning-soft: var(--c-yellow-soft);
+  --ui-warning-text: var(--c-yellow-text);
+  --ui-danger: var(--c-red);
+  --ui-danger-soft: var(--c-red-soft);
+
+  --ui-overlay: var(--c-overlay);
+  --ui-shadow-modal: var(--c-shadow-strong);
+
+  --ui-skeleton-base: var(--c-divider);
+  --ui-skeleton-highlight: #FFFFFF;
 }
 
 /* ---------- Mobile typography aliases ---------- */

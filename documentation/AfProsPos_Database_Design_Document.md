@@ -576,6 +576,36 @@ audit_logs.actor_role_snapshot
 
 This prevents later RBAC changes from rewriting history.
 
+## 10.1 `staff_shops`
+
+> Added retroactively — this table existed as a real, implemented migration (BRD RBAC-05, BLD RBAC-BR-09) but was never documented here, which let a later cleanup pass silently orphan its migration bookkeeping (see the Implementation Plan / session notes on the `staff_shops` vs. legacy `staff_shop_assignments` drift). Documenting it now so it can't drift unnoticed again.
+
+Which shops a staff member can operate in — a grant, not a role: it answers "can this staff member access shop X", independent of "what can they do there" (owned by the `roles`/`permissions` tables above). The Shop Owner role bypasses this table entirely (owner access is computed from role, not enumerated per-shop — `AccessibleShopsQuery`).
+
+Append-only per §7 Delete Policy: a revoked grant is recorded via `revoked_at`, never deleted, so "who had access to shop X on date Y" stays answerable. Re-granting after a revoke inserts a new row rather than reviving the old one.
+
+| Column | SQL Type | Null | Default | Constraint |
+|---|---|---:|---|---|
+| `id` | BIGINT UNSIGNED | NO | auto | PK |
+| `staff_id` | BIGINT UNSIGNED | NO | — | FK → `staff.id`, RESTRICT |
+| `shop_id` | BIGINT UNSIGNED | NO | — | FK → `shops.id`, RESTRICT |
+| `granted_by_staff_id` | BIGINT UNSIGNED | YES | — | FK → `staff.id`, SET NULL |
+| `granted_at` | TIMESTAMP | NO | — | |
+| `revoked_at` | TIMESTAMP | YES | — | |
+| `revoked_by_staff_id` | BIGINT UNSIGNED | YES | — | FK → `staff.id`, SET NULL |
+| `created_at` | TIMESTAMP | NO | current | |
+| `updated_at` | TIMESTAMP | NO | current | |
+
+**Indexes**
+
+```text
+PRIMARY KEY (id)
+INDEX staff_shops_staff_shop_idx (staff_id, shop_id)
+INDEX staff_shops_shop_active_idx (shop_id, revoked_at)
+```
+
+Uniqueness of "one active grant per (staff, shop)" is enforced at the application layer (`EloquentStaffShopGrantRepository`), not by a DB constraint — MySQL 8 has no partial/filtered unique index (§37, once that section exists; until then see the migration's own docblock).
+
 ---
 
 # 11. Repair Context Schema

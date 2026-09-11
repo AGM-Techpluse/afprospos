@@ -269,7 +269,7 @@ Components/Layout/{MasterDetailSplit,SlideOverPanel,ActivityTimeline}.tsx
 hooks/{useConfirm,useToast,useOnlineStatus}.ts
 ```
 
-Exit criteria for this phase are satisfied only when the Admin and Customer Auth Shells specifically match UI/UX §8.8 — no shadow on the Admin login form (Revision 3 fix) — since that page is the first thing every persona sees and the cheapest place to catch a token/elevation regression before it propagates to every later screen.
+Exit criteria for this phase are satisfied only when the Admin and Customer Auth Shells specifically match UI/UX §8.8 — no shadow and no bounding card/border on the Admin login form (Revision 3 and Revision 4 fixes) — since that page is the first thing every persona sees and the cheapest place to catch a token/elevation regression before it propagates to every later screen.
 
 ### Phase 3 work breakdown - Inventory foundation and reservation engine
 

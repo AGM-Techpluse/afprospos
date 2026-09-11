@@ -15,6 +15,6 @@ final class DashboardController
         // dashboard — this page exists so persona routing/navigation is
         // provably reachable end-to-end. Phase 2 replaces the body with
         // the real shared-design-system shell.
-        return Inertia::render('Admin/Dashboard');
+        return Inertia::render('Admin/Dashboard/Index');
     }
 }

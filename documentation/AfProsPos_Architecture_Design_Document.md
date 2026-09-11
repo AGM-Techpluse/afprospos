@@ -825,9 +825,10 @@ Each `Index.tsx` composes the theme's responsive data pattern (UI/UX §9); each 
 Components/
 ├── Admin/
 │   ├── AdminButton.tsx
-│   ├── AdminInput.tsx
-│   ├── AdminSelect.tsx
-│   ├── AdminTextarea.tsx
+│   ├── Forms/
+│   │   ├── AdminInput.tsx
+│   │   ├── AdminSelect.tsx
+│   │   └── AdminTextarea.tsx
 │   ├── AdminBadge.tsx
 │   ├── AdminTable.tsx
 │   ├── AdminRowCard.tsx
@@ -843,11 +844,13 @@ Components/
 │
 ├── Customer/
 │   ├── CustomerButton.tsx
-│   ├── CustomerInput.tsx
+│   ├── Forms/
+│   │   └── CustomerInput.tsx
 │   ├── CustomerListItem.tsx
 │   ├── CustomerDrawer.tsx
 │   ├── CustomerTaskbar.tsx
 │   ├── CustomerHeroCard.tsx
+│   ├── NotificationDropdown.tsx
 │   ├── CustomerShell.tsx
 │   ├── CustomerAuthShell.tsx
 │   ├── CustomerEmptyState.tsx
@@ -880,6 +883,8 @@ Components/
 ```
 
 This tree reconciles with UI/UX §15 — that section owns the *design-system rationale* for each primitive; this section owns the *file location*. Where the two ever disagree on a path, this ADD section is authoritative, consistent with §5's precedence over prose elsewhere in this document.
+
+**`Admin/Forms/` and `Customer/Forms/` boundary rule:** field components — the ones sharing the label + error/success/disabled contract defined in UI/UX §10 (`AdminInput`, `AdminSelect`, `AdminTextarea`, `CustomerInput`, and any future field type: search boxes, dropdowns, date pickers) — live in `<Theme>/Forms/`. Everything else in a theme folder is flat. `AdminButton`/`CustomerButton` are deliberately **not** in `Forms/` — UI/UX gives buttons their own section (§11), separate from forms, because a button is used far more broadly than form submission (modals, table row actions, nav triggers, standalone CTAs). Do not create a new subfolder (e.g. a `Cards/`) for a single file — a subfolder is justified only once a second genuine sibling in that same non-field category exists.
 
 ## 5A.4 `resources/js/Features/` (domain-specific, one folder per module needing interactive UI)
 

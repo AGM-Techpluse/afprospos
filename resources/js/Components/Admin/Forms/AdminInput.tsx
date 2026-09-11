@@ -1,5 +1,7 @@
 import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
-import Icon from '../../Shared/Icon';
+import FormField from '../../Forms/FormField';
+import FormErrorMessage from '../../Forms/FormErrorMessage';
+import FormSuccessMessage from '../../Forms/FormSuccessMessage';
 
 interface AdminInputProps extends InputHTMLAttributes<HTMLInputElement> {
     label: string;
@@ -35,47 +37,41 @@ const AdminInput = forwardRef<HTMLInputElement, AdminInputProps>(
 
         const displayError = error || internalError;
 
-        let containerClass = 'flex flex-col mb-5 relative';
-        let inputBorderClass = 'border-admin-border2 focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
-        let messageClass = '';
-        let messageIcon = null;
-
+        let inputBorderClass = 'border-admin-border-strong focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
         if (displayError) {
             inputBorderClass = 'border-admin-red focus:border-admin-red focus:ring-admin-red-soft focus:ring-2';
-            messageClass = 'text-admin-red mt-1 text-xs flex items-center';
-            messageIcon = <Icon name="exclamation-circle" className="mr-1" />;
         } else if (success) {
             inputBorderClass = 'border-admin-green focus:border-admin-green focus:ring-admin-green-soft focus:ring-2';
-            messageClass = 'text-admin-green mt-1 text-xs flex items-center';
-            messageIcon = <Icon name="check-circle" className="mr-1" />;
         }
 
         return (
-            <div className={containerClass}>
-                <label className="text-sm font-semibold text-admin-text mb-1">
-                    {label}
-                </label>
-                <input
-                    ref={ref}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    className={`
-                        bg-white border rounded-admin-button px-3 py-2
-                        font-admin-base text-sm text-admin-text placeholder-admin-text3
-                        transition-all duration-200 outline-none
-                        [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
-                        ${inputBorderClass}
-                        ${className}
-                    `}
-                    {...props}
-                />
-                {(displayError || success) && (
-                    <div className={messageClass}>
-                        {messageIcon}
-                        {displayError || success}
-                    </div>
+            <FormField label={label} labelClassName="text-xs font-semibold text-admin-text mb-[5px]">
+                {(id) => (
+                    <>
+                        <input
+                            id={id}
+                            ref={ref}
+                            onBlur={handleBlur}
+                            onChange={handleChange}
+                            className={`
+                                bg-white border rounded-admin-button px-admin-field-x py-admin-field-y
+                                font-admin-base text-admin-field text-admin-text placeholder-admin-text3
+                                transition-all duration-200 outline-none
+                                [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
+                                ${inputBorderClass}
+                                ${className}
+                            `}
+                            {...props}
+                        />
+                        {displayError && (
+                            <FormErrorMessage className="mt-1 text-xs">{displayError}</FormErrorMessage>
+                        )}
+                        {!displayError && success && (
+                            <FormSuccessMessage className="mt-1 text-xs">{success}</FormSuccessMessage>
+                        )}
+                    </>
                 )}
-            </div>
+            </FormField>
         );
     }
 );

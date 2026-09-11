@@ -1,0 +1,75 @@
+import { FormEvent } from 'react';
+import { useForm, Head, Link } from '@inertiajs/react';
+import CustomerAuthShell from '../../../Components/Customer/CustomerAuthShell';
+import CustomerInput from '../../../Components/Customer/Forms/CustomerInput';
+import CustomerButton from '../../../Components/Customer/CustomerButton';
+import AlertBanner from '../../../Components/Feedback/AlertBanner';
+
+export default function CustomerLogin() {
+    const { data, setData, post, processing, errors } = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    });
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        post('/customer/login');
+    }
+
+    return (
+        <CustomerAuthShell>
+            <Head title="Sign in" />
+            
+            <div className="max-w-md w-full mx-auto">
+                <h1 className="text-xl font-bold text-customer-text mb-6">
+                    Sign in
+                </h1>
+
+                <form onSubmit={submit}>
+                    {errors.auth && (
+                        <AlertBanner kind="danger" className="mb-6">
+                            {errors.auth}
+                        </AlertBanner>
+                    )}
+
+                    <CustomerInput
+                        label="Email address"
+                        type="email"
+                        required
+                        value={data.email}
+                        onChange={(e: any) => setData('email', e.target.value)}
+                        error={errors.email}
+                        placeholder="e.g. customer@example.com"
+                    />
+
+                    <CustomerInput
+                        label="Password"
+                        type="password"
+                        required
+                        value={data.password}
+                        onChange={(e: any) => setData('password', e.target.value)}
+                        error={errors.password}
+                    />
+
+                    <div className="mt-8">
+                        <CustomerButton 
+                            type="submit" 
+                            className="w-full"
+                            isLoading={processing}
+                        >
+                            Sign in
+                        </CustomerButton>
+                    </div>
+
+                    <p className="text-center text-customer-caption text-customer-text2 mt-6">
+                        Don't have an account?{' '}
+                        <Link href="/customer/register" className="text-customer-blue font-semibold">
+                            Sign up
+                        </Link>
+                    </p>
+                </form>
+            </div>
+        </CustomerAuthShell>
+    );
+}

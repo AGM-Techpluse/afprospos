@@ -35,10 +35,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $staff = $request->user('staff');
+        $customer = $request->user('customer');
+
         return [
             ...parent::share($request),
             'app_name' => config('app.name'),
             'app_logo' => asset('logo.jpg'), // Fallback until the database settings module is built
+            'auth' => [
+                'staff' => $staff !== null ? [
+                    'name' => $staff->name,
+                    'email' => $staff->email,
+                ] : null,
+                'customer' => $customer !== null ? [
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'email' => $customer->email,
+                ] : null,
+            ],
         ];
     }
 }

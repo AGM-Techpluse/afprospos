@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\Hash;
 
 final class EloquentCustomerRepository implements CustomerRepository
 {
+    public function findById(CustomerId $id): ?CustomerAccount
+    {
+        $record = CustomerRecord::query()->find($id->value);
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
     public function findByPhone(string $phone): ?CustomerAccount
     {
         $record = CustomerRecord::query()->where('phone', $phone)->first();
@@ -34,6 +41,31 @@ final class EloquentCustomerRepository implements CustomerRepository
     public function existsWithEmail(string $email): bool
     {
         return CustomerRecord::query()->where('email', $email)->exists();
+    }
+
+    public function existsWithPhoneExcept(string $phone, CustomerId $exceptId): bool
+    {
+        return CustomerRecord::query()
+            ->where('phone', $phone)
+            ->where('id', '!=', $exceptId->value)
+            ->exists();
+    }
+
+    public function existsWithEmailExcept(string $email, CustomerId $exceptId): bool
+    {
+        return CustomerRecord::query()
+            ->where('email', $email)
+            ->where('id', '!=', $exceptId->value)
+            ->exists();
+    }
+
+    public function updateProfile(CustomerId $id, string $name, string $phone, ?string $email): void
+    {
+        CustomerRecord::query()->findOrFail($id->value)->update([
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email,
+        ]);
     }
 
     public function verifyPassword(CustomerId $id, string $plainPassword): bool

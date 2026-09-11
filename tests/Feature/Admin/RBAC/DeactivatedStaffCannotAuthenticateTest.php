@@ -17,16 +17,16 @@ class DeactivatedStaffCannotAuthenticateTest extends TestCase
     public function test_refuses_login_for_a_deactivated_staff_account(): void
     {
         $staff = StaffRecord::factory()->deactivated()->create([
-            'email' => '[email protected]',
+            'email' => 'deactivated-staff@afprospos.test',
             'password' => Hash::make('correct-password'),
         ]);
 
         $response = $this->post('/staff/login', [
-            'email' => '[email protected]',
+            'email' => 'deactivated-staff@afprospos.test',
             'password' => 'correct-password',
         ]);
 
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasErrors('auth');
         // The "Cannot" assertion the CPNC requires: no state mutation, i.e.
         // no session was actually established for this account.
         $this->assertFalse(Auth::guard('staff')->check());
