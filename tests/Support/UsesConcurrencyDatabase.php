@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Inventory\Concurrency\Support;
+namespace Tests\Support;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,10 @@ use PDO;
  * A genuinely-parallel test therefore needs a real, persistent MySQL
  * database both this process and a spawned child process connect to.
  * Uses a dedicated `afprospos_concurrency_test` schema — never the
- * real dev `afprospos` database — created here, not by hand.
+ * real dev `afprospos` database — created here, not by hand. Shared
+ * across every module's Concurrency suite (Inventory, Sales, ...) —
+ * only the teardown table list varies by which tables a given test
+ * touches.
  */
 trait UsesConcurrencyDatabase
 {
@@ -38,9 +41,12 @@ trait UsesConcurrencyDatabase
         Artisan::call('migrate', ['--database' => 'mysql', '--force' => true]);
     }
 
-    protected function tearDownConcurrencyDatabase(): void
+    /** @param  string[]  $tables  in delete order (children before parents) */
+    protected function tearDownConcurrencyDatabase(array $tables = [
+        'inventory_transfers', 'inventory_items', 'inventory_stock_levels', 'inventory_skus', 'inventory_products', 'staff', 'shops',
+    ]): void
     {
-        foreach (['inventory_transfers', 'inventory_items', 'inventory_stock_levels', 'inventory_skus', 'inventory_products', 'staff', 'shops'] as $table) {
+        foreach ($tables as $table) {
             DB::connection('mysql')->table($table)->delete();
         }
     }

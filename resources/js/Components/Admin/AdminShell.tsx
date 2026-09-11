@@ -35,7 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
         items: [
             { key: 'dashboard', label: 'Dashboard', icon: 'grid-1x2-fill', href: '/admin/dashboard' },
             { key: 'repairs', label: 'Repairs', icon: 'tools', soon: true },
-            { key: 'sales', label: 'Sales / POS', icon: 'receipt', soon: true },
+            { key: 'sales', label: 'Sales / POS', icon: 'receipt', href: '/admin/sales/checkout', activeMatch: '/admin/sales' },
             { key: 'inventory', label: 'Inventory', icon: 'box-seam', href: '/admin/inventory/products', activeMatch: '/admin/inventory' },
             { key: 'payments', label: 'Payments', icon: 'credit-card-2-front', soon: true },
         ],

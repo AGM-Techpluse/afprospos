@@ -8,7 +8,7 @@ use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Symfony\Component\Process\Process;
-use Tests\Feature\Inventory\Concurrency\Support\UsesConcurrencyDatabase;
+use Tests\Support\UsesConcurrencyDatabase;
 use Tests\TestCase;
 
 /**

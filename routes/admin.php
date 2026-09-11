@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShopController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Auth\StaffAuthController;
@@ -230,4 +231,55 @@ Route::prefix('admin')
             ->post('/inventory/transfers/{transfer}/cancel', [InventoryTransferController::class, 'cancel'])
             ->whereNumber('transfer')
             ->name('inventory.transfers.cancel');
+
+        Route::middleware('permission:sales.view')
+            ->get('/sales', [SalesController::class, 'index'])
+            ->name('sales.index');
+
+        Route::middleware('permission:sales.view')
+            ->get('/sales/{sale}', [SalesController::class, 'show'])
+            ->whereNumber('sale')
+            ->name('sales.show');
+
+        Route::middleware('permission:sales.view')
+            ->get('/sales/{sale}/receipt', [SalesController::class, 'receipt'])
+            ->whereNumber('sale')
+            ->name('sales.receipt');
+
+        Route::middleware('permission:sales.create')
+            ->get('/sales/checkout', [SalesController::class, 'checkout'])
+            ->name('sales.checkout');
+
+        Route::middleware('permission:sales.create')
+            ->get('/sales/search', [SalesController::class, 'search'])
+            ->name('sales.search');
+
+        Route::middleware('permission:sales.create')
+            ->post('/sales/checkout', [SalesController::class, 'store'])
+            ->name('sales.checkout.store');
+
+        Route::middleware('permission:sales.create')
+            ->post('/sales/checkout/{checkout}/items', [SalesController::class, 'addItem'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.items.store');
+
+        Route::middleware('permission:sales.create')
+            ->delete('/sales/checkout/{checkout}/items/{item}', [SalesController::class, 'removeItem'])
+            ->whereNumber(['checkout', 'item'])
+            ->name('sales.checkout.items.destroy');
+
+        Route::middleware('permission:sales.create')
+            ->post('/sales/checkout/{checkout}/discount', [SalesController::class, 'applyDiscount'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.discount');
+
+        Route::middleware('permission:sales.create')
+            ->post('/sales/checkout/{checkout}/complete', [SalesController::class, 'complete'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.complete');
+
+        Route::middleware('permission:sales.cancel')
+            ->post('/sales/checkout/{checkout}/cancel', [SalesController::class, 'cancel'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.cancel');
     });

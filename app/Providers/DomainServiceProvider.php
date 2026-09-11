@@ -8,6 +8,7 @@ use Domain\Audit\Infrastructure\Laravel\AuditServiceProvider;
 use Domain\Identity\Infrastructure\Laravel\IdentityServiceProvider;
 use Domain\Inventory\Infrastructure\Laravel\InventoryServiceProvider;
 use Domain\RBAC\Infrastructure\Laravel\RbacServiceProvider;
+use Domain\Sales\Infrastructure\Laravel\SalesServiceProvider;
 use Domain\Shop\Infrastructure\Laravel\ShopServiceProvider;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +27,6 @@ final class DomainServiceProvider extends ServiceProvider
         $this->app->register(RbacServiceProvider::class);
         $this->app->register(ShopServiceProvider::class);
         $this->app->register(InventoryServiceProvider::class);
+        $this->app->register(SalesServiceProvider::class);
     }
 }
