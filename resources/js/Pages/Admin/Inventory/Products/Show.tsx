@@ -4,6 +4,7 @@ import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
+import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 
@@ -63,14 +64,13 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
             />
 
             <div className="grid gap-6 sm:grid-cols-2">
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Details</h2>
-                    <dl className="space-y-2 text-sm">
-                        <div className="flex justify-between">
+                <AdminInfoCard title="Details" icon="info-circle" iconColor="blue">
+                    <dl className="divide-y divide-admin-border -my-1 text-sm">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Category</dt>
                             <dd className="text-admin-text">{sku.category}</dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Type</dt>
                             <dd>
                                 <AdminBadge status={sku.is_serialized ? 'info' : 'neutral'}>
@@ -78,30 +78,29 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                 </AdminBadge>
                             </dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Cost price</dt>
                             <dd className="text-admin-text">{formatNaira(sku.cost_price_minor)}</dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Markup</dt>
                             <dd className="text-admin-text">{sku.markup_percent}%</dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Selling price</dt>
                             <dd className="text-admin-text">
                                 {formatNaira(sku.selling_price_minor)}
                                 {sku.selling_price_overridden && <span className="text-admin-text3"> (override)</span>}
                             </dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Low stock threshold</dt>
                             <dd className="text-admin-text">{sku.low_stock_threshold ?? '—'}</dd>
                         </div>
                     </dl>
-                </div>
+                </AdminInfoCard>
 
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Stock by shop</h2>
+                <AdminInfoCard title="Stock by shop" icon="shop" iconColor="green">
                     {sku.stock_by_shop.length === 0 ? (
                         <p className="text-admin-text2 text-sm">
                             {sku.is_serialized
@@ -130,10 +129,11 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                             </tbody>
                         </table>
                     )}
-                </div>
+                </AdminInfoCard>
             </div>
 
-            <div className="mt-6 max-w-lg bg-admin-surface border border-admin-border rounded-admin-card p-6">
+            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
+            <div className="mt-8 max-w-lg">
                 <h2 className="text-admin-md font-semibold text-admin-text mb-4">Receive stock</h2>
                 <form onSubmit={submitReceive}>
                     <div className="mb-4">

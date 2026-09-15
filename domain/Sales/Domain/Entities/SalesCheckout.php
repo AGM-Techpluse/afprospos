@@ -83,6 +83,23 @@ final class SalesCheckout
         $this->recompute();
     }
 
+    /** Returns the item's previous state so the caller can reconcile its Inventory reservation by the quantity delta. */
+    public function changeItemQuantity(SalesCheckoutItemId $itemId, int $quantity): SalesCheckoutItem
+    {
+        $this->assertOpen();
+
+        foreach ($this->items as $index => $item) {
+            if ($item->id()?->equals($itemId)) {
+                $this->items[$index] = $item->withQuantity($quantity);
+                $this->recompute();
+
+                return $item;
+            }
+        }
+
+        throw new InvalidArgumentException("Checkout item [{$itemId->value}] is not on this checkout.");
+    }
+
     /** Removes and returns the item so the caller can release its Inventory reservation. */
     public function removeItem(SalesCheckoutItemId $itemId): SalesCheckoutItem
     {

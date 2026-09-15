@@ -40,6 +40,11 @@ final class SalesCheckoutItem
         return new self($id, $skuId, $inventoryItemId, $quantity, $unitPrice);
     }
 
+    public function withQuantity(int $quantity): self
+    {
+        return new self($this->id, $this->skuId, $this->inventoryItemId, $quantity, $this->unitPrice);
+    }
+
     public function lineTotal(): Money
     {
         $total = Money::zero();

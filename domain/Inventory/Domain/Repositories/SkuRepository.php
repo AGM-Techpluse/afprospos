@@ -15,6 +15,9 @@ interface SkuRepository
 
     public function existsWithCode(string $skuCode): bool;
 
+    /** BRD INV-01 (restock): a non-serialized product has exactly one business-wide SKU — re-adding/re-importing the same brand+model+category reuses it rather than minting a duplicate. */
+    public function findNonSerializedByProduct(ProductId $productId): ?Sku;
+
     /** DBDD §14.2 SKU format `[ShopCode]-[CategoryCode]-[Sequence]` — the next unused sequence for this shop+category pair. */
     public function nextSequence(string $shopCode, string $category): int;
 

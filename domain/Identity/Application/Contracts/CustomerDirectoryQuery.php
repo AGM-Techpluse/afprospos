@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Domain\Identity\Application\Contracts;
+
+/**
+ * The published cross-module read contract for looking up a registered
+ * customer by name/email/phone — Sales' checkout customer picker searches
+ * through this rather than asking a cashier to type a raw `customers.id`
+ * (an internal database key that should never be surfaced to or required
+ * from a cashier), and never by reaching into Identity's own CustomerRecord
+ * directly (same pattern as InventoryCatalogQuery for Inventory -> Sales).
+ */
+interface CustomerDirectoryQuery
+{
+    /**
+     * @return array<int, array{id: int, name: string, email: ?string, phone: string}>
+     */
+    public function search(string $term, int $limit = 10): array;
+
+    /**
+     * Single-customer lookup — used to display the name/email of a customer
+     * already attached to a checkout, without the caller touching CustomerRecord.
+     *
+     * @return array{id: int, name: string, email: ?string, phone: string}|null
+     */
+    public function find(int $id): ?array;
+}

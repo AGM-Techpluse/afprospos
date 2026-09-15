@@ -6,6 +6,7 @@ namespace Domain\Sales\Domain\Repositories;
 
 use Domain\Sales\Domain\Entities\SalesCheckout;
 use Domain\Sales\Domain\ValueObjects\CheckoutId;
+use Domain\Shared\Domain\ValueObjects\StaffId;
 
 interface SalesCheckoutRepository
 {
@@ -15,6 +16,9 @@ interface SalesCheckoutRepository
     public function lockForUpdate(CheckoutId $id): SalesCheckout;
 
     public function save(SalesCheckout $checkout): CheckoutId;
+
+    /** A cashier has at most one cart open at a time — checked before creating a new one so navigating away and back never silently orphans the old one. */
+    public function findOpenIdForCashier(StaffId $cashierStaffId): ?CheckoutId;
 
     /**
      * Unlocked candidate read — open checkouts past their expiry, for

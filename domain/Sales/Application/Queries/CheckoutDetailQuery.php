@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Domain\Sales\Application\Queries;
 
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 
 /** Redisplays the live cart after every add/remove/discount action (Admin Checkout.tsx). */
 final class CheckoutDetailQuery
 {
-    public function __construct(private readonly InventoryCatalogQuery $catalog) {}
+    public function __construct(
+        private readonly InventoryCatalogQuery $catalog,
+        private readonly CustomerDirectoryQuery $customerDirectory,
+    ) {}
 
     /** @return array<string, mixed>|null */
     public function find(int $checkoutId): ?array
@@ -20,13 +24,25 @@ final class CheckoutDetailQuery
         return $checkout !== null ? $this->toArray($checkout) : null;
     }
 
-    /** Lets a cashier resume the open checkout they were already building for this shop instead of losing track of it on navigation (SALE/INV-BR-06 still expires it on its own if truly abandoned). */
-    public function findOpenForCashier(int $cashierStaffId, int $shopId): ?array
+    /**
+     * Lets a cashier resume the open checkout they were already building instead of
+     * losing track of it on navigation (SALE/INV-BR-06 still expires it on its own if
+     * truly abandoned). Checked across every shop the actor can access rather than only
+     * the session's active shop — an owner/staff member without an explicitly selected
+     * active shop still has at most one open cart, and it must still be found.
+     *
+     * @param  int[]  $shopIds
+     */
+    public function findOpenForCashier(int $cashierStaffId, array $shopIds): ?array
     {
+        if ($shopIds === []) {
+            return null;
+        }
+
         $checkout = SalesCheckoutRecord::query()
             ->with(['items', 'adjustments'])
             ->where('cashier_staff_id', $cashierStaffId)
-            ->where('shop_id', $shopId)
+            ->whereIn('shop_id', $shopIds)
             ->where('status', 'open')
             ->latest('id')
             ->first();
@@ -37,10 +53,13 @@ final class CheckoutDetailQuery
     /** @return array<string, mixed> */
     private function toArray(SalesCheckoutRecord $checkout): array
     {
+        $customer = $checkout->customer_id !== null ? $this->customerDirectory->find($checkout->customer_id) : null;
+
         return [
             'id' => $checkout->id,
             'shop_id' => $checkout->shop_id,
             'customer_id' => $checkout->customer_id,
+            'customer_name' => $customer['name'] ?? null,
             'cashier_staff_id' => $checkout->cashier_staff_id,
             'status' => $checkout->status,
             'reservation_expires_at' => $checkout->reservation_expires_at->toIso8601String(),

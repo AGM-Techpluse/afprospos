@@ -14,6 +14,7 @@ use Domain\Sales\Application\Handlers\AddCheckoutItemHandler;
 use Domain\Sales\Application\Handlers\CreateCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateSaleFromPaidCheckoutHandler;
 use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
+use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
@@ -51,6 +52,17 @@ class CompleteSaleIntegrationTest extends TestCase
         ]);
         $this->assertDatabaseHas('sales_checkouts', ['id' => $checkoutId->value, 'status' => 'paid']);
         $this->assertDatabaseHas('inventory_stock_levels', ['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 8, 'reserved' => 0]);
+
+        $sale = SaleRecord::query()->findOrFail($saleId);
+        $this->assertNotNull($sale->payment_transaction_id);
+        $this->assertDatabaseHas('payments_transactions', [
+            'id' => $sale->payment_transaction_id,
+            'payable_type' => 'sales_checkout',
+            'payable_id' => $checkoutId->value,
+            'method' => 'cash',
+            'amount_minor' => 40000,
+            'status' => 'confirmed',
+        ]);
     }
 
     public function test_completing_a_serialized_sale_marks_the_unit_sold(): void

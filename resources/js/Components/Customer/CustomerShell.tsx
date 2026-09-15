@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import { CustomerToastViewport } from '../Feedback/Toast';
+import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 import NotificationDropdown from './NotificationDropdown';
 import CustomerFab from './CustomerFab';
 
@@ -20,7 +21,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     { key: 'home', label: 'Home', icon: 'house-door-fill', href: '/customer/dashboard', enabled: true },
-    { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/customer/dashboard', enabled: false },
+    { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/customer/repairs', enabled: true },
     { key: 'orders', label: 'Orders', icon: 'bag-check', href: '/customer/orders', enabled: true },
     { key: 'shops', label: 'Shops', icon: 'shop', href: '/customer/dashboard', enabled: false },
     { key: 'profile', label: 'Profile', icon: 'person', href: '/customer/profile', enabled: true },
@@ -142,10 +143,13 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                     <Icon name="house-door-fill" className="text-xl mb-1" />
                     <span className="text-xs font-medium">Home</span>
                 </Link>
-                <span className="flex flex-col items-center justify-center w-16 text-customer-muted-icon cursor-not-allowed">
+                <Link
+                    href="/customer/repairs"
+                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/repairs' ? 'text-customer-blue' : 'text-customer-text2'}`}
+                >
                     <Icon name="tools" className="text-xl mb-1" />
                     <span className="text-xs font-medium">Repairs</span>
-                </span>
+                </Link>
                 <Link
                     href="/customer/orders"
                     className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/orders' ? 'text-customer-blue' : 'text-customer-text2'}`}
@@ -163,6 +167,7 @@ export default function CustomerShell({ children }: CustomerShellProps) {
             </nav>
 
             <CustomerToastViewport />
+            <ConfirmDialogHost />
         </div>
     );
 }

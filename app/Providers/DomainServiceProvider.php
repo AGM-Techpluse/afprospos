@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use Domain\Audit\Infrastructure\Laravel\AuditServiceProvider;
+use Domain\Collection\Infrastructure\Laravel\CollectionServiceProvider;
 use Domain\Identity\Infrastructure\Laravel\IdentityServiceProvider;
 use Domain\Inventory\Infrastructure\Laravel\InventoryServiceProvider;
+use Domain\Payments\Infrastructure\Laravel\PaymentsServiceProvider;
 use Domain\RBAC\Infrastructure\Laravel\RbacServiceProvider;
+use Domain\Repair\Infrastructure\Laravel\RepairServiceProvider;
 use Domain\Sales\Infrastructure\Laravel\SalesServiceProvider;
 use Domain\Shop\Infrastructure\Laravel\ShopServiceProvider;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +30,9 @@ final class DomainServiceProvider extends ServiceProvider
         $this->app->register(RbacServiceProvider::class);
         $this->app->register(ShopServiceProvider::class);
         $this->app->register(InventoryServiceProvider::class);
+        $this->app->register(PaymentsServiceProvider::class);
+        $this->app->register(CollectionServiceProvider::class);
+        $this->app->register(RepairServiceProvider::class);
         $this->app->register(SalesServiceProvider::class);
     }
 }

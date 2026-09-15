@@ -4,6 +4,7 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminInfoCard from '../../../Components/Admin/AdminInfoCard';
 import Icon from '../../../Components/Icons/Icon';
 
 function RevokeButton({ label, onClick }: { label: string; onClick: () => void }) {
@@ -95,14 +96,13 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
             />
 
             <div className="grid gap-6 sm:grid-cols-2">
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Details</h2>
-                    <dl className="space-y-2 text-sm">
-                        <div className="flex justify-between">
+                <AdminInfoCard title="Details" icon="person-vcard" iconColor="blue">
+                    <dl className="divide-y divide-admin-border -my-1 text-sm">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Phone</dt>
                             <dd className="text-admin-text">{staffMember.phone}</dd>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Status</dt>
                             <dd>
                                 <AdminBadge status={staffMember.status === 'active' ? 'success' : 'neutral'}>
@@ -111,10 +111,9 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                             </dd>
                         </div>
                     </dl>
-                </div>
+                </AdminInfoCard>
 
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Shop access</h2>
+                <AdminInfoCard title="Shop access" icon="shop" iconColor="green">
                     <div className="flex flex-col gap-2 mb-3">
                         {grantedShops.length === 0 && <span className="text-admin-text2 text-sm">No shop access granted.</span>}
                         {grantedShops.map((shop) => (
@@ -127,7 +126,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         ))}
                     </div>
                     {grantableShops.length > 0 && (
-                        <form onSubmit={grantShop} className="flex items-center gap-2">
+                        <form onSubmit={grantShop} className="flex items-center gap-2 pt-3 border-t border-admin-border">
                             <select
                                 value={shopToGrant}
                                 onChange={(e) => setShopToGrant(Number(e.target.value))}
@@ -144,11 +143,10 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                             </AdminButton>
                         </form>
                     )}
-                </div>
+                </AdminInfoCard>
             </div>
 
-            <div className="mt-6 bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                <h2 className="text-admin-md font-semibold text-admin-text mb-4">Roles</h2>
+            <AdminInfoCard title="Roles" icon="person-badge" iconColor="yellow" className="mt-6">
                 <div className="flex flex-wrap gap-3 mb-4">
                     {staffMember.roles.length === 0 && <span className="text-admin-text2 text-sm">No roles assigned.</span>}
                     {staffMember.roles.map((role) => (
@@ -162,7 +160,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                     ))}
                 </div>
                 {assignableRoles.length > 0 && (
-                    <form onSubmit={assignRole} className="flex items-center gap-2 max-w-sm">
+                    <form onSubmit={assignRole} className="flex items-center gap-2 max-w-sm pt-4 border-t border-admin-border">
                         <select
                             value={roleToAssign}
                             onChange={(e) => setRoleToAssign(e.target.value)}
@@ -179,7 +177,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         </AdminButton>
                     </form>
                 )}
-            </div>
+            </AdminInfoCard>
         </AdminShell>
     );
 }

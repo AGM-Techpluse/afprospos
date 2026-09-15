@@ -8,6 +8,7 @@ use App\Support\Transactions\Atomic;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
+use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Inventory\Domain\Repositories\InventoryItemRepository;
 use Domain\Inventory\Domain\Repositories\InventoryStockLevelRepository;
 use Domain\Inventory\Domain\Repositories\ProductRepository;
@@ -33,6 +34,32 @@ final class CreateProductHandler
     {
         return $this->atomic->run(function () use ($command): SkuId {
             $productId = $this->products->findOrCreate($command->brand, $command->model, $command->category);
+
+            if (! $command->isSerialized) {
+                $existingSku = $this->skus->findNonSerializedByProduct($productId);
+
+                if ($existingSku !== null) {
+                    $this->receiveInitialStock($command, $existingSku->id());
+
+                    $this->audit->record(
+                        module: 'Inventory',
+                        eventType: 'ProductRestocked',
+                        actorStaffId: new StaffId($command->createdByStaffId),
+                        actorRoleSnapshot: null,
+                        subjectType: 'sku',
+                        subjectId: $existingSku->id()->value,
+                        beforeState: null,
+                        afterState: [
+                            'sku_code' => $existingSku->skuCode(),
+                            'brand' => $command->brand,
+                            'model' => $command->model,
+                            'added_quantity' => $command->initialQuantity,
+                        ],
+                    );
+
+                    return $existingSku->id();
+                }
+            }
 
             $sequence = $this->skus->nextSequence($command->shopCode, $command->category);
             $skuCode = SkuGenerator::generate($command->shopCode, $command->category, $sequence);
@@ -82,6 +109,10 @@ final class CreateProductHandler
 
         if ($command->isSerialized) {
             foreach ($command->initialImeis ?? [] as $imei) {
+                if ($this->items->existsWithImei($imei)) {
+                    throw ImeiAlreadyExists::forImei($imei);
+                }
+
                 $this->items->create($skuId, $imei, $shopId, $command->condition);
             }
 

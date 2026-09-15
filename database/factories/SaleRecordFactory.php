@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
@@ -23,7 +24,7 @@ final class SaleRecordFactory extends Factory
             'customer_id' => null,
             'cashier_staff_id' => StaffRecord::factory(),
             'total_minor' => 10000,
-            'payment_transaction_id' => null,
+            'payment_transaction_id' => PaymentTransactionRecord::factory(),
             'payment_method' => 'cash',
             'payment_reference' => null,
             'invoice_number' => fake()->unique()->numerify('INV-TST-######'),

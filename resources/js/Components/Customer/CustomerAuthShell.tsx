@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { CustomerToastViewport } from '../Feedback/Toast';
+import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 
 interface CustomerAuthShellProps {
     children: React.ReactNode;
@@ -24,6 +25,7 @@ export default function CustomerAuthShell({ children }: CustomerAuthShellProps) 
             </main>
 
             <CustomerToastViewport />
+            <ConfirmDialogHost />
         </div>
     );
 }

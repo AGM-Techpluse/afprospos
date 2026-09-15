@@ -8,6 +8,8 @@ use App\Http\Requests\Admin\AddCheckoutItemRequest;
 use App\Http\Requests\Admin\ApplyDiscountRequest;
 use App\Http\Requests\Admin\CompleteSaleRequest;
 use App\Http\Requests\Admin\CreateCheckoutRequest;
+use App\Http\Requests\Admin\UpdateCheckoutItemQuantityRequest;
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotReservable;
@@ -17,12 +19,14 @@ use Domain\Sales\Application\Commands\CancelCheckoutCommand;
 use Domain\Sales\Application\Commands\CreateCheckoutCommand;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
 use Domain\Sales\Application\Commands\RemoveCheckoutItemCommand;
+use Domain\Sales\Application\Commands\UpdateCheckoutItemQuantityCommand;
 use Domain\Sales\Application\Handlers\AddCheckoutItemHandler;
 use Domain\Sales\Application\Handlers\ApplyDiscountHandler;
 use Domain\Sales\Application\Handlers\CancelCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateSaleFromPaidCheckoutHandler;
 use Domain\Sales\Application\Handlers\RemoveCheckoutItemHandler;
+use Domain\Sales\Application\Handlers\UpdateCheckoutItemQuantityHandler;
 use Domain\Sales\Application\Queries\CheckoutDetailQuery;
 use Domain\Sales\Application\Queries\SaleDetailQuery;
 use Domain\Sales\Application\Queries\SalesHistoryQuery;
@@ -45,10 +49,12 @@ final class SalesController
         private readonly SaleDetailQuery $saleDetail,
         private readonly CheckoutDetailQuery $checkoutDetail,
         private readonly InventoryCatalogQuery $catalog,
+        private readonly CustomerDirectoryQuery $customerDirectory,
         private readonly ShopDirectoryQuery $shops,
         private readonly CreateCheckoutHandler $createCheckout,
         private readonly AddCheckoutItemHandler $addItem,
         private readonly RemoveCheckoutItemHandler $removeItem,
+        private readonly UpdateCheckoutItemQuantityHandler $updateItemQuantity,
         private readonly ApplyDiscountHandler $applyDiscount,
         private readonly CancelCheckoutHandler $cancelCheckout,
         private readonly CreateSaleFromPaidCheckoutHandler $completeSale,
@@ -93,8 +99,8 @@ final class SalesController
         $checkoutId = $request->integer('checkout') ?: null;
         $actor = app(ActorContext::class);
 
-        if ($checkoutId === null && $actor->activeShopId !== null) {
-            $resumable = $this->checkoutDetail->findOpenForCashier($actor->staffId->value, $actor->activeShopId);
+        if ($checkoutId === null) {
+            $resumable = $this->checkoutDetail->findOpenForCashier($actor->staffId->value, $actor->shopIds);
 
             if ($resumable !== null) {
                 return redirect()->route('admin.sales.checkout', ['checkout' => $resumable['id']]);
@@ -106,6 +112,7 @@ final class SalesController
         return Inertia::render('Admin/Sales/Checkout', [
             'checkout' => $checkout,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
+            'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
             'shops' => $this->shops->all(),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),
         ]);
@@ -118,6 +125,15 @@ final class SalesController
 
         return response()->json([
             'results' => $term !== '' ? $this->catalog->search($term, $shopId) : [],
+        ]);
+    }
+
+    public function searchCustomers(Request $request): JsonResponse
+    {
+        $term = $request->string('q')->toString();
+
+        return response()->json([
+            'results' => $term !== '' ? $this->customerDirectory->search($term) : [],
         ]);
     }
 
@@ -144,6 +160,21 @@ final class SalesController
             ));
         } catch (InsufficientAvailableStock|ItemNotReservable|SerializedItemQuantityMustBeOne|CheckoutNotOpen $exception) {
             throw ValidationException::withMessages(['sku_id' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('admin.sales.checkout', ['checkout' => $checkout]);
+    }
+
+    public function updateItemQuantity(UpdateCheckoutItemQuantityRequest $request, int $checkout, int $item): RedirectResponse
+    {
+        try {
+            $this->updateItemQuantity->handle(new UpdateCheckoutItemQuantityCommand(
+                checkoutId: $checkout,
+                checkoutItemId: $item,
+                quantity: $request->integer('quantity'),
+            ));
+        } catch (InsufficientAvailableStock|ItemNotReservable|SerializedItemQuantityMustBeOne|CheckoutNotOpen $exception) {
+            throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
         }
 
         return redirect()->route('admin.sales.checkout', ['checkout' => $checkout]);

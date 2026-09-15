@@ -38,11 +38,12 @@ final class Sale
         ?CustomerId $customerId,
         StaffId $cashierStaffId,
         Money $total,
+        int $paymentTransactionId,
         string $paymentMethod,
         ?string $paymentReference,
         InvoiceNumber $invoiceNumber,
     ): self {
-        return new self(null, $checkoutId, $shopId, $customerId, $cashierStaffId, $total, null, $paymentMethod, $paymentReference, $invoiceNumber);
+        return new self(null, $checkoutId, $shopId, $customerId, $cashierStaffId, $total, $paymentTransactionId, $paymentMethod, $paymentReference, $invoiceNumber);
     }
 
     public static function reconstitute(

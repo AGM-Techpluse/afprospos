@@ -9,6 +9,8 @@ use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ConsumeInventoryCommand;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
+use Domain\Payments\Application\Commands\InitiatePaymentCommand;
+use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
 use Domain\Sales\Domain\Entities\Sale;
 use Domain\Sales\Domain\Repositories\SaleRepository;
@@ -34,6 +36,7 @@ final class CreateSaleFromPaidCheckoutHandler
         private readonly SalesCheckoutRepository $checkouts,
         private readonly SaleRepository $sales,
         private readonly InventoryReservationService $reservations,
+        private readonly PaymentInitiationService $payments,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -58,6 +61,15 @@ final class CreateSaleFromPaidCheckoutHandler
 
             $this->checkouts->save($checkout);
 
+            $payment = $this->payments->initiate(new InitiatePaymentCommand(
+                payableType: 'sales_checkout',
+                payableId: $command->checkoutId,
+                method: $command->paymentMethod,
+                amountMinor: $checkout->totalMinor(),
+                initiatedByStaffId: $command->confirmedByStaffId,
+                providerReference: $command->paymentReference,
+            ));
+
             $sequence = $this->sales->nextInvoiceSequence($checkout->shopId()->value);
             $invoiceNumber = new InvoiceNumber(InvoiceNumberGenerator::generate($command->shopCode, $sequence));
 
@@ -67,6 +79,7 @@ final class CreateSaleFromPaidCheckoutHandler
                 $checkout->customerId(),
                 new StaffId($command->confirmedByStaffId),
                 new Money($checkout->totalMinor()),
+                $payment->transactionId,
                 $command->paymentMethod,
                 $command->paymentReference,
                 $invoiceNumber,
@@ -86,6 +99,7 @@ final class CreateSaleFromPaidCheckoutHandler
                     'checkout_id' => $command->checkoutId,
                     'total_minor' => $checkout->totalMinor(),
                     'payment_method' => $command->paymentMethod,
+                    'payment_transaction_id' => $payment->transactionId,
                     'invoice_number' => $invoiceNumber->value,
                 ],
             );

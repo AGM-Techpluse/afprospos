@@ -57,6 +57,28 @@ class CashierResumesOpenCheckoutTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('Admin/Sales/Checkout')->where('checkout', null));
     }
 
+    public function test_visiting_sales_checkout_resumes_the_open_checkout_even_without_an_explicitly_switched_active_shop(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        StaffShopGrantRecord::query()->create(['staff_id' => $cashier->id, 'shop_id' => $shop->id, 'granted_at' => now()]);
+
+        $checkout = SalesCheckoutRecord::factory()->create([
+            'shop_id' => $shop->id,
+            'cashier_staff_id' => $cashier->id,
+            'status' => 'open',
+        ]);
+
+        // Deliberately no `/admin/shops/switch` call — the session has no active shop,
+        // yet the cashier's own open checkout must still be found and resumed.
+        $response = $this->actingAs($cashier, 'staff')->get('/admin/sales/checkout');
+
+        $response->assertRedirect("/admin/sales/checkout?checkout={$checkout->id}");
+    }
+
     public function test_a_cashier_never_gets_auto_resumed_into_a_different_cashiers_open_checkout_at_the_same_shop(): void
     {
         $this->seed(RolePermissionSeeder::class);

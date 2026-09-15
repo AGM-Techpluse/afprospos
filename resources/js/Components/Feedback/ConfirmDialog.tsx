@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
 import Icon from '../Icons/Icon';
+import { useConfirmDialogState } from '../../hooks/useConfirm';
 
 export type ConfirmKind = 'danger' | 'warning' | 'info';
 
@@ -158,4 +159,14 @@ export default function ConfirmDialog({
 function findByText(nodes: NodeListOf<HTMLElement> | undefined, text: string): HTMLElement | undefined {
     if (!nodes) return undefined;
     return Array.from(nodes).find((node) => node.textContent?.trim() === text);
+}
+
+/**
+ * Mount once inside each themed shell (AdminShell/AdminAuthShell/CustomerShell/
+ * CustomerAuthShell), same as AdminToastViewport/CustomerToastViewport — it must be
+ * a descendant of the shell's [data-theme] div to resolve --ui-overlay/--ui-surface.
+ */
+export function ConfirmDialogHost() {
+    const state = useConfirmDialogState();
+    return <ConfirmDialog {...state} />;
 }
