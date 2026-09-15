@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\CustomerAuthController;
 use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\OrdersController;
 use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Customer\RepairsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')
@@ -34,5 +35,10 @@ Route::prefix('customer')
             Route::get('/orders/sales/{sale}', [OrdersController::class, 'showSale'])
                 ->whereNumber('sale')
                 ->name('orders.sales.show');
+
+            Route::get('/repairs', [RepairsController::class, 'index'])->name('repairs.index');
+            Route::get('/repairs/{repair}', [RepairsController::class, 'show'])
+                ->whereNumber('repair')
+                ->name('repairs.show');
         });
     });
