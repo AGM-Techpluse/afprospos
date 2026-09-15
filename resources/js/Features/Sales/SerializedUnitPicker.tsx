@@ -8,7 +8,7 @@ import Icon from '../../Components/Icons/Icon';
  */
 export default function SerializedUnitPicker({ inventoryItemId }: { inventoryItemId: number }) {
     return (
-        <span className="inline-flex items-center gap-1 text-xs text-admin-text3">
+        <span className="inline-flex items-center gap-1 text-xs text-white/50">
             <Icon name="upc-scan" />
             Unit #{inventoryItemId}
         </span>

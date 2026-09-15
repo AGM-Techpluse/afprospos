@@ -23,6 +23,16 @@ final class EloquentSkuRepository implements SkuRepository
         return SkuRecord::query()->where('sku_code', $skuCode)->exists();
     }
 
+    public function findNonSerializedByProduct(ProductId $productId): ?Sku
+    {
+        $record = SkuRecord::query()
+            ->where('product_id', $productId->value)
+            ->where('is_serialized', false)
+            ->first();
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
     public function nextSequence(string $shopCode, string $category): int
     {
         $prefix = strtoupper($shopCode).'-'.strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $category) ?? '', 0, 3)).'-';

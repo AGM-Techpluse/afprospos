@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Identity\Application\Handlers;
 
+use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Identity\Application\Commands\AuthenticateStaffCommand;
 use Domain\Identity\Application\Contracts\StaffSessionGateway;
 use Domain\Identity\Domain\Exceptions\InvalidCredentials;
@@ -15,6 +16,7 @@ final class AuthenticateStaffHandler
     public function __construct(
         private readonly StaffRepository $staff,
         private readonly StaffSessionGateway $sessions,
+        private readonly AuditWriter $audit,
     ) {}
 
     public function handle(AuthenticateStaffCommand $command): void
@@ -32,5 +34,16 @@ final class AuthenticateStaffHandler
         }
 
         $this->sessions->login($account->id(), $command->remember);
+
+        $this->audit->record(
+            module: 'Identity',
+            eventType: 'StaffLoggedIn',
+            actorStaffId: $account->id(),
+            actorRoleSnapshot: null,
+            subjectType: 'staff',
+            subjectId: $account->id()->value,
+            beforeState: null,
+            afterState: null,
+        );
     }
 }

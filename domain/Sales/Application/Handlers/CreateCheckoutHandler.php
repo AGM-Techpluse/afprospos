@@ -27,6 +27,12 @@ final class CreateCheckoutHandler
     public function handle(CreateCheckoutCommand $command): CheckoutId
     {
         return $this->atomic->run(function () use ($command): CheckoutId {
+            $existing = $this->checkouts->findOpenIdForCashier(new StaffId($command->cashierStaffId));
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
             $expiresAt = CarbonImmutable::now()->addMinutes((int) config('afprospos.checkout_reservation_minutes'));
 
             $checkout = SalesCheckout::open(

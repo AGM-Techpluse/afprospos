@@ -5,10 +5,11 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
-import AdminInput from '../../../Components/Admin/Forms/AdminInput';
+import AdminStatCard from '../../../Components/Admin/AdminStatCard';
 import AlertBanner from '../../../Components/Feedback/AlertBanner';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import ProductSearch from '../../../Features/Sales/ProductSearch';
+import CustomerSearch, { CustomerSearchResult } from '../../../Features/Sales/CustomerSearch';
 import { formatNaira } from '../../../lib/money';
 import POSCart, { CheckoutItemView } from '../../../Features/Sales/POSCart';
 import CheckoutExpiryTimer from '../../../Features/Sales/CheckoutExpiryTimer';
@@ -19,6 +20,7 @@ type CheckoutView = {
     id: number;
     shop_id: number;
     customer_id: number | null;
+    customer_name: string | null;
     status: string;
     reservation_expires_at: string;
     subtotal_minor: number;
@@ -35,11 +37,17 @@ type RecentSale = {
     created_at: string;
 };
 
+type TodaysSales = {
+    sales_count: number;
+    total_minor: number;
+};
+
 interface CheckoutPageProps {
     checkout: CheckoutView | null;
     shops: Shop[];
     checkoutReservationMinutes: number;
     recentSales: RecentSale[];
+    todaysSales: TodaysSales | null;
 }
 
 const DISCOUNT_TYPES = [
@@ -61,6 +69,7 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
         shop_id: shops[0]?.id.toString() ?? '',
         customer_id: '',
     });
+    const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
 
     function submit(e: FormEvent) {
         e.preventDefault();
@@ -76,10 +85,12 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
                     </option>
                 ))}
             </AdminSelect>
-            <AdminInput
-                label="Customer ID (optional — blank is walk-in)"
-                value={data.customer_id}
-                onChange={(e) => setData('customer_id', e.target.value)}
+            <CustomerSearch
+                value={customer}
+                onChange={(selected) => {
+                    setCustomer(selected);
+                    setData('customer_id', selected ? selected.id.toString() : '');
+                }}
                 error={errors.customer_id}
             />
             <AdminButton type="submit" isLoading={processing}>
@@ -92,14 +103,14 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
 function RecentSales({ sales }: { sales: RecentSale[] }) {
     if (sales.length === 0) {
         return (
-            <div className="border border-admin-border rounded-admin-card">
+            <div className="bg-admin-surface border border-admin-border rounded-admin-card">
                 <AdminEmptyState icon="receipt" title="No recent sales" description="Your completed sales will show up here." />
             </div>
         );
     }
 
     return (
-        <ul className="border border-admin-border rounded-admin-card divide-y divide-admin-border">
+        <ul className="bg-admin-surface border border-admin-border rounded-admin-card divide-y divide-admin-border">
             {sales.map((sale) => (
                 <li key={sale.id} className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
@@ -122,7 +133,7 @@ function RecentSales({ sales }: { sales: RecentSale[] }) {
     );
 }
 
-export default function SalesCheckout({ checkout, shops, recentSales }: CheckoutPageProps) {
+export default function SalesCheckout({ checkout, shops, recentSales, todaysSales }: CheckoutPageProps) {
     const confirm = useConfirm();
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,12 +194,20 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
             <AdminShell>
                 <Head title="New sale" />
                 <AdminPageHead title="New sale" description="Start a checkout to begin building a cart." />
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-[900px] mx-auto">
-                    <div>
-                        <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
-                        <RecentSales sales={recentSales} />
+                <div className="max-w-[1160px] mx-auto">
+                    {todaysSales && (
+                        <div className="grid grid-cols-2 gap-4 mb-6 max-w-xl">
+                            <AdminStatCard label="Today's sales" value={todaysSales.sales_count.toString()} variant="blue" fillHeight />
+                            <AdminStatCard label="Today's revenue" value={formatNaira(todaysSales.total_minor)} variant="blue" fillHeight />
+                        </div>
+                    )}
+                    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
+                        <div>
+                            <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
+                            <RecentSales sales={recentSales} />
+                        </div>
+                        <NewCheckoutForm shops={shops} />
                     </div>
-                    <NewCheckoutForm shops={shops} />
                 </div>
             </AdminShell>
         );
@@ -201,12 +220,39 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
         setInlineError(null);
         setIsSubmitting(true);
 
+        // A non-serialized SKU already on the cart is topped up in place
+        // rather than added as a second line — a serialized SKU always
+        // reserves one specific physical unit, so a second click there
+        // correctly starts a new line (a different unit).
+        const existing = checkout!.items.find((item) => item.sku_id === skuId && item.inventory_item_id === null);
+
+        if (existing) {
+            changeQuantity(existing.id, existing.quantity + 1, skuId);
+            return;
+        }
+
         router.post(
             `/admin/sales/checkout/${checkout!.id}/items`,
             { sku_id: skuId, quantity: 1 },
             {
                 preserveScroll: true,
                 onError: (errors) => setInlineError({ skuId, message: errors.sku_id ?? 'Could not add this item.' }),
+                onFinish: () => setIsSubmitting(false),
+            },
+        );
+    }
+
+    function changeQuantity(itemId: number, quantity: number, skuId?: number) {
+        setInlineError(null);
+        setIsSubmitting(true);
+
+        router.patch(
+            `/admin/sales/checkout/${checkout!.id}/items/${itemId}`,
+            { quantity },
+            {
+                preserveScroll: true,
+                onError: (errors) =>
+                    setInlineError({ skuId: skuId ?? itemId, message: errors.quantity ?? 'Could not update quantity.' }),
                 onFinish: () => setIsSubmitting(false),
             },
         );
@@ -260,7 +306,7 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
 
             <AdminPageHead
                 title={`Checkout — ${shop?.name ?? `Shop #${checkout.shop_id}`}`}
-                description={checkout.customer_id ? `Customer #${checkout.customer_id}` : 'Walk-in customer'}
+                description={checkout.customer_name ?? 'Walk-in customer'}
                 actions={<CheckoutExpiryTimer expiresAt={checkout.reservation_expires_at} onExpire={() => setIsExpired(true)} />}
             />
 
@@ -276,11 +322,11 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
             )}
 
             <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] ${locked ? 'pointer-events-none opacity-60' : ''}`}>
-                <div className="border border-admin-border rounded-admin-card p-4 h-[520px]">
+                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4 h-[520px]">
                     <ProductSearch shopId={checkout.shop_id} onAdd={addItem} inlineError={inlineError} disabled={locked} />
                 </div>
 
-                <div className="border border-admin-border rounded-admin-card p-4 flex flex-col">
+                <div className="bg-admin-text rounded-admin-card p-4 flex flex-col">
                     <div className="flex-1 min-h-0 mb-4">
                         <POSCart
                             items={checkout.items}
@@ -288,17 +334,18 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
                             discountMinor={checkout.discount_minor}
                             totalMinor={checkout.total_minor}
                             onRemoveItem={removeItem}
+                            onChangeQuantity={changeQuantity}
                             disabled={locked}
                         />
                     </div>
 
                     {discountOpen ? (
-                        <form onSubmit={submitDiscount} className="border-t border-admin-border pt-3 mb-3">
+                        <form onSubmit={submitDiscount} className="border-t border-white/15 pt-3 mb-3">
                             <div className="grid grid-cols-2 gap-2 mb-2">
                                 <select
                                     value={discountForm.data.type}
                                     onChange={(e) => discountForm.setData('type', e.target.value)}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
                                 >
                                     {DISCOUNT_TYPES.map((t) => (
                                         <option key={t.value} value={t.value}>
@@ -312,7 +359,7 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
                                     placeholder="Amount (₦)"
                                     value={discountForm.data.amount_naira}
                                     onChange={(e) => discountForm.setData('amount_naira', e.target.value)}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
                                 />
                             </div>
                             {discountForm.errors.type && <p className="text-xs text-admin-red mb-2">{discountForm.errors.type}</p>}
@@ -330,17 +377,17 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
                             type="button"
                             disabled={locked}
                             onClick={() => setDiscountOpen(true)}
-                            className="text-xs font-semibold text-admin-blue text-left mb-3 disabled:text-admin-text3"
+                            className="text-xs font-semibold text-admin-blue text-left mb-3 disabled:text-white/40"
                         >
                             + Apply discount
                         </button>
                     )}
 
-                    <form onSubmit={completeSale} className="border-t border-admin-border pt-3">
+                    <form onSubmit={completeSale} className="border-t border-white/15 pt-3">
                         <select
                             value={completeForm.data.payment_method}
                             onChange={(e) => completeForm.setData('payment_method', e.target.value)}
-                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2"
+                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
                         >
                             {PAYMENT_METHODS.map((m) => (
                                 <option key={m.value} value={m.value}>
@@ -354,7 +401,7 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
                                 placeholder="Reference (terminal/transfer ID)"
                                 value={completeForm.data.payment_reference}
                                 onChange={(e) => completeForm.setData('payment_reference', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2"
+                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
                             />
                         )}
                         {completeForm.errors.payment_method && (
@@ -369,7 +416,7 @@ export default function SalesCheckout({ checkout, shops, recentSales }: Checkout
                             >
                                 Complete sale
                             </AdminButton>
-                            <AdminButton type="button" variant="neutral" onClick={cancelCheckout}>
+                            <AdminButton type="button" variant="danger-solid" onClick={cancelCheckout}>
                                 Cancel checkout
                             </AdminButton>
                         </div>

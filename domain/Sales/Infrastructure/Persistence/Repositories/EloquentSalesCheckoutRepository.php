@@ -65,6 +65,17 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
         return new CheckoutId($record->id);
     }
 
+    public function findOpenIdForCashier(StaffId $cashierStaffId): ?CheckoutId
+    {
+        $id = SalesCheckoutRecord::query()
+            ->where('cashier_staff_id', $cashierStaffId->value)
+            ->where('status', 'open')
+            ->latest('id')
+            ->value('id');
+
+        return $id !== null ? new CheckoutId($id) : null;
+    }
+
     /** @return int[] */
     public function findExpirableIds(int $limit): array
     {
@@ -91,6 +102,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
                     'quantity' => $item->quantity(),
                     'unit_price_minor' => $item->unitPrice()->minor,
                 ]);
+            } else {
+                // Only quantity ever changes on an already-persisted line (UpdateCheckoutItemQuantityHandler) — everything else is set once at add-time.
+                $record->items()->whereKey($item->id()->value)->update(['quantity' => $item->quantity()]);
             }
         }
     }
