@@ -38,6 +38,41 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Repair authorization window
+    |--------------------------------------------------------------------
+    |
+    | down_payment_deadline_at doubles as the authorization-response
+    | deadline for a zero-down-payment repair too (Phase 6 scope
+    | decision: one deadline concept, not two) — this is the
+    | independently configurable, longer-scale timer BLD §4.4 contrasts
+    | with checkout_reservation_minutes above.
+    |
+    */
+    'repairs' => [
+        'authorization_response_hours' => 48,
+    ],
+
+    /*
+    |--------------------------------------------------------------------
+    | Collection deadlines and storage fees
+    |--------------------------------------------------------------------
+    |
+    | A flat daily storage-fee rate, snapshotted onto each collection
+    | case at creation time so a later config change never retroactively
+    | alters an already-open case (DBDD §12.1's storage_fee_policy_snapshot).
+    | No proration, no tiers — a configuration decision the business will
+    | refine (BLD §18), not a business-logic gap.
+    |
+    */
+    'collection' => [
+        'default_deadline_days' => 14,
+        'abandonment_threshold_days' => 30,
+        'storage_fee_minor_per_day' => 0,
+        'grace_days' => 3,
+    ],
+
+    /*
+    |--------------------------------------------------------------------
     | RBAC permission catalog
     |--------------------------------------------------------------------
     |
@@ -54,7 +89,7 @@ return [
     'permissions' => [
         'staff' => ['view', 'create', 'edit', 'deactivate', 'assign'],
         'shops' => ['view', 'create', 'edit'],
-        'repairs' => ['view', 'create', 'edit', 'approve'],
+        'repairs' => ['view', 'create', 'edit', 'approve', 'assign'],
         'sales' => ['view', 'create', 'cancel'],
         'commission' => ['view', 'manage'],
         'inventory' => ['view', 'create', 'edit', 'delete'],
@@ -62,6 +97,8 @@ return [
         'marketing' => ['view', 'manage'],
         'expenses' => ['view', 'create', 'manage'],
         'reports' => ['view'],
+        'payments' => ['view', 'confirm', 'reject', 'dispute', 'refund'],
+        'collection' => ['view', 'process', 'override'],
     ],
 
     /*
@@ -89,11 +126,14 @@ return [
             'marketing' => ['view'],
             'expenses' => 'full',
             'reports' => 'full',
+            'payments' => 'full',
+            'collection' => ['view', 'override'],
         ],
         'Technician' => [
             'repairs' => 'full',
             'inventory' => ['view'],
             'reports' => ['view'],
+            'collection' => ['view', 'process'],
         ],
         'Cashier' => [
             'sales' => 'full',
@@ -106,6 +146,7 @@ return [
             'repairs' => ['view'],
             'sales' => ['view'],
             'reports' => ['view'],
+            'collection' => ['view'],
         ],
         'Marketing Staff' => [
             'marketing' => 'full',
