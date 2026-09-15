@@ -14,6 +14,7 @@
     /* Admin Colors */
     --color-admin-bg: var(--a-bg);
     --color-admin-surface: var(--a-surface);
+    --color-admin-paper: var(--a-paper);
     --color-admin-border: var(--a-border);
     --color-admin-border-strong: var(--a-border2);
     --color-admin-text: var(--a-text);
@@ -97,6 +98,7 @@
 
     /* Shadows */
     --shadow-admin-modal: var(--a-shadow-modal);
+    --shadow-admin-card: var(--a-shadow-card);
     --shadow-customer-soft: var(--c-shadow-soft);
     --shadow-customer-strong: var(--c-shadow-strong);
     --shadow-ui-modal: var(--ui-shadow-modal);
@@ -243,4 +245,73 @@
 @keyframes skeleton-shimmer {
     0% { background-position: 100% 0; }
     100% { background-position: -100% 0; }
+}
+
+/* "Print only this element" — isolates a page's `.print-area` from the
+   surrounding AdminShell/CustomerShell chrome (sidebar, topbar, buttons)
+   on window.print(), since Tailwind's print:hidden only ever hides
+   elements one at a time and the shell itself has no print awareness. */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .print-area,
+    .print-area * {
+        visibility: visible;
+        /* Without this, Chrome/Edge/Firefox all drop background colors and
+           background-images by default unless the user manually checks
+           "Background graphics" in the print dialog — which would silently
+           erase the receipt's paper tint, torn edges, and barcode. */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .print-area {
+        position: absolute;
+        inset: 0;
+        margin: 0 auto;
+    }
+}
+
+/* Scalloped "torn paper" edge for the Sales receipt (UI/UX-adjacent — a
+   receipt-specific flourish, not a shared component pattern) — a row of
+   punched-out circles in the page background color along the card's
+   bottom edge. Sized independently of any radius token since the scallop
+   diameter is a print/paper convention, not a UI corner radius. */
+.receipt-torn-edge {
+    height: 14px;
+    background-color: var(--color-admin-paper);
+    background-image: radial-gradient(circle at 7px 7px, var(--color-admin-bg) 7px, transparent 7.5px);
+    background-size: 14px 14px;
+    background-position: -7px -7px;
+    background-repeat: repeat-x;
+}
+
+/* Same scallop, mirrored for the top of the receipt strip. */
+.receipt-torn-edge-top {
+    transform: rotate(180deg);
+}
+
+/* Decorative barcode strip at the foot of the receipt — a fixed repeating
+   bar pattern (not a real scannable code), purely a "this is paper"
+   visual cue. */
+.receipt-barcode {
+    height: 32px;
+    background-image: repeating-linear-gradient(
+        90deg,
+        var(--color-admin-text) 0px,
+        var(--color-admin-text) 2px,
+        transparent 2px,
+        transparent 3px,
+        var(--color-admin-text) 3px,
+        var(--color-admin-text) 4px,
+        transparent 4px,
+        transparent 7px,
+        var(--color-admin-text) 7px,
+        var(--color-admin-text) 10px,
+        transparent 10px,
+        transparent 12px
+    );
+    background-repeat: repeat-x;
 }

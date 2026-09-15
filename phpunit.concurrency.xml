@@ -23,6 +23,8 @@
         <testsuite name="Concurrency">
             <directory>tests/Feature/Inventory/Concurrency</directory>
             <directory>tests/Feature/Sales/Concurrency</directory>
+            <directory>tests/Feature/Payments/Concurrency</directory>
+            <directory>tests/Feature/Collection/Concurrency</directory>
         </testsuite>
     </testsuites>
     <source>

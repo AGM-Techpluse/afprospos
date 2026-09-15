@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Requests\Admin\ImportProductsRequest;
 use Domain\Inventory\Application\Commands\ImportProductsCommand;
 use Domain\Inventory\Application\DTOs\ProductImportRow;
+use Domain\Inventory\Application\DTOs\ProductImportRowResult;
 use Domain\Inventory\Application\Handlers\ImportProductsHandler;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
@@ -62,7 +63,7 @@ final class InventoryImportController
 
         abort_if($shop === null, 404);
 
-        $rows = $this->parseCsv($request->file('file'));
+        [$rows, $preValidationFailures] = $this->parseCsv($request->file('file'));
 
         $results = $this->importProducts->handle(new ImportProductsCommand(
             rows: $rows,
@@ -71,39 +72,70 @@ final class InventoryImportController
             importedByStaffId: $actor->staffId->value,
         ));
 
+        $allResults = [...$results, ...$preValidationFailures];
+        usort($allResults, static fn (ProductImportRowResult $a, ProductImportRowResult $b): int => $a->rowNumber <=> $b->rowNumber);
+
         return Inertia::render('Admin/Inventory/Import/Results', [
             'results' => array_map(static fn ($result): array => [
                 'row_number' => $result->rowNumber,
                 'succeeded' => $result->succeeded,
                 'sku_code' => $result->skuCode,
                 'error_message' => $result->errorMessage,
-            ], $results),
+            ], $allResults),
         ]);
     }
 
-    /** @return ProductImportRow[] */
+    /**
+     * Every data row must produce exactly one result — success or
+     * failure — so the Results page count always matches the file.
+     * A row with fewer columns than the header (common when a
+     * spreadsheet export drops trailing commas for empty optional
+     * columns like quantity/imei/low_stock_threshold) is padded rather
+     * than silently discarded; only a genuinely missing brand/model/
+     * category is rejected outright.
+     *
+     * @return array{0: ProductImportRow[], 1: ProductImportRowResult[]}
+     */
     private function parseCsv(UploadedFile $file): array
     {
         $handle = fopen($file->getRealPath(), 'rb');
         $header = fgetcsv($handle);
+        $columnCount = $header !== false ? count($header) : 0;
         $rows = [];
+        $failures = [];
         $rowNumber = 1;
 
         while (($csvRow = fgetcsv($handle)) !== false) {
             $rowNumber++;
 
-            if ($header === false || count($csvRow) < count(self::EXPECTED_HEADER)) {
+            if ($header === false) {
                 continue;
+            }
+
+            if (count($csvRow) < $columnCount) {
+                $csvRow = array_pad($csvRow, $columnCount, '');
+            } elseif (count($csvRow) > $columnCount) {
+                $csvRow = array_slice($csvRow, 0, $columnCount);
             }
 
             $row = array_combine($header, $csvRow);
 
+            $brand = trim((string) ($row['brand'] ?? ''));
+            $model = trim((string) ($row['model'] ?? ''));
+            $category = trim((string) ($row['category'] ?? ''));
+
+            if ($brand === '' || $model === '' || $category === '') {
+                $failures[] = new ProductImportRowResult($rowNumber, false, null, 'Row is missing a required brand, model, or category value.');
+
+                continue;
+            }
+
             $rows[] = new ProductImportRow(
                 rowNumber: $rowNumber,
-                brand: trim((string) ($row['brand'] ?? '')),
-                model: trim((string) ($row['model'] ?? '')),
-                category: trim((string) ($row['category'] ?? '')),
-                condition: trim((string) ($row['condition'] ?? 'new')),
+                brand: $brand,
+                model: $model,
+                category: $category,
+                condition: trim((string) ($row['condition'] ?? 'new')) ?: 'new',
                 costPriceMinor: (int) ($row['cost_price_minor'] ?? 0),
                 markupPercent: (float) ($row['markup_percent'] ?? 0),
                 quantity: isset($row['quantity']) && $row['quantity'] !== '' ? (int) $row['quantity'] : null,
@@ -114,6 +146,6 @@ final class InventoryImportController
 
         fclose($handle);
 
-        return $rows;
+        return [$rows, $failures];
     }
 }

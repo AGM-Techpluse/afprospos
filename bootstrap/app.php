@@ -9,8 +9,10 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -65,5 +67,26 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return abort(403, $e->getMessage());
+        });
+
+        // A friendly, on-brand full-page error (403/404/419/429/500/503) instead of
+        // Laravel's raw "{status} | {message}" fallback — see resources/js/Pages/Error.tsx.
+        // Never applies to API/JSON requests, which keep Laravel's normal JSON error shape.
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return null;
+            }
+
+            $status = $e->getStatusCode();
+
+            if (! in_array($status, [403, 404, 419, 429, 500, 503], true)) {
+                return null;
+            }
+
+            $theme = $request->is('customer/*') ? 'customer' : 'admin';
+
+            return Inertia::render('Error', ['status' => $status, 'theme' => $theme])
+                ->toResponse($request)
+                ->setStatusCode($status);
         });
     })->create();

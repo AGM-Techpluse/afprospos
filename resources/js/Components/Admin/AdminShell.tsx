@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import AdminAccountMenu from './AdminAccountMenu';
 import { AdminToastViewport } from '../Feedback/Toast';
+import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 
 interface AdminShellProps {
     children: React.ReactNode;
@@ -34,10 +35,11 @@ const NAV_GROUPS: NavGroup[] = [
         name: 'Operations',
         items: [
             { key: 'dashboard', label: 'Dashboard', icon: 'grid-1x2-fill', href: '/admin/dashboard' },
-            { key: 'repairs', label: 'Repairs', icon: 'tools', soon: true },
+            { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/admin/repairs', activeMatch: '/admin/repairs' },
             { key: 'sales', label: 'Sales / POS', icon: 'receipt', href: '/admin/sales/checkout', activeMatch: '/admin/sales' },
             { key: 'inventory', label: 'Inventory', icon: 'box-seam', href: '/admin/inventory/products', activeMatch: '/admin/inventory' },
-            { key: 'payments', label: 'Payments', icon: 'credit-card-2-front', soon: true },
+            { key: 'payments', label: 'Payments', icon: 'credit-card-2-front', href: '/admin/payments', activeMatch: '/admin/payments' },
+            { key: 'collection', label: 'Collection', icon: 'box-seam', href: '/admin/collection', activeMatch: '/admin/collection' },
         ],
     },
     {
@@ -233,6 +235,7 @@ export default function AdminShell({ children }: AdminShellProps) {
             </div>
 
             <AdminToastViewport />
+            <ConfirmDialogHost />
         </div>
     );
 }

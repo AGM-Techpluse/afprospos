@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useMemo, useRef, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
@@ -178,6 +178,41 @@ function DownloadTemplateCard() {
     );
 }
 
+/** Handles quoted fields (so a comma inside a value, e.g. a model name, doesn't split into an extra column) — the naive `line.split(',')` this replaced did not. */
+function parseCsvLine(line: string): string[] {
+    const cells: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (inQuotes) {
+            if (char === '"') {
+                if (line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += char;
+            }
+        } else if (char === '"') {
+            inQuotes = true;
+        } else if (char === ',') {
+            cells.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+
+    cells.push(current);
+
+    return cells;
+}
+
 function formatFileSize(bytes: number): string {
     if (bytes < 1024) {
         return `${bytes} B`;
@@ -272,7 +307,19 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
         shop_id: shops[0]?.id.toString() ?? '',
         file: null,
     });
-    const [previewRows, setPreviewRows] = useState<string[][]>([]);
+    const [csvRows, setCsvRows] = useState<string[][]>([]);
+    const [previewSearch, setPreviewSearch] = useState('');
+
+    const dataRows = csvRows.slice(1);
+    const filteredRows = useMemo(() => {
+        const term = previewSearch.trim().toLowerCase();
+
+        if (term === '') {
+            return dataRows;
+        }
+
+        return dataRows.filter((row) => row.some((cell) => cell.toLowerCase().includes(term)));
+    }, [dataRows, previewSearch]);
 
     function submit(e: FormEvent) {
         e.preventDefault();
@@ -281,14 +328,15 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
 
     function selectFile(file: File | null) {
         setData('file', file);
-        setPreviewRows([]);
+        setCsvRows([]);
+        setPreviewSearch('');
 
         if (file) {
             const reader = new FileReader();
             reader.onload = () => {
                 const text = String(reader.result ?? '');
-                const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '').slice(0, 6);
-                setPreviewRows(lines.map((line) => line.split(',')));
+                const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
+                setCsvRows(lines.map(parseCsvLine));
             };
             reader.readAsText(file);
         }
@@ -334,32 +382,54 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
                             <CsvDropzone file={data.file} onSelect={selectFile} error={errors.file} />
                         </div>
 
-                        {previewRows.length > 0 && (
-                            <div className="mb-6 border border-admin-border rounded-admin-card overflow-x-auto">
-                                <table className="w-full text-xs">
-                                    <thead>
-                                        <tr className="bg-admin-hover text-left">
-                                            {previewRows[0].map((cell, i) => (
-                                                <th key={i} className="px-2 py-1.5 font-semibold text-admin-text whitespace-nowrap">
-                                                    {cell}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-admin-border">
-                                        {previewRows.slice(1).map((row, i) => (
-                                            <tr key={i}>
-                                                {row.map((cell, j) => (
-                                                    <td key={j} className="px-2 py-1.5 text-admin-text2 whitespace-nowrap">
+                        {csvRows.length > 0 && (
+                            <div className="mb-6 border border-admin-border rounded-admin-card overflow-hidden">
+                                <div className="p-2 border-b border-admin-border">
+                                    <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-admin-text3">
+                                            <Icon name="search" />
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={previewSearch}
+                                            onChange={(e) => setPreviewSearch(e.target.value)}
+                                            placeholder={`Search ${dataRows.length} row(s)...`}
+                                            className="w-full border border-admin-border-strong rounded-admin-button pl-8 pr-2.5 py-1.5 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="overflow-auto max-h-72">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="bg-admin-hover text-left sticky top-0">
+                                                {csvRows[0].map((cell, i) => (
+                                                    <th key={i} className="px-2 py-1.5 font-semibold text-admin-text whitespace-nowrap">
                                                         {cell}
-                                                    </td>
+                                                    </th>
                                                 ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-admin-border">
+                                            {filteredRows.map((row, i) => (
+                                                <tr key={i}>
+                                                    {row.map((cell, j) => (
+                                                        <td key={j} className="px-2 py-1.5 text-admin-text2 whitespace-nowrap">
+                                                            {cell}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {filteredRows.length === 0 && (
+                                        <p className="text-xs text-admin-text3 text-center py-4">No rows match “{previewSearch}”.</p>
+                                    )}
+                                </div>
                                 <p className="text-[11px] text-admin-text3 px-2 py-1.5 border-t border-admin-border">
-                                    Preview of the first {previewRows.length - 1} row(s) — the full file is parsed on import.
+                                    {previewSearch
+                                        ? `Showing ${filteredRows.length} of ${dataRows.length} row(s) matching your search.`
+                                        : `${dataRows.length} row(s) in this file.`}{' '}
+                                    The entire file is imported, not just what's shown here.
                                 </p>
                             </div>
                         )}

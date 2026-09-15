@@ -73,6 +73,34 @@ class AdminCanCreateProductTest extends TestCase
         ]);
     }
 
+    public function test_re_adding_the_same_non_serialized_product_restocks_the_existing_sku_instead_of_duplicating_it(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+
+        $payload = [
+            'brand' => 'Anker',
+            'model' => 'PowerCore 10000',
+            'category' => 'Accessories',
+            'condition' => 'new',
+            'is_serialized' => false,
+            'cost_price_minor' => 15_000_00,
+            'markup_percent' => 20,
+            'shop_id' => $shop->id,
+            'initial_quantity' => 25,
+        ];
+
+        $this->actingAs($owner, 'staff')->post('/admin/inventory/products', $payload)->assertRedirect();
+        $this->actingAs($owner, 'staff')->post('/admin/inventory/products', $payload)->assertRedirect();
+
+        $this->assertDatabaseCount('inventory_skus', 1);
+        $this->assertDatabaseHas('inventory_stock_levels', ['shop_id' => $shop->id, 'on_hand' => 50, 'reserved' => 0]);
+        $this->assertDatabaseHas('audit_logs', ['module' => 'Inventory', 'event_type' => 'ProductRestocked']);
+    }
+
     public function test_blocks_a_staff_member_without_inventory_create_from_adding_a_product(): void
     {
         $this->seed(RolePermissionSeeder::class);
