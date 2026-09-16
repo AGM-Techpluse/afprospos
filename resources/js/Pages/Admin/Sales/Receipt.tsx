@@ -15,6 +15,7 @@ type SaleItem = {
 type Sale = {
     id: number;
     shop_id: number;
+    shop_name: string | null;
     invoice_number: string;
     payment_method: string;
     total_minor: number;
@@ -69,7 +70,7 @@ export default function SalesReceipt({ sale }: { sale: Sale }) {
                 <div className="bg-admin-paper px-5 pt-5 pb-6 font-mono text-admin-text">
                     <div className="text-center mb-3">
                         <div className="text-base font-bold uppercase tracking-wide">{shopName}</div>
-                        <div className="text-xs text-admin-text2">Shop #{sale.shop_id}</div>
+                        <div className="text-xs text-admin-text2">{sale.shop_name ?? 'Unknown shop'}</div>
                     </div>
 
                     <div className="border-t border-dashed border-admin-border-strong my-3" />

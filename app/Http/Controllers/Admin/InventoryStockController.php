@@ -14,6 +14,7 @@ use Domain\Inventory\Application\Queries\LowStockQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -25,29 +26,38 @@ final class InventoryStockController
     public function __construct(
         private readonly StockLevelQuery $stockLevels,
         private readonly LowStockQuery $lowStock,
+        private readonly ShopDirectoryQuery $shops,
         private readonly ReceiveStockHandler $receiveStock,
         private readonly AdjustStockHandler $adjustStock,
     ) {}
 
     public function index(Request $request): Response
     {
+        $actor = app(ActorContext::class);
+        $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+
         return Inertia::render('Admin/Inventory/Stock/Index', [
             'stock' => $this->stockLevels->paginate(
                 search: $request->string('search')->toString() ?: null,
-                shopId: $request->integer('shop_id') ?: null,
+                shopId: $shopId,
                 page: $request->integer('page', 1),
             ),
             'filters' => [
                 'search' => $request->string('search')->toString(),
-                'shop_id' => $request->integer('shop_id') ?: null,
+                'shop_id' => $shopId,
             ],
+            'shops' => $this->shops->all(),
         ]);
     }
 
     public function lowStock(Request $request): Response
     {
+        $shopId = $request->integer('shop_id') ?: null;
+
         return Inertia::render('Admin/Inventory/Stock/LowStock', [
-            'items' => $this->lowStock->forShop($request->integer('shop_id') ?: null),
+            'items' => $this->lowStock->forShop($shopId),
+            'filters' => ['shop_id' => $shopId],
+            'shops' => $this->shops->all(),
         ]);
     }
 
@@ -77,7 +87,7 @@ final class InventoryStockController
 
         abort_if($level === null, 404);
 
-        return Inertia::render('Admin/Inventory/Stock/Adjust', ['level' => $level]);
+        return Inertia::render('Admin/Inventory/Stock/Adjust', ['level' => $level, 'shop' => $this->shops->find($shop)]);
     }
 
     public function adjust(AdjustStockRequest $request, int $sku, int $shop): RedirectResponse

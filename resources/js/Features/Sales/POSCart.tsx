@@ -21,13 +21,27 @@ interface POSCartProps {
     onRemoveItem: (itemId: number) => void;
     onChangeQuantity: (itemId: number, quantity: number) => void;
     disabled?: boolean;
+    /** True while a cart mutation (add/remove/quantity change) is in flight — swaps the line items for skeleton rows instead of the whole checkout page dimming, since only the cart is actually stale. */
+    loading?: boolean;
 }
 
 /** Right pane of the POS Checkout screen (UI/UX §14C.3). Dark treatment — items/totals sit on a near-black panel. */
-export default function POSCart({ items, subtotalMinor, discountMinor, totalMinor, onRemoveItem, onChangeQuantity, disabled = false }: POSCartProps) {
+export default function POSCart({ items, subtotalMinor, discountMinor, totalMinor, onRemoveItem, onChangeQuantity, disabled = false, loading = false }: POSCartProps) {
     return (
         <div className="flex flex-col h-full">
-            {items.length === 0 ? (
+            {loading ? (
+                <ul className="flex-1 flex flex-col gap-2 overflow-y-auto mb-4">
+                    {Array.from({ length: Math.max(items.length, 1) }).map((_, i) => (
+                        <li key={`cart-skeleton-${i}`} className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                            <div className="min-w-0 flex-1">
+                                <div className="h-4 w-2/3 rounded-admin-input bg-white/10 animate-pulse mb-2" />
+                                <div className="h-3 w-1/3 rounded-admin-input bg-white/10 animate-pulse" />
+                            </div>
+                            <div className="h-4 w-12 rounded-admin-input bg-white/10 animate-pulse shrink-0" />
+                        </li>
+                    ))}
+                </ul>
+            ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center py-10 px-4">
                     <div className="w-10 h-10 rounded-admin-card bg-white/10 flex items-center justify-center text-white/50 text-lg mb-3">
                         <Icon name="cart" />

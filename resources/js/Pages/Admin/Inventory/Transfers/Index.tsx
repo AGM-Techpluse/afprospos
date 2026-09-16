@@ -22,32 +22,38 @@ type TransferRow = {
     created_at: string;
 };
 
+type Shop = { id: number; name: string };
+
 type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
 
 interface TransfersIndexProps {
     transfers: Paginated<TransferRow>;
     filters: { status: string; shop_id: number | null };
+    shops: Shop[];
 }
 
-const COLUMNS: DataTableColumn<TransferRow>[] = [
-    { key: 'sku_code', label: 'SKU' },
-    { key: 'model', label: 'Product', render: (row) => `${row.brand} ${row.model}` },
-    { key: 'quantity', label: 'Qty/Unit', render: (row) => (row.inventory_item_id ? '1 unit' : row.quantity) },
-    { key: 'from_shop_id', label: 'From', render: (row) => `#${row.from_shop_id}` },
-    { key: 'to_shop_id', label: 'To', render: (row) => `#${row.to_shop_id}` },
-    {
-        key: 'status',
-        label: 'Status',
-        render: (row) => (
-            <AdminBadge status={row.status === 'completed' ? 'success' : row.status === 'cancelled' ? 'neutral' : 'info'}>
-                {row.status === 'in_transit' ? 'In transit' : row.status === 'completed' ? 'Completed' : 'Cancelled'}
-            </AdminBadge>
-        ),
-    },
-];
+export default function TransfersIndex({ transfers, filters, shops }: TransfersIndexProps) {
+    const shopName = (id: number) => shops.find((shop) => shop.id === id)?.name ?? 'Unknown shop';
 
-export default function TransfersIndex({ transfers, filters }: TransfersIndexProps) {
+    const columns: DataTableColumn<TransferRow>[] = [
+        { key: 'sku_code', label: 'SKU' },
+        { key: 'model', label: 'Product', render: (row) => `${row.brand} ${row.model}` },
+        { key: 'quantity', label: 'Qty/Unit', render: (row) => (row.inventory_item_id ? '1 unit' : row.quantity) },
+        { key: 'from_shop_id', label: 'From', render: (row) => shopName(row.from_shop_id) },
+        { key: 'to_shop_id', label: 'To', render: (row) => shopName(row.to_shop_id) },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => (
+                <AdminBadge status={row.status === 'completed' ? 'success' : row.status === 'cancelled' ? 'neutral' : 'info'}>
+                    {row.status === 'in_transit' ? 'In transit' : row.status === 'completed' ? 'Completed' : 'Cancelled'}
+                </AdminBadge>
+            ),
+        },
+    ];
+
     const [status, setStatus] = useState(filters.status);
+    const [loading, setLoading] = useState(false);
     const skipNextFetch = useRef(true);
 
     useEffect(() => {
@@ -57,14 +63,22 @@ export default function TransfersIndex({ transfers, filters }: TransfersIndexPro
         }
 
         const timeout = setTimeout(() => {
-            router.get('/admin/inventory/transfers', { status: status || undefined }, { preserveState: true, preserveScroll: true, replace: true });
+            router.get(
+                '/admin/inventory/transfers',
+                { status: status || undefined },
+                { only: ['transfers'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
+            );
         }, 200);
 
         return () => clearTimeout(timeout);
     }, [status]);
 
     function goToPage(page: number) {
-        router.get('/admin/inventory/transfers', { status: status || undefined, page }, { preserveState: true, preserveScroll: true, replace: true });
+        router.get(
+            '/admin/inventory/transfers',
+            { status: status || undefined, page },
+            { only: ['transfers'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
+        );
     }
 
     return (
@@ -80,12 +94,13 @@ export default function TransfersIndex({ transfers, filters }: TransfersIndexPro
             <InventorySubNav />
 
             <ResponsiveDataTable
-                columns={COLUMNS}
+                columns={columns}
                 rows={transfers.data}
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="model"
                 mobileStatusField="status"
                 mobileDetailFields={['sku_code', 'from_shop_id', 'to_shop_id']}
+                loading={loading}
                 toolbar={
                     <select
                         value={status}

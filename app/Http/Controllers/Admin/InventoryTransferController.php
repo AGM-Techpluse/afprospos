@@ -51,6 +51,7 @@ final class InventoryTransferController
                 'status' => $request->string('status')->toString(),
                 'shop_id' => $request->integer('shop_id') ?: null,
             ],
+            'shops' => $this->shops->all(),
         ]);
     }
 
@@ -60,7 +61,7 @@ final class InventoryTransferController
 
         abort_if($detail === null, 404);
 
-        return Inertia::render('Admin/Inventory/Transfers/Show', ['transfer' => $detail]);
+        return Inertia::render('Admin/Inventory/Transfers/Show', ['transfer' => $detail, 'shops' => $this->shops->all()]);
     }
 
     public function store(InitiateInventoryTransferRequest $request): RedirectResponse

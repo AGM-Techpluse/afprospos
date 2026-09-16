@@ -14,13 +14,18 @@ type Transfer = {
     from_shop_id: number;
     to_shop_id: number;
     initiated_by_staff_id: number;
+    initiated_by_staff_name: string | null;
     received_by_staff_id: number | null;
+    received_by_staff_name: string | null;
     status: 'in_transit' | 'completed' | 'cancelled';
     created_at: string;
 };
 
-export default function TransferShow({ transfer }: { transfer: Transfer }) {
+type Shop = { id: number; name: string };
+
+export default function TransferShow({ transfer, shops }: { transfer: Transfer; shops: Shop[] }) {
     const { post, processing } = useForm();
+    const shopName = (id: number) => shops.find((shop) => shop.id === id)?.name ?? 'Unknown shop';
 
     function receive() {
         post(`/admin/inventory/transfers/${transfer.id}/receive`);
@@ -73,20 +78,20 @@ export default function TransferShow({ transfer }: { transfer: Transfer }) {
                     </div>
                     <div className="flex justify-between">
                         <dt className="text-admin-text2">From shop</dt>
-                        <dd className="text-admin-text">#{transfer.from_shop_id}</dd>
+                        <dd className="text-admin-text">{shopName(transfer.from_shop_id)}</dd>
                     </div>
                     <div className="flex justify-between">
                         <dt className="text-admin-text2">To shop</dt>
-                        <dd className="text-admin-text">#{transfer.to_shop_id}</dd>
+                        <dd className="text-admin-text">{shopName(transfer.to_shop_id)}</dd>
                     </div>
                     <div className="flex justify-between">
                         <dt className="text-admin-text2">Initiated by</dt>
-                        <dd className="text-admin-text">Staff #{transfer.initiated_by_staff_id}</dd>
+                        <dd className="text-admin-text">{transfer.initiated_by_staff_name ?? 'Staff member'}</dd>
                     </div>
                     {transfer.received_by_staff_id && (
                         <div className="flex justify-between">
                             <dt className="text-admin-text2">Received by</dt>
-                            <dd className="text-admin-text">Staff #{transfer.received_by_staff_id}</dd>
+                            <dd className="text-admin-text">{transfer.received_by_staff_name ?? 'Staff member'}</dd>
                         </div>
                     )}
                 </dl>

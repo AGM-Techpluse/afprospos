@@ -126,7 +126,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         ))}
                     </div>
                     {grantableShops.length > 0 && (
-                        <form onSubmit={grantShop} className="flex items-center gap-2 pt-3 border-t border-admin-border">
+                        <form onSubmit={grantShop} className="flex flex-col sm:flex-row sm:items-center gap-2 pt-3 border-t border-admin-border">
                             <select
                                 value={shopToGrant}
                                 onChange={(e) => setShopToGrant(Number(e.target.value))}
@@ -138,7 +138,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                                     </option>
                                 ))}
                             </select>
-                            <AdminButton type="submit" variant="neutral">
+                            <AdminButton type="submit" variant="neutral" className="shrink-0">
                                 Grant access
                             </AdminButton>
                         </form>
@@ -160,7 +160,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                     ))}
                 </div>
                 {assignableRoles.length > 0 && (
-                    <form onSubmit={assignRole} className="flex items-center gap-2 max-w-sm pt-4 border-t border-admin-border">
+                    <form onSubmit={assignRole} className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-sm pt-4 border-t border-admin-border">
                         <select
                             value={roleToAssign}
                             onChange={(e) => setRoleToAssign(e.target.value)}
@@ -172,7 +172,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                                 </option>
                             ))}
                         </select>
-                        <AdminButton type="submit" variant="neutral">
+                        <AdminButton type="submit" variant="neutral" className="shrink-0">
                             Assign role
                         </AdminButton>
                     </form>

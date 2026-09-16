@@ -25,10 +25,13 @@ type Paginated<T> = {
     total: number;
 };
 
+type Shop = { id: number; name: string };
+
 interface StaffIndexProps {
     staff: Paginated<StaffRow>;
     filters: { search: string; status: string; role: string; shop_id: number | null };
     availableRoles: string[];
+    shops: Shop[];
 }
 
 const COLUMNS: DataTableColumn<StaffRow>[] = [
@@ -53,11 +56,12 @@ const COLUMNS: DataTableColumn<StaffRow>[] = [
 
 const NO_FILTERS = { search: '', status: '', role: '' };
 
-export default function StaffIndex({ staff, filters, availableRoles }: StaffIndexProps) {
+export default function StaffIndex({ staff, filters, availableRoles, shops }: StaffIndexProps) {
     const { post, processing } = useForm();
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
     const [role, setRole] = useState(filters.role);
+    const [shopId, setShopId] = useState(filters.shop_id);
     const [refreshing, setRefreshing] = useState(false);
     const skipNextFetch = useRef(true);
 
@@ -72,18 +76,18 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
         const timeout = setTimeout(() => {
             router.get(
                 '/admin/staff',
-                { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: filters.shop_id ?? undefined },
+                { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: shopId ?? '' },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 350);
 
         return () => clearTimeout(timeout);
-    }, [search, status, role]);
+    }, [search, status, role, shopId]);
 
     function goToPage(page: number) {
         router.get(
             '/admin/staff',
-            { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: filters.shop_id ?? undefined, page },
+            { search: search || undefined, status: status || undefined, role: role || undefined, shop_id: shopId ?? '', page },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     }
@@ -101,6 +105,7 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
         setSearch(NO_FILTERS.search);
         setStatus(NO_FILTERS.status);
         setRole(NO_FILTERS.role);
+        setShopId(null);
         router.get('/admin/staff', {}, { preserveState: true, preserveScroll: true, replace: true });
     }
 
@@ -116,7 +121,7 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
                 title="Staff"
                 description={
                     filters.shop_id
-                        ? `Staff with access to Shop #${filters.shop_id}.`
+                        ? `Staff with access to ${shops.find((shop) => shop.id === filters.shop_id)?.name ?? 'this shop'}.`
                         : 'Manage staff accounts, roles, and shop access.'
                 }
                 backHref={filters.shop_id ? `/admin/shops/${filters.shop_id}` : undefined}
@@ -159,6 +164,18 @@ export default function StaffIndex({ staff, filters, availableRoles }: StaffInde
                             {availableRoles.map((r) => (
                                 <option key={r} value={r}>
                                     {r}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            value={shopId ?? ''}
+                            onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
+                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
+                        >
+                            <option value="">All shops</option>
+                            {shops.map((shop) => (
+                                <option key={shop.id} value={shop.id}>
+                                    {shop.name}
                                 </option>
                             ))}
                         </select>

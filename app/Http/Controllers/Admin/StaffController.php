@@ -73,6 +73,7 @@ final class StaffController
                 'shop_id' => $request->integer('shop_id') ?: null,
             ],
             'availableRoles' => $this->availableRoles->names(),
+            'shops' => $this->shopDirectory->all(),
         ]);
     }
 

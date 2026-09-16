@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import AdminAccountMenu from './AdminAccountMenu';
+import ShopSwitcher from './ShopSwitcher';
 import { AdminToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 
@@ -49,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'reports', label: 'Reports', icon: 'bar-chart-line', soon: true },
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
+            { key: 'device-catalog', label: 'Device catalog', icon: 'phone', href: '/admin/settings/device-catalog' },
         ],
     },
 ];
@@ -152,7 +154,7 @@ function NavGroups({ collapsed, activeKey, onNavigate }: { collapsed: boolean; a
 
 export default function AdminShell({ children }: AdminShellProps) {
     const { url } = usePage();
-    const { app_name, app_logo, auth } = usePage().props as any;
+    const { app_name, app_logo, auth, shopSwitcher } = usePage().props as any;
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(readStoredCollapsed);
     const activeKey = useActiveKey(url);
@@ -213,7 +215,7 @@ export default function AdminShell({ children }: AdminShellProps) {
             )}
 
             {/* Main Content Area */}
-            <div className={`flex-1 flex flex-col min-h-screen transition-[margin] duration-200 ${collapsed ? 'sm:ml-admin-sidebar-collapsed' : 'sm:ml-admin-sidebar'}`}>
+            <div className={`flex-1 min-w-0 flex flex-col min-h-screen transition-[margin] duration-200 ${collapsed ? 'sm:ml-admin-sidebar-collapsed' : 'sm:ml-admin-sidebar'}`}>
                 {/* Topbar */}
                 <header className="h-admin-topbar bg-admin-surface border-b border-admin-border flex items-center justify-between px-4 sm:px-6 z-10 sticky top-0">
                     <div className="flex items-center">
@@ -221,6 +223,11 @@ export default function AdminShell({ children }: AdminShellProps) {
                             <Icon name="list" className="text-xl" />
                         </button>
                         <h1 className="text-admin-md font-semibold sm:hidden">Admin</h1>
+                        {shopSwitcher?.accessible && (
+                            <div className="hidden sm:block">
+                                <ShopSwitcher accessible={shopSwitcher.accessible} active={shopSwitcher.active ?? null} />
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center space-x-4 text-admin-text2">
                         <Icon name="bell" className="cursor-pointer hover:text-admin-text" />

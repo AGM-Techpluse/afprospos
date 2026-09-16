@@ -45,4 +45,24 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
             'phone' => $customer->phone,
         ];
     }
+
+    public function findMany(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return CustomerRecord::query()
+            ->whereIn('id', array_unique($ids))
+            ->get()
+            ->mapWithKeys(static fn (CustomerRecord $customer): array => [
+                $customer->id => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'phone' => $customer->phone,
+                ],
+            ])
+            ->all();
+    }
 }

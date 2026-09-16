@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Domain\Inventory\Application\Queries;
 
+use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryTransferRecord;
 
 final class InventoryTransferQuery
 {
+    public function __construct(private readonly StaffDirectoryQuery $staff) {}
+
     /**
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
@@ -66,7 +69,11 @@ final class InventoryTransferQuery
             'from_shop_id' => $transfer->from_shop_id,
             'to_shop_id' => $transfer->to_shop_id,
             'initiated_by_staff_id' => $transfer->initiated_by_staff_id,
+            'initiated_by_staff_name' => $this->staff->find($transfer->initiated_by_staff_id)['name'] ?? null,
             'received_by_staff_id' => $transfer->received_by_staff_id,
+            'received_by_staff_name' => $transfer->received_by_staff_id !== null
+                ? ($this->staff->find($transfer->received_by_staff_id)['name'] ?? null)
+                : null,
             'status' => $transfer->status,
             'created_at' => $transfer->created_at?->toIso8601String(),
         ];

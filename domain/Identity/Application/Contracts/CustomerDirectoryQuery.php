@@ -26,4 +26,14 @@ interface CustomerDirectoryQuery
      * @return array{id: int, name: string, email: ?string, phone: string}|null
      */
     public function find(int $id): ?array;
+
+    /**
+     * Batch lookup for a list/table page rendering many rows at once (e.g.
+     * Sales/Repairs history), so a paginated page needs one query instead
+     * of one `find()` per row.
+     *
+     * @param  int[]  $ids
+     * @return array<int, array{id: int, name: string, email: ?string, phone: string}> keyed by customer id
+     */
+    public function findMany(array $ids): array;
 }

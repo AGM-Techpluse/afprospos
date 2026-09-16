@@ -27,15 +27,18 @@ interface AdminInfoCardProps {
  * The shared "info panel" shape for read-only/display content (a
  * detail view, a role's permission grid, a stock breakdown) — distinct
  * from a `<form>` container, which CLAUDE.md's Invariant #19 forbids
- * wrapping in a card. A soft shadow + icon-chip header replaces the
- * flat border-only box every one of these panels used to hand-roll
+ * wrapping in a card. An icon-chip header replaces the flat border-only
+ * box every one of these panels used to hand-roll
  * (`bg-admin-surface border border-admin-border rounded-admin-card p-6`)
  * with no visual hierarchy between the title and the border around it.
+ * No shadow: the UI/UX doc's §6.1/§8.8 rule is explicit that the
+ * confirmation modal is the *only* Admin surface allowed one — every
+ * other Admin panel, including this one, stays flat/border-driven.
  */
 export default function AdminInfoCard({ title, icon, iconColor = 'blue', description, actions, children, className = '' }: AdminInfoCardProps) {
     return (
-        <div className={`flex flex-col bg-admin-surface border border-admin-border rounded-admin-modal shadow-admin-card overflow-hidden ${className}`}>
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-admin-border shrink-0">
+        <div className={`flex flex-col bg-admin-surface border border-admin-border rounded-admin-card overflow-hidden ${className}`}>
+            <div className="flex flex-wrap items-start gap-3 px-6 py-4 border-b border-admin-border shrink-0">
                 {icon && (
                     <span
                         className={`w-9 h-9 rounded-admin-button flex items-center justify-center shrink-0 text-base ${ICON_COLOR_CLASSES[iconColor]}`}

@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace Domain\Sales\Application\Queries;
 
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
+use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 
 /** Backs Admin Sales/Show and Sales/Receipt. */
 final class SaleDetailQuery
 {
-    public function __construct(private readonly InventoryCatalogQuery $catalog) {}
+    public function __construct(
+        private readonly InventoryCatalogQuery $catalog,
+        private readonly CustomerDirectoryQuery $customers,
+        private readonly ShopDirectoryQuery $shops,
+    ) {}
 
     /** @return array<string, mixed>|null */
     public function find(int $saleId): ?array
@@ -35,7 +41,9 @@ final class SaleDetailQuery
             'id' => $sale->id,
             'sales_checkout_id' => $sale->sales_checkout_id,
             'shop_id' => $sale->shop_id,
+            'shop_name' => $this->shops->find($sale->shop_id)['name'] ?? null,
             'customer_id' => $sale->customer_id,
+            'customer_name' => $sale->customer_id !== null ? ($this->customers->find($sale->customer_id)['name'] ?? null) : null,
             'cashier_staff_id' => $sale->cashier_staff_id,
             'total_minor' => $sale->total_minor,
             'payment_method' => $sale->payment_method,

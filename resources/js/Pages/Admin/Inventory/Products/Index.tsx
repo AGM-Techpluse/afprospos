@@ -22,11 +22,14 @@ type ProductRow = {
     low_stock_threshold: number | null;
 };
 
+type Shop = { id: number; name: string };
+
 type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
 
 interface ProductsIndexProps {
     products: Paginated<ProductRow>;
-    filters: { search: string; category: string; brand: string };
+    filters: { search: string; category: string; brand: string; shop_id: number | null };
+    shops: Shop[];
 }
 
 function formatNaira(minor: number): string {
@@ -48,12 +51,14 @@ const COLUMNS: DataTableColumn<ProductRow>[] = [
     { key: 'selling_price_minor', label: 'Price', render: (row) => formatNaira(row.selling_price_minor) },
 ];
 
-export default function ProductsIndex({ products, filters }: ProductsIndexProps) {
+export default function ProductsIndex({ products, filters, shops }: ProductsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const [category, setCategory] = useState(filters.category);
     const [brand, setBrand] = useState(filters.brand);
+    const [shopId, setShopId] = useState(filters.shop_id);
+    const [loading, setLoading] = useState(false);
     const skipNextFetch = useRef(true);
-    const hasActiveFilters = Boolean(filters.search || filters.category || filters.brand);
+    const hasActiveFilters = Boolean(filters.search || filters.category || filters.brand || filters.shop_id);
 
     useEffect(() => {
         if (skipNextFetch.current) {
@@ -64,19 +69,19 @@ export default function ProductsIndex({ products, filters }: ProductsIndexProps)
         const timeout = setTimeout(() => {
             router.get(
                 '/admin/inventory/products',
-                { search: search || undefined, category: category || undefined, brand: brand || undefined },
-                { preserveState: true, preserveScroll: true, replace: true },
+                { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '' },
+                { only: ['products'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
             );
         }, 350);
 
         return () => clearTimeout(timeout);
-    }, [search, category, brand]);
+    }, [search, category, brand, shopId]);
 
     function goToPage(page: number) {
         router.get(
             '/admin/inventory/products',
-            { search: search || undefined, category: category || undefined, brand: brand || undefined, page },
-            { preserveState: true, preserveScroll: true, replace: true },
+            { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '', page },
+            { only: ['products'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
         );
     }
 
@@ -85,7 +90,12 @@ export default function ProductsIndex({ products, filters }: ProductsIndexProps)
         setSearch('');
         setCategory('');
         setBrand('');
-        router.get('/admin/inventory/products', {}, { preserveState: true, preserveScroll: true, replace: true });
+        setShopId(null);
+        router.get(
+            '/admin/inventory/products',
+            {},
+            { only: ['products'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
+        );
     }
 
     return (
@@ -107,6 +117,7 @@ export default function ProductsIndex({ products, filters }: ProductsIndexProps)
                 mobilePrimaryField="model"
                 mobileStatusField="is_serialized"
                 mobileDetailFields={['sku_code', 'brand', 'category', 'selling_price_minor']}
+                loading={loading}
                 toolbar={
                     <>
                         <div className="relative flex-1 min-w-[160px] max-w-[260px]">
@@ -133,6 +144,18 @@ export default function ProductsIndex({ products, filters }: ProductsIndexProps)
                             placeholder="Brand"
                             className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg w-28"
                         />
+                        <select
+                            value={shopId ?? ''}
+                            onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
+                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
+                        >
+                            <option value="">All shops</option>
+                            {shops.map((shop) => (
+                                <option key={shop.id} value={shop.id}>
+                                    {shop.name}
+                                </option>
+                            ))}
+                        </select>
                         <div className="flex-1" />
                         {hasActiveFilters && (
                             <AdminButton type="button" variant="warning" onClick={clearFilters}>

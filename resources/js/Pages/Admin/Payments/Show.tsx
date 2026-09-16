@@ -16,9 +16,11 @@ type PaymentDetail = {
     status: string;
     provider_reference: string | null;
     confirmed_by_staff_id: number | null;
+    confirmed_by_staff_name: string | null;
     dispute_opened_at: string | null;
     dispute_proof_reference: string | null;
     dispute_resolved_by_staff_id: number | null;
+    dispute_resolved_by_staff_name: string | null;
     created_at: string;
 };
 
@@ -119,14 +121,14 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                     <DetailRow label="Method" value={payment.method.replace('_', ' ')} />
                     <DetailRow label="Amount" value={formatNaira(payment.amount_minor)} />
                     <DetailRow label="Provider reference" value={payment.provider_reference ?? '—'} />
-                    <DetailRow label="Confirmed by" value={payment.confirmed_by_staff_id ? `Staff #${payment.confirmed_by_staff_id}` : '—'} />
+                    <DetailRow label="Confirmed by" value={payment.confirmed_by_staff_id ? (payment.confirmed_by_staff_name ?? 'Staff member') : '—'} />
                     {payment.dispute_opened_at && (
                         <>
                             <DetailRow label="Dispute opened" value={new Date(payment.dispute_opened_at).toLocaleString()} />
                             <DetailRow label="Dispute proof" value={payment.dispute_proof_reference ?? '—'} />
                             <DetailRow
                                 label="Dispute resolved by"
-                                value={payment.dispute_resolved_by_staff_id ? `Staff #${payment.dispute_resolved_by_staff_id}` : '—'}
+                                value={payment.dispute_resolved_by_staff_id ? (payment.dispute_resolved_by_staff_name ?? 'Staff member') : '—'}
                             />
                         </>
                     )}

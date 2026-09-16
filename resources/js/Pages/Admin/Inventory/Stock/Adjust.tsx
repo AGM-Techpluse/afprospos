@@ -17,7 +17,9 @@ type StockLevel = {
     available: number;
 };
 
-export default function StockAdjust({ level }: { level: StockLevel }) {
+type Shop = { id: number; name: string };
+
+export default function StockAdjust({ level, shop }: { level: StockLevel; shop: Shop | null }) {
     const { data, setData, post, processing, errors } = useForm({
         delta: '',
         reason: '',
@@ -37,7 +39,7 @@ export default function StockAdjust({ level }: { level: StockLevel }) {
 
             <AdminPageHead
                 title={`Adjust ${level.brand} ${level.model}`}
-                description={`${level.sku_code} — Shop #${level.shop_id}: ${level.on_hand} on hand, ${level.reserved} reserved, ${level.available} available.`}
+                description={`${level.sku_code} — ${shop?.name ?? 'Unknown shop'}: ${level.on_hand} on hand, ${level.reserved} reserved, ${level.available} available.`}
                 backHref="/admin/inventory/stock"
                 backLabel="Back to stock"
             />

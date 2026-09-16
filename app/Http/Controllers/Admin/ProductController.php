@@ -28,18 +28,24 @@ final class ProductController
 
     public function index(Request $request): Response
     {
+        $actor = app(ActorContext::class);
+        $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+
         return Inertia::render('Admin/Inventory/Products/Index', [
             'products' => $this->catalog->paginate(
                 search: $request->string('search')->toString() ?: null,
                 category: $request->string('category')->toString() ?: null,
                 brand: $request->string('brand')->toString() ?: null,
                 page: $request->integer('page', 1),
+                shopId: $shopId,
             ),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'category' => $request->string('category')->toString(),
                 'brand' => $request->string('brand')->toString(),
+                'shop_id' => $shopId,
             ],
+            'shops' => $this->shops->all(),
         ]);
     }
 

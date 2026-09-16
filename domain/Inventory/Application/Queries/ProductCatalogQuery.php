@@ -16,7 +16,7 @@ final class ProductCatalogQuery
     /**
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20): array
+    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20, ?int $shopId = null): array
     {
         $query = SkuRecord::query()->with('product')->orderBy('sku_code');
 
@@ -38,6 +38,18 @@ final class ProductCatalogQuery
             $query->whereHas('product', fn ($productQuery) => $productQuery->where('brand', $brand));
         }
 
+        if ($shopId !== null) {
+            // A serialized SKU never has a stockLevels row (quantity doesn't
+            // apply to an individually-tracked unit) — filtering on
+            // stockLevels alone would silently drop every serialized
+            // product from a shop-filtered list even when units of it
+            // exist at that shop, tracked instead via `items.current_shop_id`.
+            $query->where(function ($shopFilter) use ($shopId): void {
+                $shopFilter->whereHas('stockLevels', fn ($levelQuery) => $levelQuery->where('shop_id', $shopId))
+                    ->orWhereHas('items', fn ($itemQuery) => $itemQuery->where('current_shop_id', $shopId));
+            });
+        }
+
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
         return [
@@ -52,7 +64,7 @@ final class ProductCatalogQuery
     /** @return array<string, mixed>|null */
     public function find(int $skuId): ?array
     {
-        $sku = SkuRecord::query()->with(['product', 'stockLevels.sku'])->find($skuId);
+        $sku = SkuRecord::query()->with(['product', 'stockLevels.sku', 'items'])->find($skuId);
 
         return $sku !== null ? $this->toArray($sku, withStockBreakdown: true) : null;
     }
@@ -82,6 +94,35 @@ final class ProductCatalogQuery
                 'reserved' => $level->reserved,
                 'available' => $level->on_hand - $level->reserved,
             ])->all();
+
+            // Serialized SKUs have no stockLevels row at all (quantity
+            // doesn't apply to an individually-tracked unit) — each unit is
+            // its own row instead, so list them directly rather than
+            // leaving `stock_by_shop` empty and implying there's no stock.
+            $data['serialized_units'] = $sku->items->map(static fn ($item): array => [
+                'id' => $item->id,
+                'imei' => $item->imei,
+                'shop_id' => $item->current_shop_id,
+                'condition' => $item->condition,
+                'status' => $item->status,
+            ])->all();
+
+            // Business-wide totals (summed across every shop) for the
+            // detail page's headline stat row (UI/UX §14C.8) — computed
+            // once here from whichever source actually applies, so the
+            // page shows one number regardless of is_serialized rather
+            // than making the caller pick a branch.
+            if ($sku->is_serialized) {
+                $onHand = $sku->items->whereIn('status', ['available', 'reserved'])->count();
+                $reserved = $sku->items->where('status', 'reserved')->count();
+            } else {
+                $onHand = (int) $sku->stockLevels->sum('on_hand');
+                $reserved = (int) $sku->stockLevels->sum('reserved');
+            }
+
+            $data['on_hand'] = $onHand;
+            $data['reserved'] = $reserved;
+            $data['available'] = $onHand - $reserved;
         }
 
         return $data;

@@ -214,7 +214,8 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
     }
 
     const shop = shops.find((s) => s.id === checkout.shop_id);
-    const locked = isSubmitting || isExpired || checkout.status !== 'open';
+    const closed = isExpired || checkout.status !== 'open';
+    const locked = isSubmitting || closed;
 
     function addItem(skuId: number) {
         setInlineError(null);
@@ -235,7 +236,9 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
             `/admin/sales/checkout/${checkout!.id}/items`,
             { sku_id: skuId, quantity: 1 },
             {
+                only: ['checkout'],
                 preserveScroll: true,
+                showProgress: false,
                 onError: (errors) => setInlineError({ skuId, message: errors.sku_id ?? 'Could not add this item.' }),
                 onFinish: () => setIsSubmitting(false),
             },
@@ -250,7 +253,9 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
             `/admin/sales/checkout/${checkout!.id}/items/${itemId}`,
             { quantity },
             {
+                only: ['checkout'],
                 preserveScroll: true,
+                showProgress: false,
                 onError: (errors) =>
                     setInlineError({ skuId: skuId ?? itemId, message: errors.quantity ?? 'Could not update quantity.' }),
                 onFinish: () => setIsSubmitting(false),
@@ -261,7 +266,9 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
     function removeItem(itemId: number) {
         setIsSubmitting(true);
         router.delete(`/admin/sales/checkout/${checkout!.id}/items/${itemId}`, {
+            only: ['checkout'],
             preserveScroll: true,
+            showProgress: false,
             onFinish: () => setIsSubmitting(false),
         });
     }
@@ -305,7 +312,7 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
             <Head title="Checkout" />
 
             <AdminPageHead
-                title={`Checkout — ${shop?.name ?? `Shop #${checkout.shop_id}`}`}
+                title={`Checkout — ${shop?.name ?? 'Unknown shop'}`}
                 description={checkout.customer_name ?? 'Walk-in customer'}
                 actions={<CheckoutExpiryTimer expiresAt={checkout.reservation_expires_at} onExpire={() => setIsExpired(true)} />}
             />
@@ -321,12 +328,12 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
                 </div>
             )}
 
-            <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] ${locked ? 'pointer-events-none opacity-60' : ''}`}>
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4 h-[520px]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                <div className={`bg-admin-surface border border-admin-border rounded-admin-card p-4 h-[520px] ${closed ? 'pointer-events-none opacity-60' : ''}`}>
                     <ProductSearch shopId={checkout.shop_id} onAdd={addItem} inlineError={inlineError} disabled={locked} />
                 </div>
 
-                <div className="bg-admin-text rounded-admin-card p-4 flex flex-col">
+                <div className={`bg-admin-text rounded-admin-card p-4 flex flex-col ${closed ? 'pointer-events-none opacity-60' : ''}`}>
                     <div className="flex-1 min-h-0 mb-4">
                         <POSCart
                             items={checkout.items}
@@ -336,6 +343,7 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
                             onRemoveItem={removeItem}
                             onChangeQuantity={changeQuantity}
                             disabled={locked}
+                            loading={isSubmitting}
                         />
                     </div>
 

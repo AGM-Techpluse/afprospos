@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Domain\Sales\Application\Queries;
 
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
 use Illuminate\Support\Carbon;
 
 /** Backs Admin Sales/Index — paginated, search/filter per the standing table-pages rule. */
 final class SalesHistoryQuery
 {
+    public function __construct(private readonly CustomerDirectoryQuery $customers) {}
+
     /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
     public function paginate(?string $search, ?int $shopId, int $page, int $perPage = 20): array
     {
@@ -24,12 +27,15 @@ final class SalesHistoryQuery
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
+        $sales = $paginator->getCollection();
+        $customers = $this->customers->findMany($sales->pluck('customer_id')->filter()->unique()->all());
 
         return [
-            'data' => $paginator->getCollection()->map(static fn (SaleRecord $sale): array => [
+            'data' => $sales->map(static fn (SaleRecord $sale): array => [
                 'id' => $sale->id,
                 'shop_id' => $sale->shop_id,
                 'customer_id' => $sale->customer_id,
+                'customer_name' => $sale->customer_id !== null ? ($customers[$sale->customer_id]['name'] ?? null) : null,
                 'total_minor' => $sale->total_minor,
                 'payment_method' => $sale->payment_method,
                 'invoice_number' => $sale->invoice_number,

@@ -21,6 +21,8 @@
                  vendor/bin/phpunit -c phpunit.concurrency.xml -->
             <exclude>tests/Feature/Inventory/Concurrency</exclude>
             <exclude>tests/Feature/Sales/Concurrency</exclude>
+            <exclude>tests/Feature/Payments/Concurrency</exclude>
+            <exclude>tests/Feature/Collection/Concurrency</exclude>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

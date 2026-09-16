@@ -2,11 +2,13 @@ import { FormEvent, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
-import AdminBadge from '../../../../Components/Admin/AdminBadge';
+import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
+import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
+type SerializedUnit = { id: number; imei: string; shop_id: number; condition: string; status: string };
 
 type Sku = {
     id: number;
@@ -21,11 +23,22 @@ type Sku = {
     selling_price_overridden: boolean;
     low_stock_threshold: number | null;
     stock_by_shop: StockByShop[];
+    serialized_units: SerializedUnit[];
+    on_hand: number;
+    reserved: number;
+    available: number;
 };
 
 function formatNaira(minor: number): string {
     return `₦${(minor / 100).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`;
 }
+
+const UNIT_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
+    available: 'success',
+    reserved: 'warning',
+    transferring: 'info',
+    sold: 'neutral',
+};
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
@@ -62,6 +75,14 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                 backHref="/admin/inventory/products"
                 backLabel="Back to products"
             />
+
+            {/* UI/UX §14C.8's headline stat row — the total across every shop, so "how many of this do we have" has one clear answer regardless of serialized vs. bulk. Per-shop detail is still below, for the breakdown. */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <AdminStatCard label="On hand" value={String(sku.on_hand)} />
+                <AdminStatCard label="Reserved" value={String(sku.reserved)} />
+                <AdminStatCard label="Available" value={String(sku.available)} />
+                <AdminStatCard label="Low-stock threshold" value={sku.low_stock_threshold !== null ? String(sku.low_stock_threshold) : '—'} />
+            </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
                 <AdminInfoCard title="Details" icon="info-circle" iconColor="blue">
@@ -100,13 +121,36 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                     </dl>
                 </AdminInfoCard>
 
-                <AdminInfoCard title="Stock by shop" icon="shop" iconColor="green">
-                    {sku.stock_by_shop.length === 0 ? (
-                        <p className="text-admin-text2 text-sm">
-                            {sku.is_serialized
-                                ? 'No stock breakdown for serialized units here — see the Stock page for individual units.'
-                                : 'No stock recorded at any shop yet.'}
-                        </p>
+                <AdminInfoCard title={sku.is_serialized ? 'Units by shop' : 'Stock by shop'} icon="shop" iconColor="green">
+                    {sku.is_serialized ? (
+                        sku.serialized_units.length === 0 ? (
+                            <p className="text-admin-text2 text-sm">No units received yet.</p>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-admin-text2 text-xs">
+                                        <th className="pb-2">IMEI</th>
+                                        <th className="pb-2">Shop</th>
+                                        <th className="pb-2">Condition</th>
+                                        <th className="pb-2 text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-admin-border">
+                                    {sku.serialized_units.map((unit) => (
+                                        <tr key={unit.id}>
+                                            <td className="py-2 text-admin-text font-mono text-xs">{unit.imei}</td>
+                                            <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
+                                            <td className="py-2 text-admin-text capitalize">{unit.condition}</td>
+                                            <td className="py-2 text-right">
+                                                <AdminBadge status={UNIT_STATUS_BADGE[unit.status] ?? 'neutral'}>{unit.status}</AdminBadge>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )
+                    ) : sku.stock_by_shop.length === 0 ? (
+                        <p className="text-admin-text2 text-sm">No stock recorded at any shop yet.</p>
                     ) : (
                         <table className="w-full text-sm">
                             <thead>
@@ -120,7 +164,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                             <tbody className="divide-y divide-admin-border">
                                 {sku.stock_by_shop.map((row) => (
                                     <tr key={row.shop_id}>
-                                        <td className="py-2 text-admin-text">Shop #{row.shop_id}</td>
+                                        <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === row.shop_id)?.name ?? 'Unknown shop'}</td>
                                         <td className="py-2 text-right text-admin-text">{row.on_hand}</td>
                                         <td className="py-2 text-right text-admin-text">{row.reserved}</td>
                                         <td className="py-2 text-right text-admin-text font-semibold">{row.available}</td>
