@@ -7,6 +7,7 @@ import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBad
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import Icon from '../../../Components/Icons/Icon';
 import RevenueChart, { RevenuePoint } from '../../../Features/Shop/RevenueChart';
+import RevenueBreakdownChart, { RevenueBreakdownSlice } from '../../../Features/Shop/RevenueBreakdownChart';
 import { formatNaira } from '../../../lib/money';
 
 type RepairRow = {
@@ -48,7 +49,7 @@ interface DashboardProps {
     recentRepairs: RepairRow[];
     recentSales: SaleRow[];
     loginActivity: LoginEvent[];
-    shopAnalytics: { revenue_series: RevenuePoint[] } | null;
+    shopAnalytics: { revenue_series: RevenuePoint[]; revenue_breakdown: RevenueBreakdownSlice[] } | null;
     activeShop: { id: number; name: string } | null;
 }
 
@@ -186,9 +187,15 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
             </div>
 
             {shopAnalytics && (
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5 mb-6">
-                    <h2 className="text-sm font-semibold text-admin-text mb-3">Revenue (last 14 days)</h2>
-                    <RevenueChart series={shopAnalytics.revenue_series} />
+                <div className="grid gap-4 lg:grid-cols-2 mb-6 items-stretch">
+                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
+                        <h2 className="text-sm font-semibold text-admin-text mb-3">Revenue (last 14 days)</h2>
+                        <RevenueChart series={shopAnalytics.revenue_series} />
+                    </div>
+                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
+                        <h2 className="text-sm font-semibold text-admin-text mb-3">Revenue by stream</h2>
+                        <RevenueBreakdownChart breakdown={shopAnalytics.revenue_breakdown} />
+                    </div>
                 </div>
             )}
 
@@ -256,7 +263,7 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
                     <ul className="divide-y divide-admin-border">
                         {loginActivity.map((event) => (
                             <li key={event.id} className="flex items-center justify-between gap-2 py-2">
-                                <span className="text-sm text-admin-text">{event.actor_name ?? `Staff #${event.actor_staff_id}`}</span>
+                                <span className="text-sm text-admin-text">{event.actor_name ?? 'Staff member'}</span>
                                 <span className="text-xs text-admin-text3">{new Date(event.created_at).toLocaleString()}</span>
                             </li>
                         ))}

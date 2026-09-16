@@ -13,6 +13,7 @@ use Domain\Shared\Domain\Exceptions\ShopScopeViolation;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Domain\Shop\Application\Contracts\ActiveShopSessionStore;
+use Domain\Shop\Application\Handlers\EnsureActiveShopSelectedHandler;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,7 @@ final class ResolveShopContext
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ShopScopePolicy $shopScope,
         private readonly ActiveShopSessionStore $activeShopSession,
+        private readonly EnsureActiveShopSelectedHandler $ensureActiveShop,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -60,6 +62,8 @@ final class ResolveShopContext
                 $activeShopId = null;
             }
         }
+
+        $activeShopId = $this->ensureActiveShop->resolve($isOwner, $grantedShopIds, $activeShopId);
 
         $context = new ActorContext(
             staffId: new StaffId($staff->id),

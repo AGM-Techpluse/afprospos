@@ -6,8 +6,11 @@ namespace Domain\Shop\Application\Queries;
 
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
+use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\RBAC\Infrastructure\Persistence\Eloquent\StaffShopGrantRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
+use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Support\Carbon;
 
@@ -33,6 +36,7 @@ final class ShopAnalyticsQuery
      *     sales_count: int,
      *     revenue_minor: int,
      *     revenue_series: array<int, array{date: string, revenue_minor: int}>,
+     *     revenue_breakdown: array<int, array{stream: string, label: string, revenue_minor: int}>,
      * }
      */
     public function forShop(int $shopId): array
@@ -43,6 +47,7 @@ final class ShopAnalyticsQuery
             'sales_count' => SaleRecord::query()->where('shop_id', $shopId)->count(),
             'revenue_minor' => (int) SaleRecord::query()->where('shop_id', $shopId)->sum('total_minor'),
             'revenue_series' => $this->revenueSeries($shopId),
+            'revenue_breakdown' => $this->revenueBreakdown($shopId),
         ];
     }
 
@@ -69,6 +74,46 @@ final class ShopAnalyticsQuery
             ->count();
 
         return $nonSerialized + $serialized;
+    }
+
+    /**
+     * Revenue by stream, for the Dashboard's pie chart — sourced from
+     * Payments' confirmed transaction ledger (grouped by its own
+     * `payable_type`, DBDD §16.1) rather than re-deriving "what counts as
+     * revenue" separately per module, so a future stream (warranty,
+     * trade-in) only ever needs one more entry in $streams, not a new
+     * query shape. Streams with zero confirmed revenue are omitted rather
+     * than rendered as an empty pie slice.
+     *
+     * @return array<int, array{stream: string, label: string, revenue_minor: int}>
+     */
+    private function revenueBreakdown(int $shopId): array
+    {
+        $streams = [
+            ['stream' => 'sales_checkout', 'label' => 'Sales', 'payableTable' => 'sales_checkouts'],
+            ['stream' => 'repair_job', 'label' => 'Repairs', 'payableTable' => 'repair_jobs'],
+        ];
+
+        $breakdown = [];
+
+        foreach ($streams as $stream) {
+            $payableIds = match ($stream['payableTable']) {
+                'sales_checkouts' => SalesCheckoutRecord::query()->where('shop_id', $shopId)->pluck('id'),
+                'repair_jobs' => RepairJobRecord::query()->where('shop_id', $shopId)->pluck('id'),
+            };
+
+            $revenueMinor = (int) PaymentTransactionRecord::query()
+                ->where('payable_type', $stream['stream'])
+                ->where('status', 'confirmed')
+                ->whereIn('payable_id', $payableIds)
+                ->sum('amount_minor');
+
+            if ($revenueMinor > 0) {
+                $breakdown[] = ['stream' => $stream['stream'], 'label' => $stream['label'], 'revenue_minor' => $revenueMinor];
+            }
+        }
+
+        return $breakdown;
     }
 
     /** @return array<int, array{date: string, revenue_minor: int}> */

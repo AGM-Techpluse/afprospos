@@ -4,6 +4,8 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminStatCard from '../../../Components/Admin/AdminStatCard';
+import Icon from '../../../Components/Icons/Icon';
+import { initialsFor } from '../../../lib/initials';
 import RevenueChart, { RevenuePoint } from '../../../Features/Shop/RevenueChart';
 import { formatNaira } from '../../../lib/money';
 
@@ -43,31 +45,43 @@ export default function ShopShow({ shop, analytics }: { shop: Shop; analytics: S
             />
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_1fr] mb-6">
-                <div className="h-full bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <dl className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                            <dt className="text-admin-text2">SKU prefix code</dt>
-                            <dd className="text-admin-text">{shop.sku_prefix_code}</dd>
+                <div className="h-full bg-admin-surface-dark border border-admin-surface-dark-border rounded-admin-card p-6 flex flex-col">
+                    <div className="flex items-center gap-3.5 mb-6">
+                        <div className="h-11 w-11 rounded-full bg-admin-surface-dark-border text-admin-surface-dark-text text-sm font-bold flex items-center justify-center shrink-0">
+                            {initialsFor(shop.name)}
                         </div>
-                        <div className="flex justify-between">
-                            <dt className="text-admin-text2">Address</dt>
-                            <dd className="text-admin-text text-right">{shop.address}</dd>
+                        <div className="min-w-0">
+                            <p className="text-admin-md font-semibold text-admin-surface-dark-text truncate">{shop.name}</p>
+                            <p className="text-admin-xs text-admin-surface-dark-text2 truncate">{shop.sku_prefix_code}</p>
                         </div>
-                        <div className="flex justify-between">
-                            <dt className="text-admin-text2">Contact phone</dt>
-                            <dd className="text-admin-text">{shop.contact_phone}</dd>
+                        <div className="ml-auto shrink-0">
+                            <AdminBadge status={shop.status === 'active' ? 'success' : 'neutral'}>
+                                {shop.status === 'active' ? 'Active' : 'Inactive'}
+                            </AdminBadge>
                         </div>
-                        <div className="flex justify-between">
-                            <dt className="text-admin-text2">Contact email</dt>
-                            <dd className="text-admin-text">{shop.contact_email}</dd>
+                    </div>
+
+                    <dl className="space-y-4 text-sm">
+                        <div className="flex items-start gap-3">
+                            <Icon name="geo-alt" className="text-admin-surface-dark-text2 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <dt className="text-xs text-admin-surface-dark-text2 mb-0.5">Address</dt>
+                                <dd className="text-admin-surface-dark-text">{shop.address}</dd>
+                            </div>
                         </div>
-                        <div className="flex justify-between">
-                            <dt className="text-admin-text2">Status</dt>
-                            <dd>
-                                <AdminBadge status={shop.status === 'active' ? 'success' : 'neutral'}>
-                                    {shop.status === 'active' ? 'Active' : 'Inactive'}
-                                </AdminBadge>
-                            </dd>
+                        <div className="flex items-start gap-3">
+                            <Icon name="telephone" className="text-admin-surface-dark-text2 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <dt className="text-xs text-admin-surface-dark-text2 mb-0.5">Contact phone</dt>
+                                <dd className="text-admin-surface-dark-text">{shop.contact_phone}</dd>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <Icon name="envelope" className="text-admin-surface-dark-text2 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <dt className="text-xs text-admin-surface-dark-text2 mb-0.5">Contact email</dt>
+                                <dd className="text-admin-surface-dark-text truncate">{shop.contact_email}</dd>
+                            </div>
                         </div>
                     </dl>
                 </div>

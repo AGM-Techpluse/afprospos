@@ -36,6 +36,10 @@
     --color-admin-border-danger: var(--a-border-danger);
     --color-admin-border-success: var(--a-border-success);
     --color-admin-overlay: var(--a-overlay);
+    --color-admin-surface-dark: var(--a-surface-dark);
+    --color-admin-surface-dark-text: var(--a-surface-dark-text);
+    --color-admin-surface-dark-text2: var(--a-surface-dark-text2);
+    --color-admin-surface-dark-border: var(--a-surface-dark-border);
 
     /* Customer Colors */
     --color-customer-page-start: var(--c-page-start);

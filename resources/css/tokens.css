@@ -120,7 +120,10 @@
   --a-bg: #F5F6F8;
   --a-surface: #FFFFFF;
   --a-paper: #FBF9F3;
-  --a-border: #E4E7EC;
+  /* Bumped from the original #E4E7EC (near-invisible against --a-bg) to the
+     same weight as --a-border2 per direct user feedback — every card/table
+     border should read as clearly as a button's, not fade into the page. */
+  --a-border: #D0D5DD;
   --a-border2: #D0D5DD;
   --a-text: #101828;
   --a-text2: #667085;
@@ -142,6 +145,13 @@
   --a-table-head: #FAFBFC;
   --a-hover: #F2F3F6;
   --a-focus: #C7D6FC;
+  /* A deliberately dark "profile card" surface (Shop detail's left card) —
+     reuses --color-black rather than a new hex, since that's already the
+     exact tone this theme treats as "ink". */
+  --a-surface-dark: var(--color-black);
+  --a-surface-dark-text: var(--color-white);
+  --a-surface-dark-text2: var(--neutral-400);
+  --a-surface-dark-border: rgba(255, 255, 255, .1);
   --a-border-warning: #F5D999;
   --a-border-danger: #F6C6C1;
   --a-border-success: #D5F0DD;
