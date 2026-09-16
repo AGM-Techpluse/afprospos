@@ -13,6 +13,7 @@ use Domain\Collection\Domain\Exceptions\ReleaseBlockedByOutstandingBalance;
 use Domain\Collection\Domain\Repositories\CollectionCaseEventRepository;
 use Domain\Collection\Domain\Repositories\CollectionCaseRepository;
 use Domain\Collection\Domain\ValueObjects\CollectionCaseId;
+use Domain\Repair\Application\Contracts\DeviceLockClearer;
 use Domain\Repair\Application\Contracts\RepairFinancialStatusQuery;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Illuminate\Support\Facades\Event;
@@ -24,6 +25,7 @@ final class ReleaseRepairDeviceHandler
         private readonly CollectionCaseRepository $cases,
         private readonly CollectionCaseEventRepository $events,
         private readonly RepairFinancialStatusQuery $repairFinancialStatus,
+        private readonly DeviceLockClearer $deviceLockClearer,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -53,6 +55,10 @@ final class ReleaseRepairDeviceHandler
 
             $case->resolve();
             $this->cases->save($case);
+
+            if ($case->sourceType() === 'repair_job') {
+                $this->deviceLockClearer->clear($case->sourceId(), $command->releasedByStaffId);
+            }
 
             $this->audit->record(
                 module: 'Collection',

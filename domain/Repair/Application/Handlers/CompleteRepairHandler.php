@@ -33,7 +33,7 @@ final class CompleteRepairHandler
             $job = $this->repairJobs->lockForUpdate($jobId);
             $actor = new StaffId($command->completedByStaffId);
 
-            $job->complete($command->financialStatus);
+            $job->complete($command->financialStatus, $command->resolutionNotes);
             $this->repairJobs->save($job);
 
             $this->audit->record(
@@ -44,7 +44,7 @@ final class CompleteRepairHandler
                 subjectType: 'repair_job',
                 subjectId: $jobId->value,
                 beforeState: null,
-                afterState: ['financial_status' => $command->financialStatus],
+                afterState: ['financial_status' => $command->financialStatus, 'resolution_notes' => $command->resolutionNotes],
             );
 
             Event::dispatch(new RepairCompleted($jobId->value, $command->financialStatus, CarbonImmutable::now()));

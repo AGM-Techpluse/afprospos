@@ -12,6 +12,8 @@ use App\Http\Requests\Admin\Repairs\FailRepairRequest;
 use App\Http\Requests\Admin\Repairs\MarkRepairUnrepairableRequest;
 use App\Http\Requests\Admin\Repairs\RecordDiagnosisRequest;
 use App\Http\Requests\Admin\Repairs\ReserveRepairPartsRequest;
+use App\Http\Requests\Admin\Repairs\UpdateDeviceLockRequest;
+use App\Http\Requests\Admin\Repairs\UploadRepairPhotoRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
@@ -20,6 +22,7 @@ use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Application\Commands\CompleteRepairCommand;
 use Domain\Repair\Application\Commands\ConfirmDownPaymentCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
+use Domain\Repair\Application\Commands\DeleteRepairPhotoCommand;
 use Domain\Repair\Application\Commands\FailRepairCommand;
 use Domain\Repair\Application\Commands\InstallRepairPartCommand;
 use Domain\Repair\Application\Commands\MarkRepairUnrepairableCommand;
@@ -27,11 +30,14 @@ use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Application\Commands\ResumeRepairCommand;
 use Domain\Repair\Application\Commands\StartRepairCommand;
+use Domain\Repair\Application\Commands\UpdateDeviceLockCommand;
+use Domain\Repair\Application\Commands\UploadRepairPhotoCommand;
 use Domain\Repair\Application\Handlers\AssignTechnicianHandler;
 use Domain\Repair\Application\Handlers\AuthorizeRepairHandler;
 use Domain\Repair\Application\Handlers\CompleteRepairHandler;
 use Domain\Repair\Application\Handlers\ConfirmDownPaymentHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
+use Domain\Repair\Application\Handlers\DeleteRepairPhotoHandler;
 use Domain\Repair\Application\Handlers\FailRepairHandler;
 use Domain\Repair\Application\Handlers\InstallRepairPartHandler;
 use Domain\Repair\Application\Handlers\MarkRepairUnrepairableHandler;
@@ -39,6 +45,9 @@ use Domain\Repair\Application\Handlers\RecordDiagnosisHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Application\Handlers\ResumeRepairHandler;
 use Domain\Repair\Application\Handlers\StartRepairHandler;
+use Domain\Repair\Application\Handlers\UpdateDeviceLockHandler;
+use Domain\Repair\Application\Handlers\UploadRepairPhotoHandler;
+use Domain\Repair\Application\Queries\DeviceCatalogQuery;
 use Domain\Repair\Application\Queries\RepairJobDetailQuery;
 use Domain\Repair\Application\Queries\RepairsListQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
@@ -72,20 +81,32 @@ final class RepairsController
         private readonly MarkRepairUnrepairableHandler $markUnrepairable,
         private readonly AssignTechnicianHandler $assignTechnician,
         private readonly StaffDirectoryQuery $staff,
+        private readonly DeviceCatalogQuery $deviceCatalog,
+        private readonly UpdateDeviceLockHandler $updateDeviceLock,
+        private readonly UploadRepairPhotoHandler $uploadPhoto,
+        private readonly DeleteRepairPhotoHandler $deletePhoto,
     ) {}
 
     public function index(Request $request): Response
     {
+        $actor = app(ActorContext::class);
+
+        // No explicit ?shop_id= at all (a fresh nav from the sidebar) defaults
+        // to whatever shop is active in the switcher; an explicit empty value
+        // (picking "All shops" in the filter) is a deliberate override.
+        $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+
         return Inertia::render('Admin/Repairs/Index', [
             'repairs' => $this->list->paginate(
                 status: $request->string('status')->toString() ?: null,
-                shopId: $request->integer('shop_id') ?: null,
+                shopId: $shopId,
                 page: $request->integer('page', 1),
             ),
             'filters' => [
                 'status' => $request->string('status')->toString(),
-                'shop_id' => $request->integer('shop_id') ?: null,
+                'shop_id' => $shopId,
             ],
+            'shops' => $this->shops->all(),
         ]);
     }
 
@@ -93,6 +114,7 @@ final class RepairsController
     {
         return Inertia::render('Admin/Repairs/Create', [
             'shops' => $this->shops->all(),
+            'deviceCatalog' => $this->deviceCatalog->structure(),
         ]);
     }
 
@@ -105,6 +127,11 @@ final class RepairsController
             customerId: $request->integer('customer_id'),
             deviceMake: $request->string('device_make')->toString(),
             deviceModel: $request->string('device_model')->toString(),
+            reportedIssue: $request->string('reported_issue')->toString() ?: null,
+            deviceImeiSerial: $request->string('device_imei_serial')->toString() ?: null,
+            deviceLockType: $request->string('device_lock_type')->toString() ?: 'none',
+            deviceLockValue: $request->string('device_lock_value')->toString() ?: null,
+            problemTagIds: array_map('intval', $request->array('problem_tag_ids') ?? []),
             labourChargeMinor: $request->integer('labour_charge_minor'),
             createdByStaffId: $actor->staffId->value,
         ));
@@ -114,12 +141,14 @@ final class RepairsController
 
     public function show(int $repair): Response
     {
-        $data = $this->detail->find($repair);
+        $actor = app(ActorContext::class);
+        $data = $this->detail->find($repair, $actor->staffId->value, $actor->isOwner);
 
         abort_if($data === null, 404);
 
         return Inertia::render('Admin/Repairs/Show', [
             'repair' => $data,
+            'shop' => $this->shops->find((int) $data['shop_id']),
             'technicians' => $this->staff->paginate(
                 search: null,
                 status: 'active',
@@ -129,6 +158,45 @@ final class RepairsController
                 shopId: (int) $data['shop_id'],
             )['data'],
         ]);
+    }
+
+    public function updateDeviceLock(UpdateDeviceLockRequest $request, int $repair): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->updateDeviceLock->handle(new UpdateDeviceLockCommand(
+            repairJobId: $repair,
+            deviceLockType: $request->string('device_lock_type')->toString(),
+            deviceLockValue: $request->string('device_lock_value')->toString() ?: null,
+            updatedByStaffId: $actor->staffId->value,
+        ));
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
+    /** File handling is a Controller-level concern (CPNC §2.3) -- the Command carries only the already-stored path. */
+    public function uploadPhoto(UploadRepairPhotoRequest $request, int $repair): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $path = $request->file('photo')->store("repairs/{$repair}", 'public');
+
+        $this->uploadPhoto->handle(new UploadRepairPhotoCommand(
+            repairJobId: $repair,
+            path: $path,
+            caption: $request->string('caption')->toString() ?: null,
+            uploadedByStaffId: $actor->staffId->value,
+        ));
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
+    public function deletePhoto(int $repair, int $photo): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->deletePhoto->handle(new DeleteRepairPhotoCommand($photo, $actor->staffId->value));
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
     public function assignTechnician(AssignTechnicianRequest $request, int $repair): RedirectResponse
@@ -159,8 +227,8 @@ final class RepairsController
 
         $this->guardTransition(fn () => $this->recordDiagnosis->handle(new RecordDiagnosisCommand(
             repairJobId: $repair,
-            component: $request->string('component')->toString(),
-            condition: $request->string('condition')->toString(),
+            component: $request->string('component')->toString() ?: null,
+            condition: $request->string('condition')->toString() ?: null,
             notes: $request->string('notes')->toString() ?: null,
             outcome: $request->string('outcome')->toString() ?: null,
             diagnosedByStaffId: $actor->staffId->value,
@@ -198,7 +266,10 @@ final class RepairsController
 
         abort_if($data === null, 404);
 
-        return Inertia::render('Admin/Repairs/Parts', ['repair' => $data]);
+        return Inertia::render('Admin/Repairs/Parts', [
+            'repair' => $data,
+            'suggestedParts' => $this->deviceCatalog->suggestedPartsForRepair($repair, (int) $data['shop_id']),
+        ]);
     }
 
     public function collection(int $repair): Response
@@ -247,6 +318,7 @@ final class RepairsController
         $this->guardTransition(fn () => $this->completeRepair->handle(new CompleteRepairCommand(
             repairJobId: $repair,
             financialStatus: $request->string('financial_status')->toString(),
+            resolutionNotes: $request->string('resolution_notes')->toString() ?: null,
             completedByStaffId: $actor->staffId->value,
         )));
 

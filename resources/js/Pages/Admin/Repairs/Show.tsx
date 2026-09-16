@@ -5,14 +5,26 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import RepairStatusStepper from '../../../Features/Repairs/RepairStatusStepper';
+import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
+import PatternLockPad from '../../../Features/Repairs/PatternLockPad';
+import RepairPhotoGallery, { RepairPhoto } from '../../../Features/Repairs/RepairPhotoGallery';
 import { formatNaira } from '../../../lib/money';
 
 type RepairDetail = {
     id: number;
     shop_id: number;
     customer_id: number;
+    customer_name: string | null;
     device_make: string;
     device_model: string;
+    reported_issue: string | null;
+    device_imei_serial: string | null;
+    device_lock_type: DeviceLockType;
+    device_lock_present: boolean;
+    device_lock_value: string | null;
+    device_lock_visible_to_you: boolean;
+    problem_tags: { id: number; label: string }[];
+    photos: RepairPhoto[];
     technician_staff_id: number | null;
     labour_charge_minor: number;
     down_payment_required_minor: number | null;
@@ -20,14 +32,17 @@ type RepairDetail = {
     repair_status: string;
     financial_status: string;
     unrepairable_settlement_state: string | null;
+    resolution_notes: string | null;
     created_at: string;
     collection_case: { id: number; status: string; context: string; collection_deadline_at: string } | null;
 };
 
 type Technician = { id: number; name: string };
+type Shop = { id: number; name: string };
 
 interface RepairShowProps {
     repair: RepairDetail;
+    shop: Shop | null;
     technicians: Technician[];
 }
 
@@ -42,19 +57,33 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 const CLOSED_STATUSES = ['completed', 'unrepairable', 'expired_cancelled'];
 
-export default function RepairShow({ repair, technicians }: RepairShowProps) {
+export default function RepairShow({ repair, shop, technicians }: RepairShowProps) {
     const confirm = useConfirm();
     const [processing, setProcessing] = useState(false);
     const [downPayment, setDownPayment] = useState('');
     const [downPaymentMethod, setDownPaymentMethod] = useState('cash');
     const [financialStatus, setFinancialStatus] = useState('fully_paid');
+    const [resolutionNotes, setResolutionNotes] = useState('');
     const [failReason, setFailReason] = useState('');
     const [settlementState, setSettlementState] = useState('pending_decision');
     const [technicianId, setTechnicianId] = useState(repair.technician_staff_id?.toString() ?? '');
+    const [editingLock, setEditingLock] = useState(false);
+    const [lockType, setLockType] = useState<DeviceLockType>(repair.device_lock_type);
+    const [lockValue, setLockValue] = useState(repair.device_lock_value ?? '');
 
     function post(url: string, data: Record<string, string> = {}) {
         setProcessing(true);
         router.post(url, data, { onFinish: () => setProcessing(false) });
+    }
+
+    function saveDeviceLock(e: FormEvent) {
+        e.preventDefault();
+        setProcessing(true);
+        router.post(
+            `/admin/repairs/${repair.id}/device-lock`,
+            { device_lock_type: lockType, device_lock_value: lockValue },
+            { onFinish: () => setProcessing(false), onSuccess: () => setEditingLock(false) },
+        );
     }
 
     function assignTechnician(e: FormEvent) {
@@ -75,7 +104,7 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
 
     function completeRepair(e: FormEvent) {
         e.preventDefault();
-        post(`/admin/repairs/${repair.id}/complete`, { financial_status: financialStatus });
+        post(`/admin/repairs/${repair.id}/complete`, { financial_status: financialStatus, resolution_notes: resolutionNotes });
     }
 
     async function failRepair(e: FormEvent) {
@@ -104,7 +133,7 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
 
             <AdminPageHead
                 title={`${repair.device_make} ${repair.device_model}`}
-                description={`Repair #${repair.id} — Customer #${repair.customer_id}`}
+                description={`Repair #${repair.id} — ${repair.customer_name ?? 'Customer'}`}
             />
 
             <div className="mb-6">
@@ -113,6 +142,65 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                    {(repair.reported_issue || repair.problem_tags.length > 0) && (
+                        <div className="mb-4 pb-4 border-b border-admin-border">
+                            <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
+                            {repair.problem_tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                    {repair.problem_tags.map((tag) => (
+                                        <span key={tag.id} className="bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
+                                            {tag.label}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {repair.reported_issue && <p className="text-sm text-admin-text whitespace-pre-wrap">{repair.reported_issue}</p>}
+                        </div>
+                    )}
+                    <DetailRow label="Shop" value={shop ? shop.name : 'Unknown shop'} />
+                    {repair.device_imei_serial && <DetailRow label="IMEI / serial" value={repair.device_imei_serial} />}
+
+                    <div className="py-2.5 border-b border-admin-border">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm text-admin-text2">Device lock</span>
+                            {!editingLock && (
+                                <button type="button" onClick={() => setEditingLock(true)} className="text-xs font-semibold text-admin-blue">
+                                    {repair.device_lock_present ? 'Edit' : 'Add'}
+                                </button>
+                            )}
+                        </div>
+
+                        {editingLock ? (
+                            <form onSubmit={saveDeviceLock}>
+                                <DeviceLockInput lockType={lockType} lockValue={lockValue} onChange={(t, v) => { setLockType(t); setLockValue(v); }} />
+                                <div className="flex items-center gap-2">
+                                    <AdminButton type="submit" variant="neutral" isLoading={processing}>
+                                        Save
+                                    </AdminButton>
+                                    <AdminButton
+                                        type="button"
+                                        variant="neutral"
+                                        onClick={() => {
+                                            setEditingLock(false);
+                                            setLockType(repair.device_lock_type);
+                                            setLockValue(repair.device_lock_value ?? '');
+                                        }}
+                                    >
+                                        Cancel
+                                    </AdminButton>
+                                </div>
+                            </form>
+                        ) : !repair.device_lock_present ? (
+                            <p className="text-sm text-admin-text3">None set</p>
+                        ) : !repair.device_lock_visible_to_you ? (
+                            <p className="text-sm text-admin-text3">Set — hidden (only the assigned technician or Shop Owner can view it)</p>
+                        ) : repair.device_lock_type === 'code' ? (
+                            <p className="text-sm font-mono font-medium text-admin-text">{repair.device_lock_value}</p>
+                        ) : (
+                            <PatternLockPad value={repair.device_lock_value?.split('-').map(Number) ?? []} onChange={() => {}} readOnly />
+                        )}
+                    </div>
+
                     <DetailRow label="Labour charge" value={formatNaira(repair.labour_charge_minor)} />
                     <DetailRow
                         label="Down payment required"
@@ -125,9 +213,16 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
                     <DetailRow label="Financial status" value={repair.financial_status.replace(/_/g, ' ')} />
                     <DetailRow
                         label="Technician"
-                        value={repair.technician_staff_id ? (assignedTechnicianName ?? `Staff #${repair.technician_staff_id}`) : 'Unassigned'}
+                        value={repair.technician_staff_id ? (assignedTechnicianName ?? 'Assigned technician') : 'Unassigned'}
                     />
                     <DetailRow label="Received" value={new Date(repair.created_at).toLocaleString()} />
+
+                    {repair.resolution_notes && (
+                        <div className="mt-4 pt-4 border-t border-admin-border">
+                            <div className="text-sm text-admin-text2 mb-1">Resolution notes</div>
+                            <p className="text-sm text-admin-text whitespace-pre-wrap">{repair.resolution_notes}</p>
+                        </div>
+                    )}
 
                     {repair.collection_case && (
                         <div className="mt-4 pt-4 border-t border-admin-border">
@@ -242,6 +337,14 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
                                     <option value="partially_paid">Partially paid</option>
                                     <option value="unpaid">Unpaid</option>
                                 </select>
+                                <label className="text-xs font-semibold text-admin-text">Resolution notes (optional)</label>
+                                <textarea
+                                    value={resolutionNotes}
+                                    onChange={(e) => setResolutionNotes(e.target.value)}
+                                    rows={2}
+                                    placeholder="What was actually done — especially useful if no parts were used"
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                />
                                 <AdminButton type="submit" isLoading={processing}>
                                     Complete repair
                                 </AdminButton>
@@ -292,6 +395,10 @@ export default function RepairShow({ repair, technicians }: RepairShowProps) {
                         </p>
                     )}
                 </div>
+            </div>
+
+            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 max-w-4xl mt-6">
+                <RepairPhotoGallery repairId={repair.id} photos={repair.photos} disabled={CLOSED_STATUSES.includes(repair.repair_status)} />
             </div>
         </AdminShell>
     );

@@ -10,6 +10,7 @@ final readonly class CompleteRepairCommand
     public function __construct(
         public int $repairJobId,
         public string $financialStatus,
+        public ?string $resolutionNotes,
         public int $completedByStaffId,
     ) {}
 }

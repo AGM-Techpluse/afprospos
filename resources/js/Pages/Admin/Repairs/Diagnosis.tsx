@@ -3,6 +3,7 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import DiagnosisChecklist, { DiagnosisRow } from '../../../Features/Repairs/DiagnosisChecklist';
+import CommonComponentsCard from '../../../Features/Repairs/CommonComponentsCard';
 
 type RepairDetail = {
     id: number;
@@ -33,17 +34,25 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                 }
             />
 
-            <div className="max-w-2xl bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                <DiagnosisChecklist
+            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 items-start">
+                <div className="max-w-2xl bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                    <DiagnosisChecklist
+                        submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
+                        diagnoses={repair.diagnoses}
+                        disabled={finalized}
+                    />
+                    {finalized && (
+                        <p className="text-xs text-admin-text3 mt-4 pt-4 border-t border-admin-border">
+                            Diagnosis is finalized for this repair — no further observations can be added.
+                        </p>
+                    )}
+                </div>
+
+                <CommonComponentsCard
                     submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
-                    diagnoses={repair.diagnoses}
+                    diagnosedComponents={repair.diagnoses.map((d) => d.component)}
                     disabled={finalized}
                 />
-                {finalized && (
-                    <p className="text-xs text-admin-text3 mt-4 pt-4 border-t border-admin-border">
-                        Diagnosis is finalized for this repair — no further observations can be added.
-                    </p>
-                )}
             </div>
         </AdminShell>
     );

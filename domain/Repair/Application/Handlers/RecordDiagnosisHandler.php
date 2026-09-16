@@ -40,15 +40,17 @@ final class RecordDiagnosisHandler
                 $job->startDiagnosis();
             }
 
-            $diagnosis = RepairDiagnosis::record(
-                $jobId,
-                $command->component,
-                $command->condition,
-                $command->notes,
-                $command->outcome,
-                $actor,
-            );
-            $this->diagnoses->save($diagnosis);
+            if ($command->component !== null) {
+                $diagnosis = RepairDiagnosis::record(
+                    $jobId,
+                    $command->component,
+                    $command->condition,
+                    $command->notes,
+                    $command->outcome,
+                    $actor,
+                );
+                $this->diagnoses->save($diagnosis);
+            }
 
             if ($command->outcome !== null) {
                 $job->recordDiagnosisOutcome($command->outcome);

@@ -30,6 +30,11 @@ class UnrepairableDeviceCreatesReturnCaseTest extends TestCase
             customerId: $customer->id,
             deviceMake: 'Samsung',
             deviceModel: 'Galaxy S9',
+            reportedIssue: 'Water damage, will not power on',
+            deviceImeiSerial: '356938035601002',
+            deviceLockType: 'none',
+            deviceLockValue: null,
+            problemTagIds: [],
             labourChargeMinor: 0,
             createdByStaffId: $staff->id,
         ));

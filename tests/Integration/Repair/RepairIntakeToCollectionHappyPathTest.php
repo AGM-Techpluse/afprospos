@@ -54,6 +54,11 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
             customerId: $customer->id,
             deviceMake: 'Apple',
             deviceModel: 'iPhone 12',
+            reportedIssue: 'Screen cracked after a drop',
+            deviceImeiSerial: '356938035601001',
+            deviceLockType: 'code',
+            deviceLockValue: '1234',
+            problemTagIds: [],
             labourChargeMinor: 500000,
             createdByStaffId: $staff->id,
         ));
@@ -68,6 +73,8 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         ));
 
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_authorization']);
+        $this->assertSame('code', RepairJobRecord::query()->findOrFail($jobId)->device_lock_type);
+        $this->assertSame('1234', RepairJobRecord::query()->findOrFail($jobId)->device_lock_value); // decrypted transparently via the model's `encrypted` cast
 
         app(AuthorizeRepairHandler::class)->handle(new AuthorizeRepairCommand(
             repairJobId: $jobId,
@@ -111,7 +118,7 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         app(StartRepairHandler::class)->handle(new StartRepairCommand($jobId, $staff->id));
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'in_progress']);
 
-        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand($jobId, 'fully_paid', $staff->id));
+        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand($jobId, 'fully_paid', 'Replaced screen assembly', $staff->id));
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed', 'financial_status' => 'fully_paid']);
 
         $case = CollectionCaseRecord::query()->where('source_type', 'repair_job')->where('source_id', $jobId)->firstOrFail();
@@ -122,5 +129,10 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
 
         $this->assertDatabaseHas('collection_cases', ['id' => $case->id, 'status' => 'resolved']);
         $this->assertSame(1, RepairJobRecord::query()->count());
+
+        $releasedJob = RepairJobRecord::query()->findOrFail($jobId);
+        $this->assertSame('none', $releasedJob->device_lock_type);
+        $this->assertNull($releasedJob->device_lock_value);
+        $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceLockCleared', 'subject_id' => $jobId]);
     }
 }

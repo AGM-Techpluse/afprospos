@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Domain\Repair\Application\Queries;
 
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 
 /** Backs Admin Repairs/Index — search/filter/pagination per the standing table-pages rule. */
 final class RepairsListQuery
 {
+    public function __construct(private readonly CustomerDirectoryQuery $customers) {}
+
     /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
     public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20): array
     {
@@ -23,9 +26,11 @@ final class RepairsListQuery
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
+        $jobs = $paginator->getCollection();
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
 
         return [
-            'data' => $paginator->getCollection()->map(fn (RepairJobRecord $job): array => $this->toArray($job))->all(),
+            'data' => $jobs->map(fn (RepairJobRecord $job): array => $this->toArray($job, $customers))->all(),
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'per_page' => $paginator->perPage(),
@@ -55,20 +60,23 @@ final class RepairsListQuery
             $query->where('shop_id', $shopId);
         }
 
-        return $query->orderByDesc('created_at')
-            ->limit($limit)
-            ->get()
-            ->map(fn (RepairJobRecord $job): array => $this->toArray($job))
-            ->all();
+        $jobs = $query->orderByDesc('created_at')->limit($limit)->get();
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
+
+        return $jobs->map(fn (RepairJobRecord $job): array => $this->toArray($job, $customers))->all();
     }
 
-    /** @return array<string, mixed> */
-    private function toArray(RepairJobRecord $job): array
+    /**
+     * @param  array<int, array{id: int, name: string, email: ?string, phone: string}>  $customers
+     * @return array<string, mixed>
+     */
+    private function toArray(RepairJobRecord $job, array $customers): array
     {
         return [
             'id' => $job->id,
             'shop_id' => $job->shop_id,
             'customer_id' => $job->customer_id,
+            'customer_name' => $customers[$job->customer_id]['name'] ?? null,
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
             'technician_staff_id' => $job->technician_staff_id,

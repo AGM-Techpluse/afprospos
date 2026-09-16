@@ -31,6 +31,10 @@ final class RepairJob
         private readonly CustomerId $customerId,
         private readonly string $deviceMake,
         private readonly string $deviceModel,
+        private readonly ?string $reportedIssue,
+        private readonly ?string $deviceImeiSerial,
+        private string $deviceLockType,
+        private ?string $deviceLockValue,
         private ?StaffId $technicianStaffId,
         private readonly Money $labourCharge,
         private ?Money $downPaymentRequired,
@@ -39,11 +43,13 @@ final class RepairJob
         private string $financialStatus,
         private ?DateTimeImmutable $estimatedCollectionDate,
         private ?string $unrepairableSettlementState,
+        private ?string $resolutionNotes,
     ) {}
 
-    public static function intake(ShopId $shopId, CustomerId $customerId, string $deviceMake, string $deviceModel, Money $labourCharge): self
+    /** @param  'none'|'code'|'pattern'  $deviceLockType */
+    public static function intake(ShopId $shopId, CustomerId $customerId, string $deviceMake, string $deviceModel, Money $labourCharge, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null): self
     {
-        return new self(null, $shopId, $customerId, $deviceMake, $deviceModel, null, $labourCharge, null, null, 'received', 'unpaid', null, null);
+        return new self(null, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, 'received', 'unpaid', null, null, null);
     }
 
     public static function reconstitute(
@@ -52,6 +58,10 @@ final class RepairJob
         CustomerId $customerId,
         string $deviceMake,
         string $deviceModel,
+        ?string $reportedIssue,
+        ?string $deviceImeiSerial,
+        string $deviceLockType,
+        ?string $deviceLockValue,
         ?StaffId $technicianStaffId,
         Money $labourCharge,
         ?Money $downPaymentRequired,
@@ -60,8 +70,9 @@ final class RepairJob
         string $financialStatus,
         ?DateTimeImmutable $estimatedCollectionDate,
         ?string $unrepairableSettlementState,
+        ?string $resolutionNotes,
     ): self {
-        return new self($id, $shopId, $customerId, $deviceMake, $deviceModel, $technicianStaffId, $labourCharge, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState);
+        return new self($id, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes);
     }
 
     public function startDiagnosis(): void
@@ -140,12 +151,20 @@ final class RepairJob
         $this->technicianStaffId = $technicianStaffId;
     }
 
-    /** @param  'unpaid'|'partially_paid'|'fully_paid'  $financialStatus */
-    public function complete(string $financialStatus): void
+    /**
+     * `resolutionNotes` is optional even here — a repair that used parts
+     * already has the part reservations as its record of what was done;
+     * this is the only record for a parts-less repair (reflow, a software
+     * fix, reseating a cable), but nothing forces a technician to fill it.
+     *
+     * @param  'unpaid'|'partially_paid'|'fully_paid'  $financialStatus
+     */
+    public function complete(string $financialStatus, ?string $resolutionNotes = null): void
     {
         $this->assertTransition('completed');
         $this->status = 'completed';
         $this->financialStatus = $financialStatus;
+        $this->resolutionNotes = $resolutionNotes;
     }
 
     public function fail(): void
@@ -186,6 +205,20 @@ final class RepairJob
         $this->estimatedCollectionDate = $date;
     }
 
+    /** @param  'none'|'code'|'pattern'  $type */
+    public function setDeviceLock(string $type, ?string $value): void
+    {
+        $this->deviceLockType = $type;
+        $this->deviceLockValue = $type === 'none' ? null : $value;
+    }
+
+    /** Called once the device is back with the customer (Collection's release flow) — there's no legitimate reason to keep holding their passcode/pattern after that. */
+    public function clearDeviceLock(): void
+    {
+        $this->deviceLockType = 'none';
+        $this->deviceLockValue = null;
+    }
+
     private function assertTransition(string $to): void
     {
         if (! (new RepairTransitionPolicy)->canTransition($this->status, $to)) {
@@ -216,6 +249,27 @@ final class RepairJob
     public function deviceModel(): string
     {
         return $this->deviceModel;
+    }
+
+    public function reportedIssue(): ?string
+    {
+        return $this->reportedIssue;
+    }
+
+    public function deviceImeiSerial(): ?string
+    {
+        return $this->deviceImeiSerial;
+    }
+
+    /** @return 'none'|'code'|'pattern' */
+    public function deviceLockType(): string
+    {
+        return $this->deviceLockType;
+    }
+
+    public function deviceLockValue(): ?string
+    {
+        return $this->deviceLockValue;
     }
 
     public function technicianStaffId(): ?StaffId
@@ -256,5 +310,10 @@ final class RepairJob
     public function unrepairableSettlementState(): ?string
     {
         return $this->unrepairableSettlementState;
+    }
+
+    public function resolutionNotes(): ?string
+    {
+        return $this->resolutionNotes;
     }
 }

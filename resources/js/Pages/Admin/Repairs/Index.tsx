@@ -12,6 +12,7 @@ type RepairRow = {
     id: number;
     shop_id: number;
     customer_id: number;
+    customer_name: string | null;
     device_make: string;
     device_model: string;
     technician_staff_id: number | null;
@@ -20,11 +21,14 @@ type RepairRow = {
     created_at: string;
 };
 
+type Shop = { id: number; name: string };
+
 type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
 
 interface RepairsIndexProps {
     repairs: Paginated<RepairRow>;
     filters: { status: string; shop_id: number | null };
+    shops: Shop[];
 }
 
 const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
@@ -40,25 +44,39 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     failed_requires_resolution: 'danger',
 };
 
-const COLUMNS: DataTableColumn<RepairRow>[] = [
-    { key: 'device_make', label: 'Device', render: (row) => `${row.device_make} ${row.device_model}` },
-    { key: 'customer_id', label: 'Customer', render: (row) => `#${row.customer_id}` },
-    {
-        key: 'repair_status',
-        label: 'Status',
-        render: (row) => <AdminBadge status={STATUS_BADGE[row.repair_status] ?? 'neutral'}>{row.repair_status.replace(/_/g, ' ')}</AdminBadge>,
-    },
-    { key: 'financial_status', label: 'Financial', render: (row) => row.financial_status.replace(/_/g, ' ') },
-    { key: 'created_at', label: 'Received', render: (row) => new Date(row.created_at).toLocaleDateString() },
-];
+export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexProps) {
+    const shopName = (shopId: number) => shops.find((shop) => shop.id === shopId)?.name ?? 'Unknown shop';
 
-export default function RepairsIndex({ repairs, filters }: RepairsIndexProps) {
-    function applyStatus(status: string) {
-        router.get('/admin/repairs', { status: status || undefined }, { preserveState: true, preserveScroll: true, replace: true });
+    const columns: DataTableColumn<RepairRow>[] = [
+        { key: 'device_make', label: 'Device', render: (row) => `${row.device_make} ${row.device_model}` },
+        { key: 'shop_id', label: 'Shop', render: (row) => shopName(row.shop_id) },
+        { key: 'customer_id', label: 'Customer', render: (row) => row.customer_name ?? 'Customer' },
+        {
+            key: 'repair_status',
+            label: 'Status',
+            render: (row) => <AdminBadge status={STATUS_BADGE[row.repair_status] ?? 'neutral'}>{row.repair_status.replace(/_/g, ' ')}</AdminBadge>,
+        },
+        { key: 'financial_status', label: 'Financial', render: (row) => row.financial_status.replace(/_/g, ' ') },
+        { key: 'created_at', label: 'Received', render: (row) => new Date(row.created_at).toLocaleDateString() },
+    ];
+
+    function applyFilters(next: { status?: string; shop_id?: number | null }) {
+        router.get(
+            '/admin/repairs',
+            {
+                status: next.status ?? filters.status ?? undefined,
+                shop_id: 'shop_id' in next ? (next.shop_id ?? '') : (filters.shop_id ?? undefined),
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
     }
 
     function goToPage(page: number) {
-        router.get('/admin/repairs', { status: filters.status || undefined, page }, { preserveState: true, preserveScroll: true, replace: true });
+        router.get(
+            '/admin/repairs',
+            { status: filters.status || undefined, shop_id: filters.shop_id ?? undefined, page },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
     }
 
     return (
@@ -77,25 +95,39 @@ export default function RepairsIndex({ repairs, filters }: RepairsIndexProps) {
             />
 
             <ResponsiveDataTable
-                columns={COLUMNS}
+                columns={columns}
                 rows={repairs.data}
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="device_make"
                 mobileStatusField="repair_status"
-                mobileDetailFields={['customer_id', 'financial_status', 'created_at']}
+                mobileDetailFields={['shop_id', 'customer_id', 'financial_status', 'created_at']}
                 toolbar={
-                    <select
-                        value={filters.status}
-                        onChange={(e) => applyStatus(e.target.value)}
-                        className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                    >
-                        <option value="">All statuses</option>
-                        {Object.keys(STATUS_BADGE).map((status) => (
-                            <option key={status} value={status}>
-                                {status.replace(/_/g, ' ')}
-                            </option>
-                        ))}
-                    </select>
+                    <>
+                        <select
+                            value={filters.shop_id ?? ''}
+                            onChange={(e) => applyFilters({ shop_id: e.target.value ? Number(e.target.value) : null })}
+                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                        >
+                            <option value="">All shops</option>
+                            {shops.map((shop) => (
+                                <option key={shop.id} value={shop.id}>
+                                    {shop.name}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            value={filters.status}
+                            onChange={(e) => applyFilters({ status: e.target.value })}
+                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                        >
+                            <option value="">All statuses</option>
+                            {Object.keys(STATUS_BADGE).map((status) => (
+                                <option key={status} value={status}>
+                                    {status.replace(/_/g, ' ')}
+                                </option>
+                            ))}
+                        </select>
+                    </>
                 }
                 renderActions={(row) => (
                     <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${row.id}`)}>

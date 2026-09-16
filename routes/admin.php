@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DeviceCatalogController;
 use App\Http\Controllers\Admin\InventoryImportController;
+use App\Http\Controllers\Admin\InventorySerializedUnitsController;
 use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
 use App\Http\Controllers\Admin\PaymentController;
@@ -186,6 +188,10 @@ Route::prefix('admin')
             ->get('/inventory/stock/low', [InventoryStockController::class, 'lowStock'])
             ->name('inventory.stock.low');
 
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/serialized-units', [InventorySerializedUnitsController::class, 'index'])
+            ->name('inventory.serialized-units.index');
+
         Route::middleware('permission:inventory.edit')
             ->get('/inventory/stock/{sku}/{shop}/adjust', [InventoryStockController::class, 'adjustForm'])
             ->whereNumber(['sku', 'shop'])
@@ -329,6 +335,71 @@ Route::prefix('admin')
             ->whereNumber('payment')
             ->name('payments.refund');
 
+        /*
+        |----------------------------------------------------------------
+        | Repair intake device catalog (Settings)
+        |----------------------------------------------------------------
+        */
+        Route::middleware('permission:repairs.manage')
+            ->get('/settings/device-catalog', [DeviceCatalogController::class, 'index'])
+            ->name('settings.device-catalog.index');
+
+        Route::middleware('permission:repairs.manage')
+            ->get('/settings/device-catalog/parts/search', [DeviceCatalogController::class, 'searchParts'])
+            ->name('settings.device-catalog.parts.search');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/types', [DeviceCatalogController::class, 'storeType'])
+            ->name('settings.device-catalog.types.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/device-catalog/types/{type}', [DeviceCatalogController::class, 'updateType'])
+            ->whereNumber('type')
+            ->name('settings.device-catalog.types.update');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/device-catalog/types/{type}', [DeviceCatalogController::class, 'destroyType'])
+            ->whereNumber('type')
+            ->name('settings.device-catalog.types.destroy');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/brands', [DeviceCatalogController::class, 'storeBrand'])
+            ->name('settings.device-catalog.brands.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/device-catalog/brands/{brand}', [DeviceCatalogController::class, 'updateBrand'])
+            ->whereNumber('brand')
+            ->name('settings.device-catalog.brands.update');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/device-catalog/brands/{brand}', [DeviceCatalogController::class, 'destroyBrand'])
+            ->whereNumber('brand')
+            ->name('settings.device-catalog.brands.destroy');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/problem-tags', [DeviceCatalogController::class, 'storeProblemTag'])
+            ->name('settings.device-catalog.problem-tags.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/device-catalog/problem-tags/{tag}', [DeviceCatalogController::class, 'updateProblemTag'])
+            ->whereNumber('tag')
+            ->name('settings.device-catalog.problem-tags.update');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/device-catalog/problem-tags/{tag}', [DeviceCatalogController::class, 'destroyProblemTag'])
+            ->whereNumber('tag')
+            ->name('settings.device-catalog.problem-tags.destroy');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/problem-tags/{tag}/suggested-parts', [DeviceCatalogController::class, 'attachSuggestedPart'])
+            ->whereNumber('tag')
+            ->name('settings.device-catalog.suggested-parts.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/device-catalog/suggested-parts/{suggestedPart}', [DeviceCatalogController::class, 'detachSuggestedPart'])
+            ->whereNumber('suggestedPart')
+            ->name('settings.device-catalog.suggested-parts.destroy');
+
         Route::middleware('permission:repairs.view')
             ->get('/repairs', [RepairsController::class, 'index'])
             ->name('repairs.index');
@@ -400,6 +471,21 @@ Route::prefix('admin')
             ->post('/repairs/{repair}/assign-technician', [RepairsController::class, 'assignTechnician'])
             ->whereNumber('repair')
             ->name('repairs.assign-technician');
+
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/device-lock', [RepairsController::class, 'updateDeviceLock'])
+            ->whereNumber('repair')
+            ->name('repairs.device-lock.update');
+
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/photos', [RepairsController::class, 'uploadPhoto'])
+            ->whereNumber('repair')
+            ->name('repairs.photos.store');
+
+        Route::middleware('permission:repairs.edit')
+            ->delete('/repairs/{repair}/photos/{photo}', [RepairsController::class, 'deletePhoto'])
+            ->whereNumber(['repair', 'photo'])
+            ->name('repairs.photos.destroy');
 
         Route::middleware('permission:repairs.edit')
             ->post('/repairs/{repair}/start', [RepairsController::class, 'start'])

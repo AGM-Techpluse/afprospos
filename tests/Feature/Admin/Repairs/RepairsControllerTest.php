@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Repairs;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Repair\Application\Commands\CreateDeviceProblemTagCommand;
+use Domain\Repair\Application\Commands\CreateDeviceTypeCommand;
+use Domain\Repair\Application\Handlers\CreateDeviceProblemTagHandler;
+use Domain\Repair\Application\Handlers\CreateDeviceTypeHandler;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\CustomerRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
@@ -46,6 +50,44 @@ class RepairsControllerTest extends TestCase
         $showResponse = $this->actingAs($technician, 'staff')->get("/admin/repairs/{$jobId}");
         $showResponse->assertOk();
         $showResponse->assertInertia(fn ($page) => $page->component('Admin/Repairs/Show')->where('repair.id', $jobId));
+    }
+
+    public function test_intake_captures_imei_and_snapshots_selected_problem_tags(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $technician = StaffRecord::factory()->create();
+        $technician->assignRole('Technician');
+        $shop = ShopRecord::factory()->create();
+        $customer = CustomerRecord::factory()->create();
+
+        $typeId = app(CreateDeviceTypeHandler::class)->handle(new CreateDeviceTypeCommand('Smartphones', 'phone', 0, $technician->id));
+        $tagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Screen', 0, $technician->id));
+
+        $response = $this->actingAs($technician, 'staff')->post('/admin/repairs', [
+            'shop_id' => $shop->id,
+            'customer_id' => $customer->id,
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone 13',
+            'device_imei_serial' => '356938035601001',
+            'problem_tag_ids' => [$tagId],
+            'labour_charge_minor' => 500000,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('repair_jobs', ['device_make' => 'Apple', 'device_imei_serial' => '356938035601001']);
+
+        $jobId = RepairJobRecord::query()->latest('id')->first()->id;
+        $this->assertDatabaseHas('repair_job_problem_tags', [
+            'repair_job_id' => $jobId,
+            'device_problem_tag_id' => $tagId,
+            'label_snapshot' => 'Screen',
+        ]);
+
+        $showResponse = $this->actingAs($technician, 'staff')->get("/admin/repairs/{$jobId}");
+        $showResponse->assertInertia(fn ($page) => $page
+            ->where('repair.device_imei_serial', '356938035601001')
+            ->where('repair.problem_tags.0.label', 'Screen'));
     }
 
     public function test_index_renders_for_a_technician(): void

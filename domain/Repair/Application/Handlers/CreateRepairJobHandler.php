@@ -10,7 +10,10 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Events\RepairCreated;
+use Domain\Repair\Domain\Repositories\DeviceProblemTagRepository;
+use Domain\Repair\Domain\Repositories\RepairJobProblemTagRepository;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
+use Domain\Repair\Domain\ValueObjects\DeviceProblemTagId;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\ShopId;
@@ -21,6 +24,8 @@ final class CreateRepairJobHandler
 {
     public function __construct(
         private readonly RepairJobRepository $repairJobs,
+        private readonly DeviceProblemTagRepository $problemTags,
+        private readonly RepairJobProblemTagRepository $jobProblemTags,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -34,9 +39,18 @@ final class CreateRepairJobHandler
                 $command->deviceMake,
                 $command->deviceModel,
                 new Money($command->labourChargeMinor),
+                $command->reportedIssue,
+                $command->deviceImeiSerial,
+                $command->deviceLockType,
+                $command->deviceLockValue,
             );
 
             $id = $this->repairJobs->save($job);
+
+            foreach ($command->problemTagIds as $problemTagId) {
+                $tag = $this->problemTags->get(new DeviceProblemTagId($problemTagId));
+                $this->jobProblemTags->attach($id, $problemTagId, $tag->label());
+            }
 
             $this->audit->record(
                 module: 'Repair',
@@ -51,6 +65,11 @@ final class CreateRepairJobHandler
                     'customer_id' => $command->customerId,
                     'device_make' => $command->deviceMake,
                     'device_model' => $command->deviceModel,
+                    'reported_issue' => $command->reportedIssue,
+                    'device_imei_serial' => $command->deviceImeiSerial,
+                    // device_lock_value deliberately excluded — a device passcode/pattern never belongs in an audit log, even encrypted at rest elsewhere.
+                    'device_lock_type' => $command->deviceLockType,
+                    'problem_tag_ids' => $command->problemTagIds,
                     'labour_charge_minor' => $command->labourChargeMinor,
                 ],
             );

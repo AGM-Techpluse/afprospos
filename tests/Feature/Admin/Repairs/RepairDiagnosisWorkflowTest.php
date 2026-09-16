@@ -34,6 +34,27 @@ class RepairDiagnosisWorkflowTest extends TestCase
         $this->assertDatabaseHas('repair_diagnoses', ['repair_job_id' => $job->id, 'component' => 'screen', 'outcome' => 'repairable']);
     }
 
+    public function test_finalizing_with_only_an_outcome_and_no_new_component_does_not_require_component(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $technician = StaffRecord::factory()->create();
+        $technician->assignRole('Technician');
+        $job = RepairJobRecord::factory()->create(['repair_status' => 'diagnosing']);
+
+        $response = $this->actingAs($technician, 'staff')->post("/admin/repairs/{$job->id}/diagnosis", [
+            'component' => '',
+            'condition' => '',
+            'notes' => '',
+            'outcome' => 'repairable',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionDoesntHaveErrors();
+        $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_status' => 'awaiting_authorization']);
+        $this->assertDatabaseCount('repair_diagnoses', 0);
+    }
+
     public function test_a_staff_member_without_repairs_edit_cannot_record_a_diagnosis(): void
     {
         $this->seed(RolePermissionSeeder::class);

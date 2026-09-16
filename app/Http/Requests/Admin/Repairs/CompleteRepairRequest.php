@@ -18,6 +18,7 @@ final class CompleteRepairRequest extends FormRequest
     {
         return [
             'financial_status' => ['required', Rule::in(['unpaid', 'partially_paid', 'fully_paid'])],
+            'resolution_notes' => ['nullable', 'string'],
         ];
     }
 }

@@ -89,7 +89,7 @@ return [
     'permissions' => [
         'staff' => ['view', 'create', 'edit', 'deactivate', 'assign'],
         'shops' => ['view', 'create', 'edit'],
-        'repairs' => ['view', 'create', 'edit', 'approve', 'assign'],
+        'repairs' => ['view', 'create', 'edit', 'approve', 'assign', 'manage'],
         'sales' => ['view', 'create', 'cancel'],
         'commission' => ['view', 'manage'],
         'inventory' => ['view', 'create', 'edit', 'delete'],

@@ -36,6 +36,10 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             'customer_id' => $repairJob->customerId()->value,
             'device_make' => $repairJob->deviceMake(),
             'device_model' => $repairJob->deviceModel(),
+            'reported_issue' => $repairJob->reportedIssue(),
+            'device_imei_serial' => $repairJob->deviceImeiSerial(),
+            'device_lock_type' => $repairJob->deviceLockType(),
+            'device_lock_value' => $repairJob->deviceLockValue(),
             'technician_staff_id' => $repairJob->technicianStaffId()?->value,
             'labour_charge_minor' => $repairJob->labourCharge()->minor,
             'down_payment_required_minor' => $repairJob->downPaymentRequired()?->minor,
@@ -44,6 +48,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             'financial_status' => $repairJob->financialStatus(),
             'estimated_collection_date' => $repairJob->estimatedCollectionDate(),
             'unrepairable_settlement_state' => $repairJob->unrepairableSettlementState(),
+            'resolution_notes' => $repairJob->resolutionNotes(),
         ];
 
         if ($repairJob->id() === null) {
@@ -79,6 +84,10 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             new CustomerId($record->customer_id),
             $record->device_make,
             $record->device_model,
+            $record->reported_issue,
+            $record->device_imei_serial,
+            $record->device_lock_type,
+            $record->device_lock_value,
             $record->technician_staff_id !== null ? new StaffId($record->technician_staff_id) : null,
             new Money($record->labour_charge_minor),
             $record->down_payment_required_minor !== null ? new Money($record->down_payment_required_minor) : null,
@@ -87,6 +96,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             $record->financial_status,
             $record->estimated_collection_date?->toDateTimeImmutable(),
             $record->unrepairable_settlement_state,
+            $record->resolution_notes,
         );
     }
 }
