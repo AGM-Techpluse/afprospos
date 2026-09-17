@@ -7,6 +7,7 @@ use App\Http\Controllers\Customer\DashboardController;
 use App\Http\Controllers\Customer\OrdersController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\RepairsController;
+use App\Http\Controllers\Customer\WarrantyClaimController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')
@@ -40,5 +41,12 @@ Route::prefix('customer')
             Route::get('/repairs/{repair}', [RepairsController::class, 'show'])
                 ->whereNumber('repair')
                 ->name('repairs.show');
+
+            Route::get('/warranty/claims', [WarrantyClaimController::class, 'index'])->name('warranty.claims.index');
+            Route::get('/warranty/claims/create', [WarrantyClaimController::class, 'create'])->name('warranty.claims.create');
+            Route::post('/warranty/claims', [WarrantyClaimController::class, 'store'])->name('warranty.claims.store');
+            Route::get('/warranty/claims/{claim}', [WarrantyClaimController::class, 'show'])
+                ->whereNumber('claim')
+                ->name('warranty.claims.show');
         });
     });

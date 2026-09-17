@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShopController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\WarrantyClaimController;
+use App\Http\Controllers\Admin\WarrantyPolicyController;
 use App\Http\Controllers\Auth\StaffAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -540,4 +542,72 @@ Route::prefix('admin')
             ->post('/collection/{collectionCase}/release', [CollectionController::class, 'release'])
             ->whereNumber('collectionCase')
             ->name('collection.release');
+
+        Route::middleware('permission:warranty.manage')
+            ->get('/warranty/policies', [WarrantyPolicyController::class, 'index'])
+            ->name('warranty.policies.index');
+
+        Route::middleware('permission:warranty.manage')
+            ->get('/warranty/policies/create', [WarrantyPolicyController::class, 'create'])
+            ->name('warranty.policies.create');
+
+        Route::middleware('permission:warranty.manage')
+            ->post('/warranty/policies', [WarrantyPolicyController::class, 'store'])
+            ->name('warranty.policies.store');
+
+        Route::middleware('permission:warranty.manage')
+            ->get('/warranty/policies/{policy}/edit', [WarrantyPolicyController::class, 'edit'])
+            ->whereNumber('policy')
+            ->name('warranty.policies.edit');
+
+        Route::middleware('permission:warranty.manage')
+            ->put('/warranty/policies/{policy}', [WarrantyPolicyController::class, 'update'])
+            ->whereNumber('policy')
+            ->name('warranty.policies.update');
+
+        Route::middleware('permission:warranty.manage')
+            ->delete('/warranty/policies/{policy}', [WarrantyPolicyController::class, 'destroy'])
+            ->whereNumber('policy')
+            ->name('warranty.policies.destroy');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/claims', [WarrantyClaimController::class, 'index'])
+            ->name('warranty.claims.index');
+
+        Route::middleware('permission:warranty.create')
+            ->get('/warranty/claims/create', [WarrantyClaimController::class, 'create'])
+            ->name('warranty.claims.create');
+
+        Route::middleware('permission:warranty.create')
+            ->get('/warranty/claims/search-customers', [WarrantyClaimController::class, 'searchCustomers'])
+            ->name('warranty.claims.search-customers');
+
+        Route::middleware('permission:warranty.create')
+            ->post('/warranty/claims', [WarrantyClaimController::class, 'store'])
+            ->name('warranty.claims.store');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/claims/{claim}', [WarrantyClaimController::class, 'show'])
+            ->whereNumber('claim')
+            ->name('warranty.claims.show');
+
+        Route::middleware('permission:warranty.assess')
+            ->post('/warranty/claims/{claim}/assess', [WarrantyClaimController::class, 'assess'])
+            ->whereNumber('claim')
+            ->name('warranty.claims.assess');
+
+        Route::middleware('permission:warranty.assess')
+            ->post('/warranty/claims/{claim}/select-remedy', [WarrantyClaimController::class, 'selectRemedy'])
+            ->whereNumber('claim')
+            ->name('warranty.claims.select-remedy');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/claims/{claim}/resolve', [WarrantyClaimController::class, 'resolve'])
+            ->whereNumber('claim')
+            ->name('warranty.claims.resolve');
+
+        Route::middleware('permission:warranty.approve-refund')
+            ->post('/warranty/claims/{claim}/approve-refund', [WarrantyClaimController::class, 'approveRefund'])
+            ->whereNumber('claim')
+            ->name('warranty.claims.approve-refund');
     });

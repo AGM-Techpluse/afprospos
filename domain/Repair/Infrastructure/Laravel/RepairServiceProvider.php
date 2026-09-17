@@ -6,6 +6,7 @@ namespace Domain\Repair\Infrastructure\Laravel;
 
 use Domain\Repair\Application\Contracts\DeviceLockClearer;
 use Domain\Repair\Application\Contracts\RepairFinancialStatusQuery;
+use Domain\Repair\Application\Contracts\RepairJobLookup;
 use Domain\Repair\Domain\Repositories\DeviceBrandRepository;
 use Domain\Repair\Domain\Repositories\DeviceProblemSuggestedPartRepository;
 use Domain\Repair\Domain\Repositories\DeviceProblemTagRepository;
@@ -40,6 +41,7 @@ final class RepairServiceProvider extends ServiceProvider
         $this->app->bind(DeviceProblemSuggestedPartRepository::class, EloquentDeviceProblemSuggestedPartRepository::class);
         $this->app->bind(RepairJobProblemTagRepository::class, EloquentRepairJobProblemTagRepository::class);
         $this->app->bind(DeviceLockClearer::class, EloquentDeviceLockClearer::class);
+        $this->app->bind(RepairJobLookup::class, EloquentRepairJobLookup::class);
         $this->app->bind(RepairPhotoRepository::class, EloquentRepairPhotoRepository::class);
     }
 }

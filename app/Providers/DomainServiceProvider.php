@@ -13,6 +13,7 @@ use Domain\RBAC\Infrastructure\Laravel\RbacServiceProvider;
 use Domain\Repair\Infrastructure\Laravel\RepairServiceProvider;
 use Domain\Sales\Infrastructure\Laravel\SalesServiceProvider;
 use Domain\Shop\Infrastructure\Laravel\ShopServiceProvider;
+use Domain\Warranty\Infrastructure\Laravel\WarrantyServiceProvider;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -34,5 +35,6 @@ final class DomainServiceProvider extends ServiceProvider
         $this->app->register(CollectionServiceProvider::class);
         $this->app->register(RepairServiceProvider::class);
         $this->app->register(SalesServiceProvider::class);
+        $this->app->register(WarrantyServiceProvider::class);
     }
 }

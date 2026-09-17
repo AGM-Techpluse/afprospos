@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
     { key: 'home', label: 'Home', icon: 'house-door-fill', href: '/customer/dashboard', enabled: true },
     { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/customer/repairs', enabled: true },
     { key: 'orders', label: 'Orders', icon: 'bag-check', href: '/customer/orders', enabled: true },
+    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', href: '/customer/warranty/claims', enabled: true },
     { key: 'shops', label: 'Shops', icon: 'shop', href: '/customer/dashboard', enabled: false },
     { key: 'profile', label: 'Profile', icon: 'person', href: '/customer/profile', enabled: true },
 ];

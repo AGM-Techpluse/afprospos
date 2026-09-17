@@ -41,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'inventory', label: 'Inventory', icon: 'box-seam', href: '/admin/inventory/products', activeMatch: '/admin/inventory' },
             { key: 'payments', label: 'Payments', icon: 'credit-card-2-front', href: '/admin/payments', activeMatch: '/admin/payments' },
             { key: 'collection', label: 'Collection', icon: 'box-seam', href: '/admin/collection', activeMatch: '/admin/collection' },
+            { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', href: '/admin/warranty/claims', activeMatch: '/admin/warranty' },
         ],
     },
     {
@@ -51,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
             { key: 'device-catalog', label: 'Device catalog', icon: 'phone', href: '/admin/settings/device-catalog' },
+            { key: 'warranty-policies', label: 'Warranty policies', icon: 'shield-check', href: '/admin/warranty/policies' },
         ],
     },
 ];

@@ -99,6 +99,7 @@ return [
         'reports' => ['view'],
         'payments' => ['view', 'confirm', 'reject', 'dispute', 'refund'],
         'collection' => ['view', 'process', 'override'],
+        'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'manage'],
     ],
 
     /*
@@ -128,18 +129,21 @@ return [
             'reports' => 'full',
             'payments' => 'full',
             'collection' => ['view', 'override'],
+            'warranty' => ['view', 'approve-refund'],
         ],
         'Technician' => [
             'repairs' => 'full',
             'inventory' => ['view'],
             'reports' => ['view'],
             'collection' => ['view', 'process'],
+            'warranty' => ['view', 'assess', 'resolve'],
         ],
         'Cashier' => [
             'sales' => 'full',
             'inventory' => ['view'],
             'referrals' => ['view'],
             'reports' => ['view'],
+            'warranty' => ['view', 'create'],
         ],
         'Product Staff' => [
             'inventory' => 'full',
@@ -147,6 +151,7 @@ return [
             'sales' => ['view'],
             'reports' => ['view'],
             'collection' => ['view'],
+            'warranty' => ['view'],
         ],
         'Marketing Staff' => [
             'marketing' => 'full',
