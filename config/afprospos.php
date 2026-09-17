@@ -100,6 +100,7 @@ return [
         'payments' => ['view', 'confirm', 'reject', 'dispute', 'refund'],
         'collection' => ['view', 'process', 'override'],
         'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'manage'],
+        'audit' => ['view'],
     ],
 
     /*

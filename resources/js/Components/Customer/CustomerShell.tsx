@@ -5,6 +5,7 @@ import { CustomerToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 import NotificationDropdown from './NotificationDropdown';
 import CustomerFab from './CustomerFab';
+import { useFlashToast } from '../../hooks/useFlashToast';
 
 interface CustomerShellProps {
     children: React.ReactNode;
@@ -34,6 +35,8 @@ export default function CustomerShell({ children }: CustomerShellProps) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const customerName: string = auth?.customer?.name ?? 'there';
     const avatarInitial = customerName.charAt(0).toUpperCase();
+
+    useFlashToast();
 
     return (
         <div data-theme="customer" className="min-h-screen bg-white flex sm:p-4 sm:gap-4">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\AssignRoleRequest;
 use App\Http\Requests\Admin\CreateStaffRequest;
 use App\Http\Requests\Admin\GrantShopAccessRequest;
@@ -42,6 +43,8 @@ use Inertia\Response;
  */
 final class StaffController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly StaffDirectoryQuery $staffDirectory,
         private readonly StaffShopGrantsQuery $staffShopGrants,
@@ -126,6 +129,8 @@ final class StaffController
             throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         }
 
+        $this->flashSuccess('Staff profile updated');
+
         return redirect()->route('admin.staff.show', $staff);
     }
 
@@ -143,6 +148,8 @@ final class StaffController
             createdByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Staff member created');
+
         return redirect()->route('admin.staff.index');
     }
 
@@ -155,6 +162,8 @@ final class StaffController
             roleName: $request->string('role_name')->toString(),
             assignedByStaffId: $actor->staffId->value,
         ));
+
+        $this->flashSuccess('Role assigned');
 
         return back();
     }
@@ -169,6 +178,8 @@ final class StaffController
             revokedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Role revoked');
+
         return back();
     }
 
@@ -181,6 +192,8 @@ final class StaffController
             shopId: $request->integer('shop_id'),
             grantedByStaffId: $actor->staffId->value,
         ));
+
+        $this->flashSuccess('Shop access granted');
 
         return back();
     }
@@ -195,6 +208,8 @@ final class StaffController
             revokedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Shop access revoked');
+
         return back();
     }
 
@@ -207,6 +222,8 @@ final class StaffController
             deactivatedByStaffId: $actor->staffId->value,
             reason: null,
         ));
+
+        $this->flashSuccess('Staff member deactivated');
 
         return redirect()->route('admin.staff.index');
     }

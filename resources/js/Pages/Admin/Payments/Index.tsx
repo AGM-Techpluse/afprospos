@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminBulkActionBar from '../../../Components/Admin/AdminBulkActionBar';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
@@ -58,6 +60,21 @@ const COLUMNS: DataTableColumn<PaymentRow>[] = [
 ];
 
 export default function PaymentsIndex({ payments, filters }: PaymentsIndexProps) {
+    const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+
+    function exportMatchingFilters() {
+        const params = new URLSearchParams();
+        if (filters.status) params.set('status', filters.status);
+        if (filters.method) params.set('method', filters.method);
+        window.location.href = `/admin/payments/export?${params.toString()}`;
+    }
+
+    function exportSelected() {
+        const params = new URLSearchParams();
+        selectedIds.forEach((id) => params.append('ids[]', String(id)));
+        window.location.href = `/admin/payments/export?${params.toString()}`;
+    }
+
     function applyFilter(next: Partial<{ status: string; method: string }>) {
         router.get(
             '/admin/payments',
@@ -78,7 +95,21 @@ export default function PaymentsIndex({ payments, filters }: PaymentsIndexProps)
         <AdminShell>
             <Head title="Payments" />
 
-            <AdminPageHead title="Payments" description="Reconciliation queue — confirm, dispute, or refund a payment." />
+            <AdminPageHead
+                title="Payments"
+                description="Reconciliation queue — confirm, dispute, or refund a payment."
+                actions={<AdminButton variant="neutral" onClick={exportMatchingFilters}>Export all matching filters</AdminButton>}
+            />
+
+            <AdminBulkActionBar
+                selectedCount={selectedIds.length}
+                onClear={() => setSelectedIds([])}
+                actions={
+                    <AdminButton type="button" variant="neutral" onClick={exportSelected}>
+                        Export selected ({selectedIds.length})
+                    </AdminButton>
+                }
+            />
 
             <ResponsiveDataTable
                 columns={COLUMNS}
@@ -87,6 +118,9 @@ export default function PaymentsIndex({ payments, filters }: PaymentsIndexProps)
                 mobilePrimaryField="method"
                 mobileStatusField="status"
                 mobileDetailFields={['payable_type', 'amount_minor', 'created_at']}
+                selectable
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
                 toolbar={
                     <div className="flex gap-2">
                         <select

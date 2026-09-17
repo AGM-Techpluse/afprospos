@@ -195,6 +195,14 @@ Route::prefix('admin')
             ->name('inventory.serialized-units.index');
 
         Route::middleware('permission:inventory.edit')
+            ->post('/inventory/stock/bulk-adjust', [InventoryStockController::class, 'bulkAdjust'])
+            ->name('inventory.stock.bulk-adjust');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/stock/bulk-transfer', [InventoryStockController::class, 'bulkTransfer'])
+            ->name('inventory.stock.bulk-transfer');
+
+        Route::middleware('permission:inventory.edit')
             ->get('/inventory/stock/{sku}/{shop}/adjust', [InventoryStockController::class, 'adjustForm'])
             ->whereNumber(['sku', 'shop'])
             ->name('inventory.stock.adjust.form');
@@ -308,6 +316,10 @@ Route::prefix('admin')
             ->name('payments.index');
 
         Route::middleware('permission:payments.view')
+            ->get('/payments/export', [PaymentController::class, 'export'])
+            ->name('payments.export');
+
+        Route::middleware('permission:payments.view')
             ->get('/payments/{payment}', [PaymentController::class, 'show'])
             ->whereNumber('payment')
             ->name('payments.show');
@@ -405,6 +417,10 @@ Route::prefix('admin')
         Route::middleware('permission:repairs.view')
             ->get('/repairs', [RepairsController::class, 'index'])
             ->name('repairs.index');
+
+        Route::middleware('permission:repairs.view')
+            ->get('/repairs/export', [RepairsController::class, 'export'])
+            ->name('repairs.export');
 
         Route::middleware('permission:repairs.create')
             ->get('/repairs/create', [RepairsController::class, 'create'])

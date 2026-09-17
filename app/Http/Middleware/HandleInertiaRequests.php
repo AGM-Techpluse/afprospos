@@ -71,6 +71,11 @@ class HandleInertiaRequests extends Middleware
             // fed AdminShell an array instead of {accessible, active} and
             // crashed ShopSwitcher on every page that also shares that name.
             'shopSwitcher' => $staff !== null ? $this->shareShops((int) $staff->id) : null,
+            // Set by App\Http\Controllers\Concerns\FlashesToast; consumed by
+            // resources/js/hooks/useFlashToast.ts. Lazy so it isn't evaluated
+            // (and doesn't get pulled from the session) on requests that
+            // don't read it.
+            'flash' => fn () => $request->session()->get('flash'),
         ];
     }
 

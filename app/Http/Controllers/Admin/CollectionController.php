@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Collection\ExtendDeadlineRequest;
 use App\Http\Requests\Admin\Collection\RecordNotifiedRequest;
 use App\Http\Requests\Admin\Collection\RecordOverrideRequest;
@@ -28,6 +29,8 @@ use Inertia\Response;
 
 final class CollectionController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly CollectionQueueQuery $queue,
         private readonly CollectionCaseDetailQuery $detail,
@@ -71,6 +74,8 @@ final class CollectionController
             note: $request->string('note')->toString() ?: null,
         ));
 
+        $this->flashSuccess('Customer notified');
+
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
     }
 
@@ -86,6 +91,8 @@ final class CollectionController
             reason: $request->string('reason')->toString(),
         ));
 
+        $this->flashSuccess('Collection deadline extended');
+
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
     }
 
@@ -99,6 +106,8 @@ final class CollectionController
             reason: $request->string('reason')->toString(),
         ));
 
+        $this->flashWarning('Override recorded');
+
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
     }
 
@@ -111,6 +120,8 @@ final class CollectionController
         } catch (ReleaseBlockedByOutstandingBalance $exception) {
             throw ValidationException::withMessages(['status' => $exception->getMessage()]);
         }
+
+        $this->flashSuccess('Device released');
 
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
     }

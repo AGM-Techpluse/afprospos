@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Repairs\AssignTechnicianRequest;
 use App\Http\Requests\Admin\Repairs\AuthorizeRepairRequest;
 use App\Http\Requests\Admin\Repairs\CompleteRepairRequest;
@@ -59,9 +60,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class RepairsController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly RepairsListQuery $list,
         private readonly RepairJobDetailQuery $detail,
@@ -110,6 +114,44 @@ final class RepairsController
         ]);
     }
 
+    /**
+     * Two modes: `ids[]` given exports exactly those repairs ("export
+     * selected"); no `ids[]` exports everything matching the current
+     * `status`/`shop_id` filters ("export matching filter") — both are
+     * offered on the Index page's toolbar, not one-or-the-other.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $actor = app(ActorContext::class);
+        $ids = $request->has('ids') ? array_map('intval', $request->array('ids')) : null;
+        $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+
+        $rows = $this->list->exportRows(
+            status: $ids === null ? ($request->string('status')->toString() ?: null) : null,
+            shopId: $ids === null ? $shopId : null,
+            ids: $ids,
+        );
+
+        return response()->streamDownload(function () use ($rows): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, ['ID', 'Device', 'Customer', 'Status', 'Technician', 'Cost (NGN)', 'Updated at']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['id'],
+                    trim(($row['device_make'] ?? '').' '.($row['device_model'] ?? '')),
+                    $row['customer_name'] ?? '',
+                    $row['repair_status'],
+                    $row['technician_name'] ?? 'Unassigned',
+                    number_format($row['labour_charge_minor'] / 100, 2, '.', ''),
+                    $row['updated_at'],
+                ]);
+            }
+
+            fclose($handle);
+        }, 'afprospos-repairs-export.csv', ['Content-Type' => 'text/csv']);
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/Repairs/Create', [
@@ -135,6 +177,8 @@ final class RepairsController
             labourChargeMinor: $request->integer('labour_charge_minor'),
             createdByStaffId: $actor->staffId->value,
         ));
+
+        $this->flashSuccess('Repair job created');
 
         return redirect()->route('admin.repairs.show', ['repair' => $id]);
     }
@@ -171,6 +215,8 @@ final class RepairsController
             updatedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Device lock updated');
+
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
@@ -187,6 +233,8 @@ final class RepairsController
             uploadedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Photo uploaded');
+
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
@@ -195,6 +243,8 @@ final class RepairsController
         $actor = app(ActorContext::class);
 
         $this->deletePhoto->handle(new DeleteRepairPhotoCommand($photo, $actor->staffId->value));
+
+        $this->flashSuccess('Photo deleted');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
@@ -208,6 +258,8 @@ final class RepairsController
             technicianStaffId: $request->integer('technician_staff_id'),
             assignedByStaffId: $actor->staffId->value,
         )));
+
+        $this->flashSuccess('Technician assigned');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
@@ -234,6 +286,8 @@ final class RepairsController
             diagnosedByStaffId: $actor->staffId->value,
         )));
 
+        $this->flashSuccess('Diagnosis recorded');
+
         return redirect()->route('admin.repairs.diagnosis', ['repair' => $repair]);
     }
 
@@ -248,6 +302,8 @@ final class RepairsController
             authorizedByStaffId: $actor->staffId->value,
         )));
 
+        $this->flashSuccess('Repair authorized');
+
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
@@ -256,6 +312,8 @@ final class RepairsController
         $actor = app(ActorContext::class);
 
         $this->guardTransition(fn () => $this->confirmDownPayment->handle(new ConfirmDownPaymentCommand($repair, $actor->staffId->value)));
+
+        $this->flashSuccess('Down payment confirmed');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
@@ -292,12 +350,16 @@ final class RepairsController
             reservedByStaffId: $actor->staffId->value,
         )));
 
+        $this->flashSuccess('Part reserved');
+
         return redirect()->route('admin.repairs.parts', ['repair' => $repair]);
     }
 
     public function installPart(int $repair, int $reservation): RedirectResponse
     {
         $this->installPart->handle(new InstallRepairPartCommand($reservation));
+
+        $this->flashSuccess('Part installed');
 
         return redirect()->route('admin.repairs.parts', ['repair' => $repair]);
     }
@@ -307,6 +369,8 @@ final class RepairsController
         $actor = app(ActorContext::class);
 
         $this->guardTransition(fn () => $this->startRepair->handle(new StartRepairCommand($repair, $actor->staffId->value)));
+
+        $this->flashSuccess('Repair started');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
@@ -322,6 +386,8 @@ final class RepairsController
             completedByStaffId: $actor->staffId->value,
         )));
 
+        $this->flashSuccess('Repair completed');
+
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
@@ -335,6 +401,8 @@ final class RepairsController
             failedByStaffId: $actor->staffId->value,
         )));
 
+        $this->flashWarning('Repair marked failed');
+
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
@@ -343,6 +411,8 @@ final class RepairsController
         $actor = app(ActorContext::class);
 
         $this->guardTransition(fn () => $this->resumeRepair->handle(new ResumeRepairCommand($repair, $actor->staffId->value)));
+
+        $this->flashSuccess('Repair resumed');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
@@ -356,6 +426,8 @@ final class RepairsController
             settlementState: $request->string('settlement_state')->toString(),
             markedByStaffId: $actor->staffId->value,
         )));
+
+        $this->flashWarning('Repair marked unrepairable');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\InitiateInventoryTransferRequest;
 use Domain\Inventory\Application\Commands\CancelInventoryTransferCommand;
 use Domain\Inventory\Application\Commands\InitiateInventoryTransferCommand;
@@ -24,6 +25,8 @@ use Inertia\Response;
 
 final class InventoryTransferController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly InventoryTransferQuery $transfers,
         private readonly ShopDirectoryQuery $shops,
@@ -81,6 +84,8 @@ final class InventoryTransferController
             throw ValidationException::withMessages(['sku_id' => $exception->getMessage()]);
         }
 
+        $this->flashSuccess('Transfer initiated');
+
         return redirect()->route('admin.inventory.transfers.show', $transferId->value);
     }
 
@@ -93,6 +98,8 @@ final class InventoryTransferController
             receivedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Transfer received');
+
         return redirect()->route('admin.inventory.transfers.show', $transfer);
     }
 
@@ -104,6 +111,8 @@ final class InventoryTransferController
             transferId: $transfer,
             cancelledByStaffId: $actor->staffId->value,
         ));
+
+        $this->flashWarning('Transfer cancelled');
 
         return redirect()->route('admin.inventory.transfers.show', $transfer);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\CreateRoleRequest;
 use App\Http\Requests\Admin\UpdateRolePermissionsRequest;
 use Domain\RBAC\Application\Commands\CreateRoleCommand;
@@ -20,6 +21,8 @@ use Inertia\Response;
 
 final class RoleController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly AvailableRolesQuery $availableRoles,
         private readonly CreateRoleHandler $createRole,
@@ -54,6 +57,8 @@ final class RoleController
             throw ValidationException::withMessages(['name' => $exception->getMessage()]);
         }
 
+        $this->flashSuccess('Role created');
+
         return redirect()->route('admin.staff.roles.index');
     }
 
@@ -78,6 +83,8 @@ final class RoleController
             permissionNames: $request->array('permissions') ?? [],
             updatedByStaffId: $actor->staffId->value,
         ));
+
+        $this->flashSuccess('Role permissions updated');
 
         return redirect()->route('admin.staff.roles.index');
     }

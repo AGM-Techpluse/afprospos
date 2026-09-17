@@ -36,6 +36,7 @@ final class StaffAuthController
                 email: $request->string('email')->toString(),
                 password: $request->string('password')->toString(),
                 remember: $request->boolean('remember'),
+                ipAddress: $request->ip(),
             ));
         } catch (InvalidCredentials|StaffAccountDeactivated $exception) {
             // Deliberately a page-level `auth` error bag key, not `email` —
@@ -56,7 +57,12 @@ final class StaffAuthController
 
     public function destroy(Request $request): RedirectResponse
     {
-        $this->logout->handle(new LogoutStaffCommand);
+        // Captured before invalidate() — the session (and with it, the
+        // authenticated identity) is gone the moment that runs.
+        $this->logout->handle(new LogoutStaffCommand(
+            staffId: $request->user('staff')?->id,
+            ipAddress: $request->ip(),
+        ));
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

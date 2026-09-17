@@ -28,8 +28,11 @@ type SaleRow = {
 
 type LoginEvent = {
     id: number;
+    event_type: 'StaffLoggedIn' | 'StaffLoggedOut';
     actor_staff_id: number | null;
     actor_name: string | null;
+    ip_address: string | null;
+    shop_names: string[];
     created_at: string;
 };
 
@@ -48,7 +51,8 @@ interface DashboardProps {
     };
     recentRepairs: RepairRow[];
     recentSales: SaleRow[];
-    loginActivity: LoginEvent[];
+    /** Only present when the viewer has `audit.view` (Shop Owner today) — absent, not an empty array, for everyone else. */
+    loginActivity: LoginEvent[] | null;
     shopAnalytics: { revenue_series: RevenuePoint[]; revenue_breakdown: RevenueBreakdownSlice[] } | null;
     activeShop: { id: number; name: string } | null;
 }
@@ -255,21 +259,42 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
                 </div>
             </div>
 
-            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
-                <h2 className="text-sm font-semibold text-admin-text mb-3">Recent login activity</h2>
-                {loginActivity.length === 0 ? (
-                    <AdminEmptyState icon="box-arrow-in-right" title="No login activity yet" />
-                ) : (
-                    <ul className="divide-y divide-admin-border">
-                        {loginActivity.map((event) => (
-                            <li key={event.id} className="flex items-center justify-between gap-2 py-2">
-                                <span className="text-sm text-admin-text">{event.actor_name ?? 'Staff member'}</span>
-                                <span className="text-xs text-admin-text3">{new Date(event.created_at).toLocaleString()}</span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
+            {loginActivity !== null && (
+                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
+                    <h2 className="text-sm font-semibold text-admin-text mb-3">Recent login activity</h2>
+                    {loginActivity.length === 0 ? (
+                        <AdminEmptyState icon="box-arrow-in-right" title="No login activity yet" />
+                    ) : (
+                        <ul className="divide-y divide-admin-border">
+                            {loginActivity.map((event) => {
+                                const isLogin = event.event_type === 'StaffLoggedIn';
+
+                                return (
+                                    <li key={event.id} className="flex items-center justify-between gap-3 py-2.5">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <Icon
+                                                name={isLogin ? 'box-arrow-in-right' : 'box-arrow-right'}
+                                                className={isLogin ? 'text-admin-green' : 'text-admin-text3'}
+                                            />
+                                            <div className="min-w-0">
+                                                <div className="text-sm text-admin-text truncate">
+                                                    {event.actor_name ?? 'Staff member'}
+                                                    <span className="text-admin-text3 font-normal"> {isLogin ? 'logged in' : 'logged out'}</span>
+                                                </div>
+                                                <div className="text-xs text-admin-text3 truncate">
+                                                    {event.shop_names.join(', ') || 'No shop'}
+                                                    {event.ip_address && ` · ${event.ip_address}`}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-admin-text3 shrink-0">{new Date(event.created_at).toLocaleString()}</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </div>
+            )}
         </AdminShell>
     );
 }

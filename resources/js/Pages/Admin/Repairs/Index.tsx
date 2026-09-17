@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminBulkActionBar from '../../../Components/Admin/AdminBulkActionBar';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
@@ -45,7 +47,21 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
 };
 
 export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexProps) {
+    const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
     const shopName = (shopId: number) => shops.find((shop) => shop.id === shopId)?.name ?? 'Unknown shop';
+
+    function exportMatchingFilters() {
+        const params = new URLSearchParams();
+        if (filters.status) params.set('status', filters.status);
+        if (filters.shop_id !== null && filters.shop_id !== undefined) params.set('shop_id', String(filters.shop_id));
+        window.location.href = `/admin/repairs/export?${params.toString()}`;
+    }
+
+    function exportSelected() {
+        const params = new URLSearchParams();
+        selectedIds.forEach((id) => params.append('ids[]', String(id)));
+        window.location.href = `/admin/repairs/export?${params.toString()}`;
+    }
 
     const columns: DataTableColumn<RepairRow>[] = [
         { key: 'device_make', label: 'Device', render: (row) => `${row.device_make} ${row.device_model}` },
@@ -87,9 +103,22 @@ export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexPr
                 title="Repairs"
                 description="Intake, diagnosis, and repair progress."
                 actions={
-                    <AdminButton onClick={() => router.visit('/admin/repairs/create')}>
-                        <Icon name="plus-lg" className="mr-1.5" />
-                        New repair
+                    <div className="flex items-center gap-2">
+                        <AdminButton variant="neutral" onClick={exportMatchingFilters}>Export all matching filters</AdminButton>
+                        <AdminButton onClick={() => router.visit('/admin/repairs/create')}>
+                            <Icon name="plus-lg" className="mr-1.5" />
+                            New repair
+                        </AdminButton>
+                    </div>
+                }
+            />
+
+            <AdminBulkActionBar
+                selectedCount={selectedIds.length}
+                onClear={() => setSelectedIds([])}
+                actions={
+                    <AdminButton type="button" variant="neutral" onClick={exportSelected}>
+                        Export selected ({selectedIds.length})
                     </AdminButton>
                 }
             />
@@ -101,6 +130,9 @@ export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexPr
                 mobilePrimaryField="device_make"
                 mobileStatusField="repair_status"
                 mobileDetailFields={['shop_id', 'customer_id', 'financial_status', 'created_at']}
+                selectable
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
                 toolbar={
                     <>
                         <select

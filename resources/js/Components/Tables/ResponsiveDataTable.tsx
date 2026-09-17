@@ -27,6 +27,10 @@ interface ResponsiveDataTableProps<T> {
     footer?: ReactNode;
     /** True while a partial (data-only) refresh is in flight — renders skeleton rows in place of real ones without touching the toolbar/headers. */
     loading?: boolean;
+    /** Opt-in row-selection checkboxes (prototype `.a-table` checkbox column) for bulk actions — omit all three selection props to render exactly as before. */
+    selectable?: boolean;
+    selectedIds?: (string | number)[];
+    onSelectionChange?: (ids: (string | number)[]) => void;
 }
 
 /**
@@ -47,6 +51,9 @@ export default function ResponsiveDataTable<T>({
     toolbar,
     footer,
     loading = false,
+    selectable = false,
+    selectedIds = [],
+    onSelectionChange,
 }: ResponsiveDataTableProps<T>) {
     const [openRowKey, setOpenRowKey] = useState<string | number | null>(null);
 
@@ -59,6 +66,24 @@ export default function ResponsiveDataTable<T>({
 
     const isEmpty = !loading && rows.length === 0;
     const skeletonRowCount = Math.min(Math.max(rows.length, 3), 8);
+
+    const selectedSet = new Set(selectedIds);
+    const pageRowKeys = rows.map(getRowKey);
+    const allOnPageSelected = pageRowKeys.length > 0 && pageRowKeys.every((key) => selectedSet.has(key));
+
+    function toggleRow(key: string | number) {
+        if (!onSelectionChange) return;
+        onSelectionChange(selectedSet.has(key) ? selectedIds.filter((id) => id !== key) : [...selectedIds, key]);
+    }
+
+    function toggleAllOnPage() {
+        if (!onSelectionChange) return;
+        onSelectionChange(
+            allOnPageSelected
+                ? selectedIds.filter((id) => !pageRowKeys.includes(id))
+                : [...selectedIds.filter((id) => !pageRowKeys.includes(id)), ...pageRowKeys],
+        );
+    }
 
     return (
         <div className="bg-admin-surface border border-admin-border rounded-admin-card overflow-hidden">
@@ -77,6 +102,16 @@ export default function ResponsiveDataTable<T>({
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-admin-table-head">
+                                    {selectable && (
+                                        <th className="w-5 px-admin-table-cell-x py-admin-table-cell-y">
+                                            <input
+                                                type="checkbox"
+                                                checked={allOnPageSelected}
+                                                onChange={toggleAllOnPage}
+                                                aria-label="Select all rows on this page"
+                                            />
+                                        </th>
+                                    )}
                                     {columns.map((column) => (
                                         <th
                                             key={column.key}
@@ -92,6 +127,11 @@ export default function ResponsiveDataTable<T>({
                                 {loading
                                     ? Array.from({ length: skeletonRowCount }).map((_, i) => (
                                           <tr key={`skeleton-${i}`}>
+                                              {selectable && (
+                                                  <td className="px-admin-table-cell-x py-admin-table-cell-y">
+                                                      <Skeleton className="h-4 w-4" />
+                                                  </td>
+                                              )}
                                               {columns.map((column) => (
                                                   <td key={column.key} className="px-admin-table-cell-x py-admin-table-cell-y">
                                                       <Skeleton className="h-4 w-full max-w-[140px]" />
@@ -106,6 +146,16 @@ export default function ResponsiveDataTable<T>({
                                       ))
                                     : rows.map((row) => (
                                           <tr key={getRowKey(row)} className="hover:bg-admin-hover">
+                                              {selectable && (
+                                                  <td className="px-admin-table-cell-x py-admin-table-cell-y">
+                                                      <input
+                                                          type="checkbox"
+                                                          checked={selectedSet.has(getRowKey(row))}
+                                                          onChange={() => toggleRow(getRowKey(row))}
+                                                          aria-label="Select row"
+                                                      />
+                                                  </td>
+                                              )}
                                               {columns.map((column) => (
                                                   <td
                                                       key={column.key}
@@ -140,23 +190,34 @@ export default function ResponsiveDataTable<T>({
 
                                   return (
                                       <div key={key} className="border-b border-admin-border last:border-b-0">
-                                          <button
-                                              type="button"
-                                              onClick={() => setOpenRowKey(isOpen ? null : key)}
-                                              className="w-full flex items-center justify-between gap-2 px-admin-table-cell-x py-admin-table-cell-y text-left"
-                                              aria-expanded={isOpen}
-                                          >
-                                              <span className="flex items-center gap-2 min-w-0">
-                                                  <span className="font-semibold text-admin-text text-admin-table-cell truncate">
-                                                      {renderCell(mobilePrimaryField, row)}
+                                          <div className="w-full flex items-center gap-2 px-admin-table-cell-x py-admin-table-cell-y">
+                                              {selectable && (
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={selectedSet.has(key)}
+                                                      onChange={() => toggleRow(key)}
+                                                      aria-label="Select row"
+                                                      className="shrink-0"
+                                                  />
+                                              )}
+                                              <button
+                                                  type="button"
+                                                  onClick={() => setOpenRowKey(isOpen ? null : key)}
+                                                  className="flex-1 min-w-0 flex items-center justify-between gap-2 text-left"
+                                                  aria-expanded={isOpen}
+                                              >
+                                                  <span className="flex items-center gap-2 min-w-0">
+                                                      <span className="font-semibold text-admin-text text-admin-table-cell truncate">
+                                                          {renderCell(mobilePrimaryField, row)}
+                                                      </span>
+                                                      {mobileStatusField && renderCell(mobileStatusField, row)}
                                                   </span>
-                                                  {mobileStatusField && renderCell(mobileStatusField, row)}
-                                              </span>
-                                              <Icon
-                                                  name="chevron-down"
-                                                  className={`text-admin-text3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                                              />
-                                          </button>
+                                                  <Icon
+                                                      name="chevron-down"
+                                                      className={`text-admin-text3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                                  />
+                                              </button>
+                                          </div>
 
                                           {isOpen && (
                                               <div className="px-admin-table-cell-x pb-admin-table-cell-y">

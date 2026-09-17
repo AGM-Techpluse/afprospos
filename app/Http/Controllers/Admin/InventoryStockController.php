@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\AdjustStockRequest;
+use App\Http\Requests\Admin\BulkAdjustStockRequest;
+use App\Http\Requests\Admin\BulkInitiateInventoryTransferRequest;
 use App\Http\Requests\Admin\ReceiveStockRequest;
 use Domain\Inventory\Application\Commands\AdjustStockCommand;
+use Domain\Inventory\Application\Commands\InitiateInventoryTransferCommand;
 use Domain\Inventory\Application\Commands\ReceiveStockCommand;
 use Domain\Inventory\Application\Handlers\AdjustStockHandler;
+use Domain\Inventory\Application\Handlers\InitiateInventoryTransferHandler;
 use Domain\Inventory\Application\Handlers\ReceiveStockHandler;
 use Domain\Inventory\Application\Queries\LowStockQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
@@ -20,15 +25,19 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 final class InventoryStockController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly StockLevelQuery $stockLevels,
         private readonly LowStockQuery $lowStock,
         private readonly ShopDirectoryQuery $shops,
         private readonly ReceiveStockHandler $receiveStock,
         private readonly AdjustStockHandler $adjustStock,
+        private readonly InitiateInventoryTransferHandler $initiateTransfer,
     ) {}
 
     public function index(Request $request): Response
@@ -78,6 +87,8 @@ final class InventoryStockController
             throw ValidationException::withMessages(['imeis' => $exception->getMessage()]);
         }
 
+        $this->flashSuccess('Stock received');
+
         return redirect()->route('admin.inventory.products.show', $sku);
     }
 
@@ -102,6 +113,84 @@ final class InventoryStockController
             adjustedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Stock adjusted');
+
         return redirect()->route('admin.inventory.stock.index');
+    }
+
+    /**
+     * Each line is its own AdjustStockHandler call/transaction — a bulk
+     * action is N independent domain actions, not one new business
+     * concept, and per-row locking avoids one giant multi-row lock.
+     * One bad row never rolls back the batch (mirrors
+     * InventoryImportController's row-result pattern).
+     */
+    public function bulkAdjust(BulkAdjustStockRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $reason = $request->string('reason')->toString();
+        $succeeded = 0;
+        $failures = [];
+
+        foreach ($request->array('items') as $item) {
+            try {
+                $this->adjustStock->handle(new AdjustStockCommand(
+                    skuId: (int) $item['sku_id'],
+                    shopId: (int) $item['shop_id'],
+                    delta: (int) $item['delta'],
+                    reason: $reason,
+                    adjustedByStaffId: $actor->staffId->value,
+                ));
+                $succeeded++;
+            } catch (Throwable $exception) {
+                $failures[] = "SKU #{$item['sku_id']}: {$exception->getMessage()}";
+            }
+        }
+
+        $this->flashBulkResult($succeeded, $failures, 'adjusted');
+
+        return redirect()->route('admin.inventory.stock.index');
+    }
+
+    public function bulkTransfer(BulkInitiateInventoryTransferRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $toShopId = $request->integer('to_shop_id');
+        $succeeded = 0;
+        $failures = [];
+
+        foreach ($request->array('items') as $item) {
+            try {
+                $this->initiateTransfer->handle(new InitiateInventoryTransferCommand(
+                    skuId: (int) $item['sku_id'],
+                    inventoryItemId: null,
+                    quantity: (int) $item['quantity'],
+                    fromShopId: (int) $item['from_shop_id'],
+                    toShopId: $toShopId,
+                    initiatedByStaffId: $actor->staffId->value,
+                ));
+                $succeeded++;
+            } catch (Throwable $exception) {
+                $failures[] = "SKU #{$item['sku_id']}: {$exception->getMessage()}";
+            }
+        }
+
+        $this->flashBulkResult($succeeded, $failures, 'transferred');
+
+        return redirect()->route('admin.inventory.stock.index');
+    }
+
+    /** @param  string[]  $failures */
+    private function flashBulkResult(int $succeeded, array $failures, string $verb): void
+    {
+        $total = $succeeded + count($failures);
+
+        if ($failures === []) {
+            $this->flashSuccess("{$succeeded} of {$total} {$verb}");
+
+            return;
+        }
+
+        $this->flashWarning("{$succeeded} of {$total} {$verb}", implode(' · ', array_slice($failures, 0, 3)));
     }
 }

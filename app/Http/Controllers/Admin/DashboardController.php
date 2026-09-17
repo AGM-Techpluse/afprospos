@@ -48,6 +48,7 @@ final class DashboardController
         $canViewPayments = $actor->hasPermission('payments.view');
         $canViewInventory = $actor->hasPermission('inventory.view');
         $canViewShops = $actor->hasPermission('shops.view');
+        $canViewAudit = $actor->hasPermission('audit.view');
 
         return Inertia::render('Admin/Dashboard/Index', [
             'quickActions' => [
@@ -64,7 +65,7 @@ final class DashboardController
             ],
             'recentRepairs' => $canViewRepairs ? $this->repairs->recent($shopId, 5) : [],
             'recentSales' => $canViewSales ? $this->sales->recent($shopId, 5) : [],
-            'loginActivity' => $this->auditEvents->byEventType('StaffLoggedIn', 8),
+            'loginActivity' => $canViewAudit ? $this->auditEvents->recentLoginActivity(8) : null,
             'shopAnalytics' => $shopId !== null ? $this->shopAnalytics->forShop($shopId) : null,
             'activeShop' => $shopId !== null ? $this->shops->find($shopId) : null,
         ]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\AddCheckoutItemRequest;
 use App\Http\Requests\Admin\ApplyDiscountRequest;
 use App\Http\Requests\Admin\CompleteSaleRequest;
@@ -44,6 +45,8 @@ use Inertia\Response;
 
 final class SalesController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly SalesHistoryQuery $history,
         private readonly SaleDetailQuery $saleDetail,
@@ -211,6 +214,8 @@ final class SalesController
     {
         $this->cancelCheckout->handle(new CancelCheckoutCommand($checkout));
 
+        $this->flashWarning('Checkout cancelled');
+
         return redirect()->route('admin.sales.checkout');
     }
 
@@ -236,6 +241,8 @@ final class SalesController
         } catch (CheckoutReservationExpired|CheckoutNotOpen $exception) {
             throw ValidationException::withMessages(['payment_method' => $exception->getMessage()]);
         }
+
+        $this->flashSuccess('Sale completed');
 
         return redirect()->route('admin.sales.receipt', ['sale' => $saleId]);
     }

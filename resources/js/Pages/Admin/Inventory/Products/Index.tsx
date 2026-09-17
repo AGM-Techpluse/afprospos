@@ -30,6 +30,7 @@ interface ProductsIndexProps {
     products: Paginated<ProductRow>;
     filters: { search: string; category: string; brand: string; shop_id: number | null };
     shops: Shop[];
+    categories: string[];
 }
 
 function formatNaira(minor: number): string {
@@ -51,7 +52,7 @@ const COLUMNS: DataTableColumn<ProductRow>[] = [
     { key: 'selling_price_minor', label: 'Price', render: (row) => formatNaira(row.selling_price_minor) },
 ];
 
-export default function ProductsIndex({ products, filters, shops }: ProductsIndexProps) {
+export default function ProductsIndex({ products, filters, shops, categories }: ProductsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const [category, setCategory] = useState(filters.category);
     const [brand, setBrand] = useState(filters.brand);
@@ -130,13 +131,16 @@ export default function ProductsIndex({ products, filters, shops }: ProductsInde
                                 className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                             />
                         </div>
-                        <input
-                            type="text"
+                        <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
-                            placeholder="Category"
-                            className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg w-28"
-                        />
+                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg"
+                        >
+                            <option value="">All categories</option>
+                            {categories.map((value) => (
+                                <option key={value} value={value}>{value}</option>
+                            ))}
+                        </select>
                         <input
                             type="text"
                             value={brand}

@@ -44,6 +44,7 @@ final class AuthenticateStaffHandler
             subjectId: $account->id()->value,
             beforeState: null,
             afterState: null,
+            context: $command->ipAddress !== null ? ['ip_address' => $command->ipAddress] : null,
         );
     }
 }

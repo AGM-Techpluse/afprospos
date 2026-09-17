@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\CreateShopRequest;
 use App\Http\Requests\Admin\UpdateShopRequest;
 use Domain\Shared\Application\DTOs\ActorContext;
@@ -31,6 +32,8 @@ use Inertia\Response;
  */
 final class ShopController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly ShopDirectoryQuery $shopDirectory,
         private readonly ShopAnalyticsQuery $shopAnalytics,
@@ -100,6 +103,8 @@ final class ShopController
             throw ValidationException::withMessages(['sku_prefix_code' => $exception->getMessage()]);
         }
 
+        $this->flashSuccess('Shop updated');
+
         return redirect()->route('admin.shops.show', $shop);
     }
 
@@ -120,6 +125,8 @@ final class ShopController
         } catch (DuplicateShopSkuPrefixCode $exception) {
             throw ValidationException::withMessages(['sku_prefix_code' => $exception->getMessage()]);
         }
+
+        $this->flashSuccess('Shop created');
 
         return redirect()->route('admin.shops.index');
     }

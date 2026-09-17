@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\CreateProductRequest;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
 use Domain\Inventory\Application\Handlers\CreateProductHandler;
@@ -20,6 +21,8 @@ use Inertia\Response;
 
 final class ProductController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly ProductCatalogQuery $catalog,
         private readonly ShopDirectoryQuery $shops,
@@ -46,6 +49,7 @@ final class ProductController
                 'shop_id' => $shopId,
             ],
             'shops' => $this->shops->all(),
+            'categories' => $this->catalog->categories(),
         ]);
     }
 
@@ -96,6 +100,8 @@ final class ProductController
         } catch (DuplicateSkuCode|ImeiAlreadyExists $exception) {
             throw ValidationException::withMessages(['brand' => $exception->getMessage()]);
         }
+
+        $this->flashSuccess('Product created');
 
         return redirect()->route('admin.inventory.products.show', $skuId->value);
     }

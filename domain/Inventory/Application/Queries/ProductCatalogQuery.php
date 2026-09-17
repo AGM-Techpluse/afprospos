@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Inventory\Application\Queries;
 
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 
 /**
@@ -59,6 +60,16 @@ final class ProductCatalogQuery
             'per_page' => $paginator->perPage(),
             'total' => $paginator->total(),
         ];
+    }
+
+    /** Backs the Products list's category filter — a dropdown of what actually exists, not free text (the create form stays free text; this is only for filtering by an already-typed value). @return string[] */
+    public function categories(): array
+    {
+        return ProductRecord::query()
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->all();
     }
 
     /** @return array<string, mixed>|null */

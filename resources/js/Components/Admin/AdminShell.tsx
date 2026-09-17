@@ -5,6 +5,7 @@ import AdminAccountMenu from './AdminAccountMenu';
 import ShopSwitcher from './ShopSwitcher';
 import { AdminToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
+import { useFlashToast } from '../../hooks/useFlashToast';
 
 interface AdminShellProps {
     children: React.ReactNode;
@@ -160,6 +161,8 @@ export default function AdminShell({ children }: AdminShellProps) {
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(readStoredCollapsed);
     const activeKey = useActiveKey(url);
+
+    useFlashToast();
 
     useEffect(() => {
         writeStoredCollapsed(collapsed);

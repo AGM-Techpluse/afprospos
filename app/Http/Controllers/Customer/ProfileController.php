@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Customer;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Customer\UpdateCustomerProfileRequest;
 use Domain\Identity\Application\Commands\UpdateCustomerProfileCommand;
 use Domain\Identity\Application\Handlers\UpdateCustomerProfileHandler;
@@ -17,6 +18,8 @@ use Inertia\Response;
 
 final class ProfileController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly UpdateCustomerProfileHandler $updateProfile,
     ) {}
@@ -40,6 +43,8 @@ final class ProfileController
         } catch (DuplicateCustomerEmail $exception) {
             throw ValidationException::withMessages(['email' => $exception->getMessage()]);
         }
+
+        $this->flashSuccess('Profile updated');
 
         return redirect()->route('customer.profile.show');
     }

@@ -39,6 +39,34 @@ final class PaymentTransactionsQuery
         return PaymentTransactionRecord::query()->where('status', $status)->count();
     }
 
+    /**
+     * Backs the CSV export — same filters as paginate() minus pagination,
+     * or an explicit set of IDs (the "export selected" mode), never both.
+     *
+     * @param  int[]|null  $ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function exportRows(?string $status, ?string $method, ?array $ids): array
+    {
+        $query = PaymentTransactionRecord::query();
+
+        if ($ids !== null) {
+            $query->whereIn('id', $ids);
+        } else {
+            if ($status !== null && $status !== '') {
+                $query->where('status', $status);
+            }
+
+            if ($method !== null && $method !== '') {
+                $query->where('method', $method);
+            }
+        }
+
+        return $query->orderByDesc('created_at')->get()
+            ->map(fn (PaymentTransactionRecord $transaction): array => $this->toArray($transaction))
+            ->all();
+    }
+
     /** @return array<string, mixed> */
     private function toArray(PaymentTransactionRecord $transaction): array
     {

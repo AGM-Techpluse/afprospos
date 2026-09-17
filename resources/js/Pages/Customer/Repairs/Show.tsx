@@ -75,6 +75,15 @@ export default function CustomerRepairShow({ repair }: CustomerRepairShowProps) 
                         ))}
                     </div>
                 )}
+
+                {repair.repair_status === 'completed' && (
+                    <a
+                        href={`/customer/warranty/claims/create?repair=${repair.id}`}
+                        className="inline-block mt-4 text-customer-blue font-semibold text-customer-caption"
+                    >
+                        File a warranty claim for this repair
+                    </a>
+                )}
             </div>
         </CustomerShell>
     );

@@ -6,6 +6,7 @@ namespace Domain\Repair\Application\Queries;
 
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 
 /** Backs Admin Repairs/Index — search/filter/pagination per the standing table-pages rule. */
 final class RepairsListQuery
@@ -67,6 +68,41 @@ final class RepairsListQuery
     }
 
     /**
+     * Backs the CSV export — same filters as paginate() minus pagination,
+     * or an explicit set of IDs (the "export selected" mode), never both.
+     *
+     * @param  int[]|null  $ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function exportRows(?string $status, ?int $shopId, ?array $ids): array
+    {
+        $query = RepairJobRecord::query();
+
+        if ($ids !== null) {
+            $query->whereIn('id', $ids);
+        } else {
+            if ($status !== null && $status !== '') {
+                $query->where('repair_status', $status);
+            }
+
+            if ($shopId !== null) {
+                $query->where('shop_id', $shopId);
+            }
+        }
+
+        $jobs = $query->orderByDesc('created_at')->get();
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
+        $technicianNames = StaffRecord::query()
+            ->whereIn('id', $jobs->pluck('technician_staff_id')->filter()->unique()->all())
+            ->pluck('name', 'id');
+
+        return $jobs->map(fn (RepairJobRecord $job): array => [
+            ...$this->toArray($job, $customers),
+            'technician_name' => $job->technician_staff_id !== null ? ($technicianNames[$job->technician_staff_id] ?? null) : null,
+        ])->all();
+    }
+
+    /**
      * @param  array<int, array{id: int, name: string, email: ?string, phone: string}>  $customers
      * @return array<string, mixed>
      */
@@ -80,9 +116,11 @@ final class RepairsListQuery
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
             'technician_staff_id' => $job->technician_staff_id,
+            'labour_charge_minor' => $job->labour_charge_minor,
             'repair_status' => $job->repair_status,
             'financial_status' => $job->financial_status,
             'created_at' => $job->created_at->toIso8601String(),
+            'updated_at' => $job->updated_at->toIso8601String(),
         ];
     }
 }

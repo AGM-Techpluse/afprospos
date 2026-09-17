@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\AttachSuggestedPartRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceBrandRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceProblemTagRequest;
@@ -42,6 +43,8 @@ use Inertia\Response;
 /** Settings-level CRUD for the repair-intake device catalog (Device Type -> Brand -> Problem tag -> suggested Inventory SKUs). Also backs the inline quick-add affordances on Repairs/Create.tsx — same Commands, just posted from a modal instead of this page. */
 final class DeviceCatalogController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly DeviceCatalogQuery $catalog,
         private readonly InventoryCatalogQuery $inventoryCatalog,
@@ -78,6 +81,8 @@ final class DeviceCatalogController
             createdByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Device type created');
+
         return redirect()->back();
     }
 
@@ -93,6 +98,8 @@ final class DeviceCatalogController
             updatedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Device type updated');
+
         return redirect()->back();
     }
 
@@ -101,6 +108,8 @@ final class DeviceCatalogController
         $actor = app(ActorContext::class);
 
         $this->deleteDeviceType->handle(new DeleteDeviceTypeCommand($type, $actor->staffId->value));
+
+        $this->flashSuccess('Device type deleted');
 
         return redirect()->back();
     }
@@ -116,6 +125,8 @@ final class DeviceCatalogController
             createdByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Device brand created');
+
         return redirect()->back();
     }
 
@@ -130,6 +141,8 @@ final class DeviceCatalogController
             updatedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Device brand updated');
+
         return redirect()->back();
     }
 
@@ -138,6 +151,8 @@ final class DeviceCatalogController
         $actor = app(ActorContext::class);
 
         $this->deleteDeviceBrand->handle(new DeleteDeviceBrandCommand($brand, $actor->staffId->value));
+
+        $this->flashSuccess('Device brand deleted');
 
         return redirect()->back();
     }
@@ -153,6 +168,8 @@ final class DeviceCatalogController
             createdByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Problem tag created');
+
         return redirect()->back();
     }
 
@@ -167,6 +184,8 @@ final class DeviceCatalogController
             updatedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Problem tag updated');
+
         return redirect()->back();
     }
 
@@ -175,6 +194,8 @@ final class DeviceCatalogController
         $actor = app(ActorContext::class);
 
         $this->deleteProblemTag->handle(new DeleteDeviceProblemTagCommand($tag, $actor->staffId->value));
+
+        $this->flashSuccess('Problem tag deleted');
 
         return redirect()->back();
     }
@@ -189,6 +210,8 @@ final class DeviceCatalogController
             attachedByStaffId: $actor->staffId->value,
         ));
 
+        $this->flashSuccess('Suggested part attached');
+
         return redirect()->back();
     }
 
@@ -197,6 +220,8 @@ final class DeviceCatalogController
         $actor = app(ActorContext::class);
 
         $this->detachSuggestedPart->handle(new DetachSuggestedPartCommand($suggestedPart, $actor->staffId->value));
+
+        $this->flashSuccess('Suggested part detached');
 
         return redirect()->back();
     }

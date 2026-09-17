@@ -3,11 +3,9 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import CustomerShell from '../../../Components/Customer/CustomerShell';
 import CustomerInput from '../../../Components/Customer/Forms/CustomerInput';
 import CustomerButton from '../../../Components/Customer/CustomerButton';
-import { useToast } from '../../../hooks/useToast';
 
 export default function CustomerProfileShow() {
     const { auth } = usePage().props as any;
-    const { toast } = useToast();
 
     const { data, setData, put, processing, errors, reset } = useForm({
         name: auth?.customer?.name ?? '',
@@ -17,9 +15,7 @@ export default function CustomerProfileShow() {
 
     function submit(e: FormEvent) {
         e.preventDefault();
-        put('/customer/profile', {
-            onSuccess: () => toast({ kind: 'success', title: 'Profile updated' }),
-        });
+        put('/customer/profile');
     }
 
     return (

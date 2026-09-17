@@ -57,6 +57,15 @@ export default function OrdersShow({ type, order }: OrdersShowProps) {
                         <span className="font-bold text-customer-text">{formatNaira(order.total_minor)}</span>
                     </div>
                 </div>
+
+                {type === 'sale' && (
+                    <a
+                        href={`/customer/warranty/claims/create?sale=${order.id}`}
+                        className="inline-block mt-4 text-customer-blue font-semibold text-customer-caption"
+                    >
+                        File a warranty claim for this purchase
+                    </a>
+                )}
             </div>
         </CustomerShell>
     );

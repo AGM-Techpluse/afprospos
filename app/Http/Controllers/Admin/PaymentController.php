@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\ConfirmPaymentRequest;
 use App\Http\Requests\Admin\OpenPaymentDisputeRequest;
 use App\Http\Requests\Admin\ResolvePaymentDisputeRequest;
@@ -26,9 +27,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PaymentController
 {
+    use FlashesToast;
+
     public function __construct(
         private readonly PaymentTransactionsQuery $list,
         private readonly PaymentTransactionDetailQuery $detail,
@@ -56,6 +60,43 @@ final class PaymentController
         ]);
     }
 
+    /**
+     * Two modes: `ids[]` given exports exactly those transactions
+     * ("export selected"); no `ids[]` exports everything matching the
+     * current `status`/`method` filters ("export matching filter") —
+     * both are offered on the Index page's toolbar, not one-or-the-other.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $ids = $request->has('ids') ? array_map('intval', $request->array('ids')) : null;
+
+        $rows = $this->list->exportRows(
+            status: $ids === null ? ($request->string('status')->toString() ?: null) : null,
+            method: $ids === null ? ($request->string('method')->toString() ?: null) : null,
+            ids: $ids,
+        );
+
+        return response()->streamDownload(function () use ($rows): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, ['ID', 'Payable type', 'Payable ID', 'Method', 'Amount (NGN)', 'Status', 'Provider reference', 'Created at']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['id'],
+                    $row['payable_type'],
+                    $row['payable_id'],
+                    $row['method'],
+                    number_format($row['amount_minor'] / 100, 2, '.', ''),
+                    $row['status'],
+                    $row['provider_reference'] ?? '',
+                    $row['created_at'],
+                ]);
+            }
+
+            fclose($handle);
+        }, 'afprospos-payments-export.csv', ['Content-Type' => 'text/csv']);
+    }
+
     public function show(int $payment): Response
     {
         $data = $this->detail->find($payment);
@@ -75,6 +116,8 @@ final class PaymentController
             providerReference: $request->string('provider_reference')->toString() ?: null,
         )));
 
+        $this->flashSuccess('Payment confirmed');
+
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
 
@@ -86,6 +129,8 @@ final class PaymentController
             transactionId: $payment,
             rejectedByStaffId: $actor->staffId->value,
         )));
+
+        $this->flashWarning('Payment rejected');
 
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
@@ -100,6 +145,8 @@ final class PaymentController
             disputeProofReference: $request->string('dispute_proof_reference')->toString() ?: null,
         )));
 
+        $this->flashWarning('Dispute opened');
+
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
 
@@ -113,6 +160,8 @@ final class PaymentController
             resolution: $request->string('resolution')->toString(),
         )));
 
+        $this->flashSuccess('Dispute resolved');
+
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
 
@@ -124,6 +173,8 @@ final class PaymentController
             transactionId: $payment,
             refundedByStaffId: $actor->staffId->value,
         )));
+
+        $this->flashSuccess('Payment refunded');
 
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }

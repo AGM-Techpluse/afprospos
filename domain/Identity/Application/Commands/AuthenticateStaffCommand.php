@@ -10,5 +10,6 @@ final readonly class AuthenticateStaffCommand
         public string $email,
         public string $password,
         public bool $remember,
+        public ?string $ipAddress = null,
     ) {}
 }
