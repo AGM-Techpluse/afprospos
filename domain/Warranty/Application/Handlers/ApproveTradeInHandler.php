@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Domain\Warranty\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Application\Contracts\CheckoutDiscountService;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Domain\Warranty\Application\Commands\ApproveTradeInCommand;
+use Domain\Warranty\Domain\Events\TradeInCreditApplied;
 use Domain\Warranty\Domain\Repositories\TradeInAssessmentRepository;
 use Domain\Warranty\Domain\ValueObjects\TradeInAssessmentId;
+use Illuminate\Support\Facades\Event;
 
 /**
  * TRADE-BR-02/05: approves the assessed value (enforcing the
@@ -67,6 +70,10 @@ final class ApproveTradeInHandler
                 beforeState: $before,
                 afterState: ['resolution_state' => $tradeIn->resolutionState(), 'credit_applied' => $applied],
             );
+
+            if ($applied) {
+                Event::dispatch(new TradeInCreditApplied($id->value, $tradeIn->customerId(), CarbonImmutable::now()));
+            }
         });
     }
 }

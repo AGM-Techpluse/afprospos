@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Auth\CustomerAuthController;
 use App\Http\Controllers\Customer\DashboardController;
+use App\Http\Controllers\Customer\NotificationController;
 use App\Http\Controllers\Customer\OrdersController;
+use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\RepairsController;
 use App\Http\Controllers\Customer\ReturnRequestController;
@@ -29,6 +31,8 @@ Route::prefix('customer')
             Route::get('/dashboard', DashboardController::class)->name('dashboard');
             Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
             Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+            Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar.upload');
+            Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar'])->name('profile.avatar.remove');
 
             Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
             Route::get('/orders/checkouts/{checkout}', [OrdersController::class, 'showCheckout'])
@@ -37,6 +41,13 @@ Route::prefix('customer')
             Route::get('/orders/sales/{sale}', [OrdersController::class, 'showSale'])
                 ->whereNumber('sale')
                 ->name('orders.sales.show');
+
+            Route::get('/payments/checkouts/{checkout}', [PaymentController::class, 'showCheckout'])
+                ->whereNumber('checkout')
+                ->name('payments.checkouts.show');
+            Route::post('/payments/checkouts/{checkout}/bank-transfer', [PaymentController::class, 'requestBankTransfer'])
+                ->whereNumber('checkout')
+                ->name('payments.checkouts.bank-transfer');
 
             Route::get('/repairs', [RepairsController::class, 'index'])->name('repairs.index');
             Route::get('/repairs/{repair}', [RepairsController::class, 'show'])
@@ -56,5 +67,9 @@ Route::prefix('customer')
             Route::get('/warranty/returns/{returnRequest}', [ReturnRequestController::class, 'show'])
                 ->whereNumber('returnRequest')
                 ->name('warranty.returns.show');
+
+            Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+                ->whereNumber('notification')
+                ->name('notifications.read');
         });
     });

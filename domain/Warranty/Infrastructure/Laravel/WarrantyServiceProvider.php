@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Warranty\Infrastructure\Laravel;
 
+use Domain\Warranty\Application\Contracts\WarrantyClaimLookup;
 use Domain\Warranty\Domain\Repositories\ReturnRequestRepository;
 use Domain\Warranty\Domain\Repositories\TradeInAssessmentRepository;
 use Domain\Warranty\Domain\Repositories\WarrantyClaimRepository;
@@ -22,5 +23,6 @@ final class WarrantyServiceProvider extends ServiceProvider
         $this->app->bind(WarrantyClaimRepository::class, EloquentWarrantyClaimRepository::class);
         $this->app->bind(ReturnRequestRepository::class, EloquentReturnRequestRepository::class);
         $this->app->bind(TradeInAssessmentRepository::class, EloquentTradeInAssessmentRepository::class);
+        $this->app->bind(WarrantyClaimLookup::class, EloquentWarrantyClaimLookup::class);
     }
 }

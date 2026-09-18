@@ -9,10 +9,13 @@ use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ConsumeInventoryCommand;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
+use Domain\Payments\Application\Commands\ConfirmPaymentCommand;
 use Domain\Payments\Application\Commands\InitiatePaymentCommand;
+use Domain\Payments\Application\Contracts\PaymentConfirmationService;
 use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
 use Domain\Sales\Domain\Entities\Sale;
+use Domain\Sales\Domain\Events\SaleCompleted;
 use Domain\Sales\Domain\Repositories\SaleRepository;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
 use Domain\Sales\Domain\Services\InvoiceNumberGenerator;
@@ -20,6 +23,7 @@ use Domain\Sales\Domain\ValueObjects\CheckoutId;
 use Domain\Sales\Domain\ValueObjects\InvoiceNumber;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
+use Illuminate\Support\Facades\Event;
 
 /**
  * The sale-completion boundary (ADD §16): a successful payment does
@@ -37,6 +41,7 @@ final class CreateSaleFromPaidCheckoutHandler
         private readonly SaleRepository $sales,
         private readonly InventoryReservationService $reservations,
         private readonly PaymentInitiationService $payments,
+        private readonly PaymentConfirmationService $confirmations,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -61,14 +66,29 @@ final class CreateSaleFromPaidCheckoutHandler
 
             $this->checkouts->save($checkout);
 
-            $payment = $this->payments->initiate(new InitiatePaymentCommand(
-                payableType: 'sales_checkout',
-                payableId: $command->checkoutId,
-                method: $command->paymentMethod,
-                amountMinor: $checkout->totalMinor(),
-                initiatedByStaffId: $command->confirmedByStaffId,
-                providerReference: $command->paymentReference,
-            ));
+            // A customer may already have submitted a bank transfer for this checkout
+            // (RequestCheckoutBankTransferCommand) — confirm & reuse that transaction
+            // instead of initiating a second one for the same money.
+            if ($command->existingPaymentTransactionId !== null) {
+                $this->confirmations->confirm(new ConfirmPaymentCommand(
+                    transactionId: $command->existingPaymentTransactionId,
+                    confirmedByStaffId: $command->confirmedByStaffId,
+                    providerReference: $command->paymentReference,
+                ));
+
+                $paymentTransactionId = $command->existingPaymentTransactionId;
+            } else {
+                $payment = $this->payments->initiate(new InitiatePaymentCommand(
+                    payableType: 'sales_checkout',
+                    payableId: $command->checkoutId,
+                    method: $command->paymentMethod,
+                    amountMinor: $checkout->totalMinor(),
+                    initiatedByStaffId: $command->confirmedByStaffId,
+                    providerReference: $command->paymentReference,
+                ));
+
+                $paymentTransactionId = $payment->transactionId;
+            }
 
             $sequence = $this->sales->nextInvoiceSequence($checkout->shopId()->value);
             $invoiceNumber = new InvoiceNumber(InvoiceNumberGenerator::generate($command->shopCode, $sequence));
@@ -79,7 +99,7 @@ final class CreateSaleFromPaidCheckoutHandler
                 $checkout->customerId(),
                 new StaffId($command->confirmedByStaffId),
                 new Money($checkout->totalMinor()),
-                $payment->transactionId,
+                $paymentTransactionId,
                 $command->paymentMethod,
                 $command->paymentReference,
                 $invoiceNumber,
@@ -99,10 +119,12 @@ final class CreateSaleFromPaidCheckoutHandler
                     'checkout_id' => $command->checkoutId,
                     'total_minor' => $checkout->totalMinor(),
                     'payment_method' => $command->paymentMethod,
-                    'payment_transaction_id' => $payment->transactionId,
+                    'payment_transaction_id' => $paymentTransactionId,
                     'invoice_number' => $invoiceNumber->value,
                 ],
             );
+
+            Event::dispatch(new SaleCompleted($saleId->value, $checkout->customerId()?->value, CarbonImmutable::now()));
 
             return $saleId->value;
         });

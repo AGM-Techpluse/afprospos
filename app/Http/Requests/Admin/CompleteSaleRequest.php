@@ -20,6 +20,7 @@ final class CompleteSaleRequest extends FormRequest
         return [
             'payment_method' => ['required', Rule::in(['cash', 'pos_terminal', 'bank_transfer', 'in_app'])],
             'payment_reference' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => $this->input('payment_method') !== 'cash')],
+            'existing_payment_transaction_id' => ['nullable', 'integer'],
         ];
     }
 }

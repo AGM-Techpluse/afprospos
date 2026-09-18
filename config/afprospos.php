@@ -50,6 +50,41 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Bank transfer instructions
+    |--------------------------------------------------------------------
+    |
+    | Shown to a customer on the payment page when they choose "Bank
+    | transfer" (Customer\PaymentController) — placeholder values; the
+    | shop owner should replace these with real account details before
+    | this flow goes live.
+    |
+    */
+    'bank_transfer_instructions' => [
+        'account_name' => 'AfProsPos Limited',
+        'account_number' => '0000000000',
+        'bank_name' => 'Update this in config/afprospos.php',
+    ],
+
+    /*
+    |--------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------
+    |
+    | NOTIF-BR-06: max delivery attempts and the increasing retry
+    | intervals (seconds) between them. NOTIF-BR-16: categories that
+    | ignore a customer's channel preference — always sent regardless of
+    | notification_preferences. Provider credentials (RESEND_API_KEY,
+    | MAIL_*) stay in .env per ADD §21A — never referenced here.
+    |
+    */
+    'notifications' => [
+        'max_delivery_attempts' => 3,
+        'retry_backoff_seconds' => [60, 300, 900],
+        'mandatory_categories' => ['transactional', 'security'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------
     | Repair authorization window
     |--------------------------------------------------------------------
     |
@@ -113,6 +148,7 @@ return [
         'collection' => ['view', 'process', 'override'],
         'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'manage'],
         'audit' => ['view'],
+        'settings' => ['view'],
     ],
 
     /*

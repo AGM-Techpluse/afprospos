@@ -23,7 +23,11 @@ interface CustomerDirectoryQuery
      * Single-customer lookup — used to display the name/email of a customer
      * already attached to a checkout, without the caller touching CustomerRecord.
      *
-     * @return array{id: int, name: string, email: ?string, phone: string}|null
+     * `notification_preferences`/`marketing_opt_out` were added for
+     * Notifications' NotificationEngine (NOTIF-BR-16/17) — additive, every
+     * existing caller that only reads id/name/email/phone is unaffected.
+     *
+     * @return array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool}|null
      */
     public function find(int $id): ?array;
 
@@ -33,7 +37,7 @@ interface CustomerDirectoryQuery
      * of one `find()` per row.
      *
      * @param  int[]  $ids
-     * @return array<int, array{id: int, name: string, email: ?string, phone: string}> keyed by customer id
+     * @return array<int, array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool}> keyed by customer id
      */
     public function findMany(array $ids): array;
 }

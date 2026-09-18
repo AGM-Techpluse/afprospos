@@ -24,3 +24,9 @@ Schedule::command('afprospos:repairs:expire-authorizations')
 Schedule::command('afprospos:collection:process-deadlines')
     ->daily()
     ->withoutOverlapping();
+
+// Safety net only — DispatchNotificationJob's own backoff() is the primary retry path
+// (NOTIF-BR-06); this catches anything lost at the queue level (worker restart, etc).
+Schedule::command('afprospos:notifications:retry-failed')
+    ->everyTenMinutes()
+    ->withoutOverlapping();

@@ -46,6 +46,7 @@ final class SaleDetailQuery
             'customer_name' => $sale->customer_id !== null ? ($this->customers->find($sale->customer_id)['name'] ?? null) : null,
             'cashier_staff_id' => $sale->cashier_staff_id,
             'total_minor' => $sale->total_minor,
+            'payment_transaction_id' => $sale->payment_transaction_id,
             'payment_method' => $sale->payment_method,
             'payment_reference' => $sale->payment_reference,
             'invoice_number' => $sale->invoice_number,

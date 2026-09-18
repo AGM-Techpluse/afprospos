@@ -68,6 +68,11 @@ final class EloquentCustomerRepository implements CustomerRepository
         ]);
     }
 
+    public function updateAvatar(CustomerId $id, ?string $avatarPath): void
+    {
+        CustomerRecord::query()->findOrFail($id->value)->update(['avatar_path' => $avatarPath]);
+    }
+
     public function verifyPassword(CustomerId $id, string $plainPassword): bool
     {
         $record = CustomerRecord::query()->findOrFail($id->value);

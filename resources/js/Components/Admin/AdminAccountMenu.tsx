@@ -55,7 +55,7 @@ export default function AdminAccountMenu({ name, email }: { name: string; email:
                     <button
                         type="button"
                         onClick={logout}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-admin-text hover:bg-admin-hover"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-admin-red hover:bg-admin-hover"
                     >
                         <Icon name="box-arrow-right" />
                         Log out

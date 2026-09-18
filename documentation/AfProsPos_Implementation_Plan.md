@@ -176,6 +176,21 @@ Follow the detailed Windows setup and verification instructions in [Phase 0: Pro
 
 **Exit criteria:** all CI gates pass; critical business scenarios have executable tests; pilot operations can be supported with documented monitoring, recovery, and incident procedures.
 
+### Phase 11 - Customer remote ordering and delivery (post-v1, not yet scheduled)
+
+**Status:** deferred by product decision after Phase 7 (2026-09-19) — captured here so the shape is agreed before work starts, not started as part of the v1 critical path (Phases 0-10).
+
+**Goal:** let a customer place and pay for an order entirely on their own, without a staff member creating the checkout on their behalf, and have the item delivered to them instead of only picked up in-shop.
+
+- Customer-initiated checkout: a customer picks a product/SKU from their own dashboard (no customer-facing product catalog exists yet — this phase builds it) and starts a checkout themselves. Reuses Inventory's existing reservation engine unchanged; the write path gains a customer-originated entry point alongside today's staff-only `CreateCheckoutCommand`, with the fulfilling shop chosen by stock availability rather than a cashier's session.
+- Real online payment: bank-transfer-only customer payment (built 2026-09-17) is workable but adds friction for a customer who's never visited a shop. This phase is where the still-deferred online/card gateway (a real `PaymentGateway` implementation, e.g. Paystack, plus webhook signature verification against `routes/webhooks.php`, currently an empty stub) actually gets built — see ADD §14.2/§25.3's "never trust a client-side success screen" rule, already enforced for bank transfer and equally required here.
+- New `Delivery` bounded context, mirroring `Collection`'s existing pickup-lifecycle pattern (repair collection cases) rather than inventing a new shape: delivery address capture, delivery fee/zone rules, a delivery-case state machine (dispatched -> out for delivery -> delivered / failed delivery / returned to shop), rider/courier assignment, and a customer-visible tracking status distinct from (but linked to) `PaymentStatus`.
+- Inventory/Sales implication: a remote, delivered sale's reservation cannot consume-to-sold at payment-confirmation time the way an in-store sale does today (`CreateSaleFromPaidCheckoutHandler`) — it needs its own commit point (e.g. "handed to courier" or "delivered") so a failed or returned delivery can cleanly release stock without a manual correction.
+- Customer UX: a real "Buy a phone" flow (retiring the dashboard's current "Soon" card), delivery-address collection/management on the customer profile, and order-tracking screens that show delivery status alongside payment status on one page.
+- Interplay with Phase 7 Warranty: a delivered-but-wrong-or-faulty item needs a pre-claim return/exchange path (reject at the door, or return within a short window) distinct from today's post-sale warranty claim flow, which assumes the customer already accepted and is using the device.
+
+**Exit criteria:** a customer can browse, order, and pay for a device without any staff action, and track it from "processing" through "delivered" entirely from their own dashboard; a failed or refused delivery releases inventory correctly without a manual admin correction.
+
 ## 4. Detailed Phase Work Breakdown
 
 The work packages below expand the phases into sequenced implementation tasks. A later package within a phase must not start until the contracts and tests it depends on have been agreed and committed.
@@ -509,6 +524,37 @@ tests/Unit/Domain/**/*Test.php                    (every state machine, calculat
 tests/Feature/{Admin,Customer}/**/*Test.php       (every persona-scoped use case)
 tests/Contract/**/*ContractTest.php               (every provider, full case list per CPNC §6.5)
 tests/Feature/**/Concurrency/*ConcurrencyTest.php (the full concurrency matrix, ADD §43.3)
+```
+
+### Phase 11 work breakdown - Customer remote ordering and delivery (post-v1, not yet scheduled)
+
+Not yet sequenced against Phases 0-10; captured so scope/shape is agreed ahead of time. Depends on Phase 3 (Inventory reservations), Phase 4 (Sales checkout), and Phase 5 (Payments) already being in place, which they are as of Phase 7.
+
+1. **Build the customer product catalog.** A customer-facing browse/search page (`Customer\ProductsController` or similar) backed by Inventory's existing `InventoryCatalogQuery`/`ProductCatalogQuery` read side — no new Inventory write logic needed, this is a new read-only customer view onto data that already exists.
+2. **Add a customer-initiated checkout write path.** A new Command alongside (not replacing) `CreateCheckoutCommand`, sourced from `routes/customer.php`, with `customerId` required and no `cashierStaffId`; fulfilling-shop selection picks a shop with available stock rather than using a cashier's session shop.
+3. **Build a real online payment gateway.** Implement `domain/Payments/Infrastructure/Gateways/Paystack/PaystackGateway.php` (or the chosen provider) against the existing `PaymentGateway` contract, register it in `config/payments.php`, and build `app/Http/Controllers/Webhooks/*WebhookController.php` + `app/Http/Middleware/VerifyWebhookSignature.php` against the currently-empty `routes/webhooks.php` stub. Extend `Customer/Payments/Show.tsx`'s `PaymentMethodSwitcher` (currently bank-transfer-only) with the new method.
+4. **New `Delivery` module.** `domain/Delivery/{Domain,Application,Infrastructure}` following the standard module skeleton (CPNC Appendix C), mirroring `domain/Collection`'s pickup-case pattern: a `DeliveryCase` aggregate, address value object, state machine, and a published `DeliveryCaseLookup`-style read contract for Sales/Customer to depend on (never Delivery's Eloquent models directly, per CPNC §4.2).
+5. **Delivery fee/zone configuration** feeding into checkout totals via the existing `CheckoutPricingService` adjustment mechanism rather than a parallel pricing path.
+6. **Adjust the inventory commit point for delivered sales.** `CreateSaleFromPaidCheckoutHandler`'s consume-on-payment-confirmation behavior needs a delivery-aware variant (or a follow-up commit step) so a failed/returned delivery releases stock instead of requiring a manual correction.
+7. **Admin delivery operations UI**: dispatch, rider/courier assignment, mark-delivered/failed, mirroring `Admin/Collection`'s existing pages.
+8. **Customer delivery UX**: address capture/management on `Customer/Profile`, and a tracking view alongside `PaymentStatusBadge` on the order page.
+9. **Tests**: persona feature tests for the full remote-order-to-delivery path, a concurrency test for delivery-vs-return racing (mirroring `CheckoutExpiryRacingPaymentConfirmationConcurrencyTest`'s pattern), and an architecture test for the new module's boundary.
+
+**Key files (representative, not exhaustive):**
+
+```text
+domain/Delivery/Domain/Entities/DeliveryCase.php
+domain/Delivery/Application/Commands/{DispatchDelivery,MarkDelivered,MarkDeliveryFailed}Command.php
+domain/Delivery/Application/Contracts/DeliveryCaseLookup.php
+domain/Payments/Infrastructure/Gateways/Paystack/PaystackGateway.php
+app/Http/Controllers/Webhooks/PaystackWebhookController.php
+app/Http/Middleware/VerifyWebhookSignature.php
+app/Http/Controllers/Customer/ProductsController.php
+app/Http/Controllers/Admin/DeliveryController.php
+resources/js/Pages/Customer/Shop/{Index,Show}.tsx
+resources/js/Pages/Admin/Delivery/{Index,Show}.tsx
+tests/Feature/Customer/Delivery/**/*Test.php
+tests/Feature/Delivery/Concurrency/*ConcurrencyTest.php
 ```
 
 ## 5. Migration and Integration Order

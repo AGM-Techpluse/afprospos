@@ -2,11 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use Domain\Notifications\Application\Queries\CustomerNotificationInboxQuery;
 use Domain\RBAC\Application\Queries\EffectivePermissionsQuery;
 use Domain\Shop\Application\Contracts\ActiveShopSessionStore;
 use Domain\Shop\Application\Handlers\EnsureActiveShopSelectedHandler;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -16,6 +18,7 @@ class HandleInertiaRequests extends Middleware
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ActiveShopSessionStore $activeShopSession,
         private readonly EnsureActiveShopSelectedHandler $ensureActiveShop,
+        private readonly CustomerNotificationInboxQuery $customerNotifications,
     ) {}
 
     /**
@@ -62,6 +65,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $customer->name,
                     'phone' => $customer->phone,
                     'email' => $customer->email,
+                    'avatar_url' => $customer->avatar_path !== null ? Storage::disk('public')->url($customer->avatar_path) : null,
                 ] : null,
             ],
             // Deliberately NOT named "shops" — several controllers already pass
@@ -71,6 +75,9 @@ class HandleInertiaRequests extends Middleware
             // fed AdminShell an array instead of {accessible, active} and
             // crashed ShopSwitcher on every page that also shares that name.
             'shopSwitcher' => $staff !== null ? $this->shareShops((int) $staff->id) : null,
+            // Feeds Customer/NotificationDropdown.tsx on every Customer page. Lazy
+            // so Admin requests (no customer session) never pay for the query.
+            'notifications' => fn () => $customer !== null ? $this->customerNotifications->forCustomer((int) $customer->id) : null,
             // Set by App\Http\Controllers\Concerns\FlashesToast; consumed by
             // resources/js/hooks/useFlashToast.ts. Lazy so it isn't evaluated
             // (and doesn't get pulled from the session) on requests that

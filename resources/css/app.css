@@ -51,10 +51,15 @@
     --color-customer-blue-soft: var(--c-blue-soft);
     --color-customer-yellow: var(--c-yellow);
     --color-customer-yellow-soft: var(--c-yellow-soft);
+    --color-customer-yellow-text: var(--c-yellow-text);
     --color-customer-red: var(--c-red);
     --color-customer-red-soft: var(--c-red-soft);
     --color-customer-green: var(--c-green);
     --color-customer-green-soft: var(--c-green-soft);
+    --color-customer-card-lime: var(--c-card-lime);
+    --color-customer-card-lime-text: var(--c-card-lime-text);
+    --color-customer-card-navy: var(--c-card-navy);
+    --color-customer-card-blue: var(--c-card-blue);
     --color-customer-input-border: var(--c-input-border);
     --color-customer-divider: var(--c-divider);
     --color-customer-muted-icon: var(--c-muted-icon);
@@ -217,6 +222,13 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 24px;
+}
+
+/* Grid items default to min-width:auto, so a wide-intrinsic-content child
+   (e.g. CustomerQuickActions' pill row) forces the whole track — and the
+   page — wider instead of scrolling within its own bounds. */
+.customer-content-grid > * {
+    min-width: 0;
 }
 
 @media (min-width: 640px) {

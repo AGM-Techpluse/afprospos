@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Domain\Shared\Infrastructure\Persistence\Eloquent;
 
+use Database\Factories\CustomerRecordFactory;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
-use Database\Factories\CustomerRecordFactory;
 
 /**
  * Eloquent persistence detail AND the Authenticatable model backing the
@@ -21,6 +21,7 @@ use Database\Factories\CustomerRecordFactory;
  * @property string $name
  * @property string $phone
  * @property ?string $email
+ * @property ?string $avatar_path
  * @property array<string, mixed> $notification_preferences
  * @property bool $marketing_opt_out
  * @property string $status
@@ -38,6 +39,7 @@ final class CustomerRecord extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
+        'avatar_path',
         'notification_preferences',
         'marketing_opt_out',
         'status',

@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
+import SettingsSubNav from '../../../../Components/Admin/SettingsSubNav';
 import DeviceCatalogManager, { DeviceType } from '../../../../Features/Repairs/DeviceCatalogManager';
 
 interface DeviceCatalogIndexProps {
@@ -16,6 +17,8 @@ export default function DeviceCatalogIndex({ deviceTypes }: DeviceCatalogIndexPr
                 title="Device catalog"
                 description="Configure the device types, brands, and fixable problems offered during repair intake, and which parts are suggested for each problem."
             />
+
+            <SettingsSubNav />
 
             <div className="max-w-4xl">
                 <DeviceCatalogManager deviceTypes={deviceTypes} />

@@ -1,6 +1,16 @@
 import { Head } from '@inertiajs/react';
 import CustomerShell from '../../../Components/Customer/CustomerShell';
+import CustomerDetailCard from '../../../Components/Customer/CustomerDetailCard';
+import Icon from '../../../Components/Icons/Icon';
 import { formatNaira } from '../../../lib/money';
+
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
+    completed: 'success',
+    unrepairable: 'danger',
+    expired_cancelled: 'danger',
+    awaiting_authorization: 'warning',
+    awaiting_parts: 'warning',
+};
 
 type Diagnosis = {
     component: string;
@@ -31,59 +41,65 @@ export default function CustomerRepairShow({ repair }: CustomerRepairShowProps) 
         <CustomerShell>
             <Head title={`${repair.device_make} ${repair.device_model}`} />
 
+            {/* One wrapping div = one grid item, so this column stays in customer-content-grid's first track. */}
             <div className="customer-content-grid py-4 sm:py-0">
-                <h1 className="font-bold text-customer-lg text-customer-text mb-1">
-                    {repair.device_make} {repair.device_model}
-                </h1>
-                <p className="text-customer-caption text-customer-text2 mb-4 capitalize">{repair.repair_status.replace(/_/g, ' ')}</p>
+                <div>
+                    <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-4">
+                        {repair.device_make} {repair.device_model}
+                    </h1>
 
-                <div className="bg-white rounded-customer-card shadow-customer-soft p-4 mb-4">
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-customer-text text-customer-caption">Labour charge</span>
-                        <span className="text-customer-text font-semibold text-customer-caption">{formatNaira(repair.labour_charge_minor)}</span>
-                    </div>
-                    {repair.down_payment_required_minor !== null && (
-                        <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                            <span className="text-customer-text text-customer-caption">Down payment required</span>
-                            <span className="text-customer-text font-semibold text-customer-caption">
-                                {formatNaira(repair.down_payment_required_minor)}
-                            </span>
+                    <CustomerDetailCard
+                        icon="tools"
+                        title={`${repair.device_make} ${repair.device_model}`}
+                        subtitle={`Repair #${repair.id}`}
+                        badge={{ label: repair.repair_status.replace(/_/g, ' '), tone: STATUS_TONE[repair.repair_status] ?? 'info' }}
+                        details={[
+                            { label: 'Labour charge', value: formatNaira(repair.labour_charge_minor) },
+                            {
+                                label: 'Down payment',
+                                value: repair.down_payment_required_minor !== null ? formatNaira(repair.down_payment_required_minor) : '—',
+                            },
+                            { label: 'Payment status', value: repair.financial_status.replace(/_/g, ' ') },
+                            {
+                                label: 'Estimated collection',
+                                value: repair.estimated_collection_date ? new Date(repair.estimated_collection_date).toLocaleDateString() : 'TBD',
+                            },
+                        ]}
+                        actions={
+                            repair.repair_status === 'completed' ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="inline-flex items-center gap-1.5 rounded-customer-pill bg-customer-blue text-white font-semibold text-customer-caption px-3 py-1.5 print:hidden"
+                                    >
+                                        <Icon name="printer" />
+                                        Print
+                                    </button>
+                                    <a
+                                        href={`/customer/warranty/claims/create?repair=${repair.id}`}
+                                        className="inline-flex items-center gap-1.5 rounded-customer-pill bg-customer-blue text-white font-semibold text-customer-caption px-3 py-1.5 print:hidden"
+                                    >
+                                        <Icon name="shield-exclamation" />
+                                        File a claim
+                                    </a>
+                                </>
+                            ) : undefined
+                        }
+                    />
+
+                    {repair.diagnoses.length > 0 && (
+                        <div className="bg-white rounded-customer-card shadow-customer-soft p-4 mt-4">
+                            <h2 className="font-bold text-customer-text mb-2">Diagnosis</h2>
+                            {repair.diagnoses.map((diagnosis, index) => (
+                                <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                    <span className="text-customer-text text-customer-caption capitalize">{diagnosis.component.replace(/_/g, ' ')}</span>
+                                    <span className="text-customer-text2 text-customer-caption capitalize">{diagnosis.condition.replace(/_/g, ' ')}</span>
+                                </div>
+                            ))}
                         </div>
                     )}
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span className="text-customer-text text-customer-caption">Payment status</span>
-                        <span className="text-customer-text font-semibold text-customer-caption capitalize">
-                            {repair.financial_status.replace(/_/g, ' ')}
-                        </span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                        <span className="text-customer-text text-customer-caption">Estimated collection</span>
-                        <span className="text-customer-text font-semibold text-customer-caption">
-                            {repair.estimated_collection_date ? new Date(repair.estimated_collection_date).toLocaleDateString() : 'TBD'}
-                        </span>
-                    </div>
                 </div>
-
-                {repair.diagnoses.length > 0 && (
-                    <div className="bg-white rounded-customer-card shadow-customer-soft p-4">
-                        <h2 className="font-bold text-customer-text mb-2">Diagnosis</h2>
-                        {repair.diagnoses.map((diagnosis, index) => (
-                            <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                                <span className="text-customer-text text-customer-caption capitalize">{diagnosis.component.replace(/_/g, ' ')}</span>
-                                <span className="text-customer-text2 text-customer-caption capitalize">{diagnosis.condition.replace(/_/g, ' ')}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {repair.repair_status === 'completed' && (
-                    <a
-                        href={`/customer/warranty/claims/create?repair=${repair.id}`}
-                        className="inline-block mt-4 text-customer-blue font-semibold text-customer-caption"
-                    >
-                        File a warranty claim for this repair
-                    </a>
-                )}
             </div>
         </CustomerShell>
     );

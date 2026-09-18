@@ -42,8 +42,17 @@ type TodaysSales = {
     total_minor: number;
 };
 
+type PendingPaymentTransaction = {
+    id: number;
+    status: string;
+    method: string;
+    amount_minor: number;
+    provider_reference: string | null;
+};
+
 interface CheckoutPageProps {
     checkout: CheckoutView | null;
+    pendingPaymentTransaction: PendingPaymentTransaction | null;
     shops: Shop[];
     checkoutReservationMinutes: number;
     recentSales: RecentSale[];
@@ -133,7 +142,7 @@ function RecentSales({ sales }: { sales: RecentSale[] }) {
     );
 }
 
-export default function SalesCheckout({ checkout, shops, recentSales, todaysSales }: CheckoutPageProps) {
+export default function SalesCheckout({ checkout, pendingPaymentTransaction, shops, recentSales, todaysSales }: CheckoutPageProps) {
     const confirm = useConfirm();
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,7 +150,11 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
     const [discountOpen, setDiscountOpen] = useState(false);
 
     const discountForm = useForm({ type: 'promotion', source_id: '1', amount_naira: '' });
-    const completeForm = useForm({ payment_method: 'cash', payment_reference: '' });
+    const completeForm = useForm({
+        payment_method: pendingPaymentTransaction ? pendingPaymentTransaction.method : 'cash',
+        payment_reference: pendingPaymentTransaction?.provider_reference ?? '',
+        existing_payment_transaction_id: pendingPaymentTransaction ? String(pendingPaymentTransaction.id) : '',
+    });
 
     const itemCount = checkout?.items.length ?? 0;
 
@@ -381,36 +394,56 @@ export default function SalesCheckout({ checkout, shops, recentSales, todaysSale
                             </div>
                         </form>
                     ) : (
-                        <button
-                            type="button"
-                            disabled={locked}
-                            onClick={() => setDiscountOpen(true)}
-                            className="text-xs font-semibold text-admin-blue text-left mb-3 disabled:text-white/40"
-                        >
-                            + Apply discount
-                        </button>
+                        <div className="flex items-center gap-3 mb-3">
+                            <button
+                                type="button"
+                                disabled={locked}
+                                onClick={() => setDiscountOpen(true)}
+                                className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
+                            >
+                                + Apply discount
+                            </button>
+                            <button
+                                type="button"
+                                disabled={locked}
+                                onClick={() => router.visit(`/admin/warranty/trade-ins/create?checkout=${checkout.id}`)}
+                                className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
+                            >
+                                + Trade-in
+                            </button>
+                        </div>
                     )}
 
                     <form onSubmit={completeSale} className="border-t border-white/15 pt-3">
-                        <select
-                            value={completeForm.data.payment_method}
-                            onChange={(e) => completeForm.setData('payment_method', e.target.value)}
-                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
-                        >
-                            {PAYMENT_METHODS.map((m) => (
-                                <option key={m.value} value={m.value}>
-                                    {m.label}
-                                </option>
-                            ))}
-                        </select>
-                        {completeForm.data.payment_method !== 'cash' && (
-                            <input
-                                type="text"
-                                placeholder="Reference (terminal/transfer ID)"
-                                value={completeForm.data.payment_reference}
-                                onChange={(e) => completeForm.setData('payment_reference', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
-                            />
+                        {pendingPaymentTransaction ? (
+                            <div className="bg-admin-blue/10 border border-admin-blue/30 rounded-admin-button px-2 py-2 text-xs text-admin-text mb-2">
+                                Customer submitted a bank transfer
+                                {pendingPaymentTransaction.provider_reference ? ` (ref: ${pendingPaymentTransaction.provider_reference})` : ''} —
+                                confirming below will complete the sale against it.
+                            </div>
+                        ) : (
+                            <>
+                                <select
+                                    value={completeForm.data.payment_method}
+                                    onChange={(e) => completeForm.setData('payment_method', e.target.value)}
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
+                                >
+                                    {PAYMENT_METHODS.map((m) => (
+                                        <option key={m.value} value={m.value}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                {completeForm.data.payment_method !== 'cash' && (
+                                    <input
+                                        type="text"
+                                        placeholder="Reference (terminal/transfer ID)"
+                                        value={completeForm.data.payment_reference}
+                                        onChange={(e) => completeForm.setData('payment_reference', e.target.value)}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
+                                    />
+                                )}
+                            </>
                         )}
                         {completeForm.errors.payment_method && (
                             <p className="text-xs text-admin-red mb-2">{completeForm.errors.payment_method}</p>

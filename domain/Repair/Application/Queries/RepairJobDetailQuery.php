@@ -74,6 +74,7 @@ final class RepairJobDetailQuery
             })->all();
 
         $collectionCase = $this->collectionCases->findLatestBySource('repair_job', $repairJobId);
+        $customer = $this->customers->find($job->customer_id);
 
         $photos = RepairJobPhotoRecord::query()
             ->where('repair_job_id', $repairJobId)
@@ -96,7 +97,9 @@ final class RepairJobDetailQuery
             'id' => $job->id,
             'shop_id' => $job->shop_id,
             'customer_id' => $job->customer_id,
-            'customer_name' => $this->customers->find($job->customer_id)['name'] ?? null,
+            'customer_name' => $customer['name'] ?? null,
+            'customer_phone' => $customer['phone'] ?? null,
+            'customer_email' => $customer['email'] ?? null,
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
             'reported_issue' => $job->reported_issue,

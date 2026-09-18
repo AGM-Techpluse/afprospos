@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\InventoryImportController;
 use App\Http\Controllers\Admin\InventorySerializedUnitsController;
 use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
+use App\Http\Controllers\Admin\NotificationSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RepairsController;
@@ -415,6 +416,10 @@ Route::prefix('admin')
             ->delete('/settings/device-catalog/suggested-parts/{suggestedPart}', [DeviceCatalogController::class, 'detachSuggestedPart'])
             ->whereNumber('suggestedPart')
             ->name('settings.device-catalog.suggested-parts.destroy');
+
+        Route::middleware('permission:settings.view')
+            ->get('/settings/notifications', [NotificationSettingsController::class, 'index'])
+            ->name('settings.notifications.index');
 
         Route::middleware('permission:repairs.view')
             ->get('/repairs', [RepairsController::class, 'index'])

@@ -3,37 +3,47 @@ import CustomerShell from '../../../Components/Customer/CustomerShell';
 import CustomerHeroCard from '../../../Components/Customer/CustomerHeroCard';
 import CustomerListItem from '../../../Components/Customer/CustomerListItem';
 import CustomerEmptyState from '../../../Components/Customer/CustomerEmptyState';
+import CustomerAvatar from '../../../Components/Customer/CustomerAvatar';
+import CustomerQuickActions, { CustomerQuickAction } from '../../../Components/Customer/CustomerQuickActions';
 import Icon from '../../../Components/Icons/Icon';
+import { formatNaira } from '../../../lib/money';
 
-interface QuickAction {
-    key: string;
-    label: string;
-    icon: string;
+type ActiveRepair = {
+    device: string;
+    status_label: string;
+    description: string;
+    progress_percent: number;
+};
+
+type OrderRow = {
+    type: 'checkout' | 'sale';
+    id: number;
+    status: string;
+    total_minor: number;
+    invoice_number?: string;
+    created_at: string;
+};
+
+interface DashboardProps {
+    activeRepair: ActiveRepair | null;
+    recentOrders: OrderRow[];
 }
 
-const QUICK_ACTIONS: QuickAction[] = [
-    { key: 'request-repair', label: 'Request a repair', icon: 'tools' },
-    { key: 'track-repair', label: 'Track a repair', icon: 'search' },
-    { key: 'find-shop', label: 'Find a shop', icon: 'shop' },
-    { key: 'refer', label: 'Refer a friend', icon: 'gift' },
+/** documentation/UI-ref piggyvest-UI-1.jpeg — each card gets its own tint from the existing customer color tokens (no new colors invented), rotating since there's no brand-color-per-feature the way PiggyVest's Savings products have one. Border is the same token at full saturation (vs. the soft/pastel fill), which reads as "the same color, just darker" without inventing a new shade. `track-repair` has a real destination (this dashboard IS the tracker); the rest are flows that don't exist yet. */
+const QUICK_ACTIONS: CustomerQuickAction[] = [
+    { key: 'buy-phone', label: 'Buy a phone', icon: 'bag-check', bg: 'bg-customer-blue-soft', text: 'text-customer-blue', border: 'border-customer-blue/40' },
+    { key: 'request-repair', label: 'Request a repair', icon: 'tools', bg: 'bg-customer-green-soft', text: 'text-customer-green', border: 'border-customer-green/40' },
+    { key: 'track-repair', label: 'Track a repair', icon: 'search', bg: 'bg-customer-yellow-soft', text: 'text-customer-yellow-text', border: 'border-customer-yellow-text/40', href: '/customer/repairs' },
+    { key: 'find-shop', label: 'Find a shop', icon: 'shop', bg: 'bg-customer-red-soft', text: 'text-customer-red', border: 'border-customer-red/40' },
+    { key: 'refer', label: 'Refer a friend', icon: 'gift', bg: 'bg-customer-blue-soft', text: 'text-customer-blue', border: 'border-customer-blue/40' },
 ];
 
-// Order history is empty until Sales/Orders data flows to the customer
-// portal — kept as a typed, empty array (not fabricated rows) so wiring the
-// real list later is a data change here, not a UI rebuild.
-const recentOrders: Array<{
-    id: string;
-    icon: string;
-    title: string;
-    subtitle: string;
-    amount: string;
-}> = [];
-
-export default function CustomerDashboard() {
+export default function CustomerDashboard({ activeRepair, recentOrders }: DashboardProps) {
     const { auth } = usePage().props as any;
     const customerName: string = auth?.customer?.name ?? 'there';
     const customerPhone: string | undefined = auth?.customer?.phone;
     const customerEmail: string | undefined = auth?.customer?.email;
+    const avatarUrl: string | null = auth?.customer?.avatar_url ?? null;
 
     return (
         <CustomerShell>
@@ -41,23 +51,20 @@ export default function CustomerDashboard() {
 
             <div className="customer-content-grid py-4 sm:py-0">
                 <div>
-                    <CustomerHeroCard />
+                    <CustomerHeroCard
+                        activeRepair={
+                            activeRepair
+                                ? {
+                                      device: activeRepair.device,
+                                      statusLabel: activeRepair.status_label,
+                                      description: activeRepair.description,
+                                      progressPercent: activeRepair.progress_percent,
+                                  }
+                                : undefined
+                        }
+                    />
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                        {QUICK_ACTIONS.map((action) => (
-                            <span
-                                key={action.key}
-                                aria-disabled="true"
-                                className="flex flex-col items-center gap-2 bg-white rounded-customer-card shadow-customer-soft p-4 text-center cursor-not-allowed"
-                            >
-                                <span className="w-9 h-9 rounded-customer-pill bg-customer-blue-soft text-customer-blue flex items-center justify-center">
-                                    <Icon name={action.icon} />
-                                </span>
-                                <span className="text-customer-caption font-semibold text-customer-text2">{action.label}</span>
-                                <span className="text-xs uppercase font-semibold text-customer-muted-icon">Soon</span>
-                            </span>
-                        ))}
-                    </div>
+                    <CustomerQuickActions actions={QUICK_ACTIONS} className="mb-6" forceCardLayout />
 
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="font-bold text-customer-base text-customer-text">Order history</h2>
@@ -70,15 +77,28 @@ export default function CustomerDashboard() {
                             className="bg-white rounded-customer-card shadow-customer-soft"
                         />
                     ) : (
-                        recentOrders.map((order) => (
-                            <CustomerListItem
-                                key={order.id}
-                                icon={order.icon}
-                                title={order.title}
-                                subtitle={order.subtitle}
-                                amount={order.amount}
-                            />
-                        ))
+                        <div className="bg-white rounded-customer-card shadow-customer-soft px-4 overflow-hidden">
+                            {recentOrders.map((order) => (
+                                <CustomerListItem
+                                    key={`${order.type}-${order.id}`}
+                                    icon={order.type === 'sale' ? 'receipt' : 'hourglass-split'}
+                                    title={order.invoice_number ?? `Checkout #${order.id}`}
+                                    subtitle={order.type === 'sale' ? 'Completed' : 'Awaiting payment'}
+                                    amount={formatNaira(order.total_minor)}
+                                    bare
+                                    details={[{ label: 'Date', value: new Date(order.created_at).toLocaleString() }]}
+                                    actions={[
+                                        <Link
+                                            key="view"
+                                            href={order.type === 'sale' ? `/customer/orders/sales/${order.id}` : `/customer/orders/checkouts/${order.id}`}
+                                            className="text-customer-blue font-semibold text-customer-caption"
+                                        >
+                                            View details
+                                        </Link>,
+                                    ]}
+                                />
+                            ))}
+                        </div>
                     )}
                 </div>
 
@@ -88,9 +108,7 @@ export default function CustomerDashboard() {
                     {/* Read-only summary, not a form — editing lives on its own page (Pages/Customer/Profile/Show.tsx) so this card can be elevated without breaking the no-elevated-forms rule (UI/UX §10.1). */}
                     <div className="bg-white rounded-customer-card shadow-customer-soft p-4 mb-6">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="h-10 w-10 rounded-customer-pill bg-customer-blue text-white font-bold flex items-center justify-center shrink-0">
-                                {customerName.charAt(0).toUpperCase()}
-                            </div>
+                            <CustomerAvatar name={customerName} avatarUrl={avatarUrl} size={40} />
                             <div className="min-w-0">
                                 <div className="font-bold text-customer-text truncate">{customerName}</div>
                                 {customerPhone && <div className="text-customer-caption text-customer-text2 truncate">{customerPhone}</div>}

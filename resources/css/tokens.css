@@ -186,6 +186,13 @@
   --c-green: #1FA463;
   --c-green-soft: #E8F8EF;
 
+  /* Landing page card palette (intense flat tones from the marketing hero cards) */
+  --c-card-lime: #A0ED25;
+  --c-card-lime-text: #14200A;
+  --c-card-navy: #10192E;
+  --c-card-blue: #2F6FED;
+
+
   --c-input-border: #D7E3F7;
   --c-divider: #EEF0F3;
   --c-muted-icon: #B7BEC9;

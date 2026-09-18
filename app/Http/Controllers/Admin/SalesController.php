@@ -14,6 +14,7 @@ use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotReservable;
+use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
 use Domain\Sales\Application\Commands\AddCheckoutItemCommand;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Application\Commands\CancelCheckoutCommand;
@@ -54,6 +55,7 @@ final class SalesController
         private readonly InventoryCatalogQuery $catalog,
         private readonly CustomerDirectoryQuery $customerDirectory,
         private readonly ShopDirectoryQuery $shops,
+        private readonly PaymentTransactionLookup $paymentLookup,
         private readonly CreateCheckoutHandler $createCheckout,
         private readonly AddCheckoutItemHandler $addItem,
         private readonly RemoveCheckoutItemHandler $removeItem,
@@ -114,6 +116,9 @@ final class SalesController
 
         return Inertia::render('Admin/Sales/Checkout', [
             'checkout' => $checkout,
+            'pendingPaymentTransaction' => $checkout !== null
+                ? $this->paymentLookup->pendingTransactionFor('sales_checkout', $checkout['id'])
+                : null,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
             'shops' => $this->shops->all(),
@@ -237,6 +242,7 @@ final class SalesController
                 paymentReference: $request->string('payment_reference')->toString() ?: null,
                 confirmedByStaffId: $actor->staffId->value,
                 shopCode: $shop['sku_prefix_code'],
+                existingPaymentTransactionId: $request->integer('existing_payment_transaction_id') ?: null,
             ));
         } catch (CheckoutReservationExpired|CheckoutNotOpen $exception) {
             throw ValidationException::withMessages(['payment_method' => $exception->getMessage()]);

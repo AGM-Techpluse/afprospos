@@ -16,6 +16,7 @@ use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
+use LogicException;
 
 /**
  * Creates the transaction and immediately routes it through the resolved
@@ -54,6 +55,10 @@ final class InitiatePaymentHandler
             );
 
             if ($gatewayResult->status === 'confirmed') {
+                if ($command->initiatedByStaffId === null) {
+                    throw new LogicException('A gateway that confirms synchronously requires a staff initiator; customer-initiated methods must resolve to a pending status.');
+                }
+
                 $transaction->confirm(new StaffId($command->initiatedByStaffId), $gatewayResult->providerReference);
             } else {
                 $transaction->markPendingConfirmation($gatewayResult->providerReference);
@@ -64,7 +69,7 @@ final class InitiatePaymentHandler
             $this->audit->record(
                 module: 'Payments',
                 eventType: 'PaymentInitiated',
-                actorStaffId: new StaffId($command->initiatedByStaffId),
+                actorStaffId: $command->initiatedByStaffId !== null ? new StaffId($command->initiatedByStaffId) : null,
                 actorRoleSnapshot: null,
                 subjectType: 'payments_transaction',
                 subjectId: $id->value,
@@ -76,6 +81,7 @@ final class InitiatePaymentHandler
                     'amount_minor' => $command->amountMinor,
                     'status' => $transaction->status(),
                 ],
+                context: $command->initiatedByCustomerId !== null ? ['customer_id' => $command->initiatedByCustomerId] : null,
             );
 
             return new PaymentInitiationResult($id->value, $transaction->status(), $transaction->providerReference());

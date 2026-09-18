@@ -43,6 +43,8 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
             'name' => $customer->name,
             'email' => $customer->email,
             'phone' => $customer->phone,
+            'notification_preferences' => $customer->notification_preferences ?? [],
+            'marketing_opt_out' => $customer->marketing_opt_out,
         ];
     }
 
@@ -61,6 +63,8 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
                     'name' => $customer->name,
                     'email' => $customer->email,
                     'phone' => $customer->phone,
+                    'notification_preferences' => $customer->notification_preferences ?? [],
+                    'marketing_opt_out' => $customer->marketing_opt_out,
                 ],
             ])
             ->all();

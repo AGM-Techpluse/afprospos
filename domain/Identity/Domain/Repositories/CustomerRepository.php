@@ -28,4 +28,6 @@ interface CustomerRepository
     public function create(string $name, string $phone, ?string $email, string $plainPassword): CustomerId;
 
     public function updateProfile(CustomerId $id, string $name, string $phone, ?string $email): void;
+
+    public function updateAvatar(CustomerId $id, ?string $avatarPath): void;
 }

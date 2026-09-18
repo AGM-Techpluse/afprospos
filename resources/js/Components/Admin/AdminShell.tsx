@@ -52,7 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'reports', label: 'Reports', icon: 'bar-chart-line', soon: true },
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
-            { key: 'device-catalog', label: 'Device catalog', icon: 'phone', href: '/admin/settings/device-catalog' },
+            { key: 'settings', label: 'Settings', icon: 'gear', href: '/admin/settings/device-catalog', activeMatch: '/admin/settings' },
             { key: 'warranty-policies', label: 'Warranty policies', icon: 'shield-check', href: '/admin/warranty/policies' },
         ],
     },

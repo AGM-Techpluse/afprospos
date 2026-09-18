@@ -15,6 +15,8 @@ type RepairDetail = {
     shop_id: number;
     customer_id: number;
     customer_name: string | null;
+    customer_phone: string | null;
+    customer_email: string | null;
     device_make: string;
     device_model: string;
     reported_issue: string | null;
@@ -157,8 +159,17 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
                             {repair.reported_issue && <p className="text-sm text-admin-text whitespace-pre-wrap">{repair.reported_issue}</p>}
                         </div>
                     )}
+
+                    <div className="mb-4 pb-4 border-b border-admin-border">
+                        <div className="text-sm text-admin-text2 mb-1">Customer</div>
+                        <p className="text-sm font-medium text-admin-text">{repair.customer_name ?? 'Unknown customer'}</p>
+                        {repair.customer_phone && <p className="text-sm text-admin-text2">{repair.customer_phone}</p>}
+                        {repair.customer_email && <p className="text-sm text-admin-text2">{repair.customer_email}</p>}
+                    </div>
+
+                    <DetailRow label="Device" value={`${repair.device_make} ${repair.device_model}`} />
                     <DetailRow label="Shop" value={shop ? shop.name : 'Unknown shop'} />
-                    {repair.device_imei_serial && <DetailRow label="IMEI / serial" value={repair.device_imei_serial} />}
+                    <DetailRow label="IMEI / serial" value={repair.device_imei_serial ?? 'Not recorded'} />
 
                     <div className="py-2.5 border-b border-admin-border">
                         <div className="flex items-center justify-between mb-1.5">

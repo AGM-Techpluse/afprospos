@@ -5,6 +5,7 @@ import { CustomerToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 import NotificationDropdown from './NotificationDropdown';
 import CustomerFab from './CustomerFab';
+import CustomerAvatar from './CustomerAvatar';
 import { useFlashToast } from '../../hooks/useFlashToast';
 
 interface CustomerShellProps {
@@ -15,18 +16,19 @@ interface NavItem {
     key: string;
     label: string;
     icon: string;
+    iconColor: string;
     href: string;
     /** Coming-soon items render inert (cursor-not-allowed), not a dead link to a page that 404s. */
     enabled: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { key: 'home', label: 'Home', icon: 'house-door-fill', href: '/customer/dashboard', enabled: true },
-    { key: 'repairs', label: 'Repairs', icon: 'tools', href: '/customer/repairs', enabled: true },
-    { key: 'orders', label: 'Orders', icon: 'bag-check', href: '/customer/orders', enabled: true },
-    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', href: '/customer/warranty/claims', enabled: true },
-    { key: 'shops', label: 'Shops', icon: 'shop', href: '/customer/dashboard', enabled: false },
-    { key: 'profile', label: 'Profile', icon: 'person', href: '/customer/profile', enabled: true },
+    { key: 'home', label: 'Home', icon: 'house-door-fill', iconColor: 'text-customer-blue', href: '/customer/dashboard', enabled: true },
+    { key: 'repairs', label: 'Repairs', icon: 'tools', iconColor: 'text-customer-green', href: '/customer/repairs', enabled: true },
+    { key: 'orders', label: 'Orders', icon: 'bag-check', iconColor: 'text-customer-yellow-text', href: '/customer/orders', enabled: true },
+    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', iconColor: 'text-customer-red', href: '/customer/warranty/claims', enabled: true },
+    { key: 'shops', label: 'Shops', icon: 'shop', iconColor: 'text-customer-card-lime-text', href: '/customer/dashboard', enabled: false },
+    { key: 'profile', label: 'Profile', icon: 'person', iconColor: 'text-gray-500', href: '/customer/profile', enabled: true },
 ];
 
 export default function CustomerShell({ children }: CustomerShellProps) {
@@ -34,12 +36,12 @@ export default function CustomerShell({ children }: CustomerShellProps) {
     const currentUrl = usePage().url;
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const customerName: string = auth?.customer?.name ?? 'there';
-    const avatarInitial = customerName.charAt(0).toUpperCase();
+    const avatarUrl: string | null = auth?.customer?.avatar_url ?? null;
 
     useFlashToast();
 
     return (
-        <div data-theme="customer" className="min-h-screen bg-white flex sm:p-4 sm:gap-4">
+        <div data-theme="customer" className="min-h-screen bg-white flex">
             {isDrawerOpen && (
                 <div
                     className="sm:hidden fixed inset-0 z-40 bg-customer-overlay"
@@ -48,26 +50,26 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                 />
             )}
 
-            {/* Sidebar (desktop: persistent rounded floating panel) / Drawer (mobile: off-canvas card) — one element, responsive via CSS per UI/UX §8.5/§8.6. Both panes share the page gradient and read as distinct "floating" surfaces via shadow + rounding, not a color change (§6.1). */}
+            {/* Flat white sidebar (documentation/UI-ref travel-booking-sidebar reference) — a plain nav list, not a floating gradient panel; the gradient stays on the main content only. Rounded on the right edge like the reference's drawer card on mobile; flush/square on desktop, matching the reference's flat desktop layout. print:hidden so printing a receipt/invoice doesn't include app chrome. */}
             <aside
                 className={`
+                    print:hidden
                     fixed inset-y-0 left-0 sm:static sm:inset-auto
                     w-customer-drawer sm:w-customer-sidebar
-                    bg-customer-page-gradient
-                    rounded-r-customer-drawer sm:rounded-customer-drawer
-                    sm:shadow-customer-soft
+                    bg-white border-r border-gray-100
+                    rounded-r-customer-drawer sm:rounded-none
                     z-50 sm:z-auto
                     flex flex-col p-3 sm:p-4
                     transition-transform duration-220
                     ${isDrawerOpen ? 'translate-x-0 shadow-customer-strong' : '-translate-x-full sm:translate-x-0'}
                 `}
             >
-                <div className="flex items-center gap-2 px-2 pb-4">
+                <div className="flex items-center gap-2 px-2 pb-6">
                     <img src={app_logo} alt={app_name} className="h-6 w-6" />
                     <span className="font-customer-display font-extrabold text-customer-base text-customer-text">{app_name}</span>
                 </div>
 
-                <nav className="flex-1 flex flex-col gap-0.5">
+                <nav className="flex-1 flex flex-col gap-2 justify-start pt-4">
                     {NAV_ITEMS.map((item) => {
                         const isActive = item.enabled && currentUrl === item.href;
 
@@ -76,42 +78,43 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                                 key={item.key}
                                 href={item.href}
                                 onClick={() => setIsDrawerOpen(false)}
-                                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-customer-item text-customer-md font-semibold ${
-                                    isActive ? 'bg-customer-blue-soft text-customer-blue' : 'text-customer-text hover:bg-white/60'
+                                className={`flex items-center gap-3 px-3 py-3 rounded-customer-item text-customer-lg font-bold transition-colors ${
+                                    isActive ? 'bg-customer-blue-soft text-customer-blue' : 'text-customer-text2 hover:bg-gray-50'
                                 }`}
                             >
-                                <Icon name={item.icon} className="w-4 text-center" />
+                                <Icon name={item.icon} className={`text-xl shrink-0 ${isActive ? '' : item.iconColor}`} />
                                 {item.label}
                             </Link>
                         ) : (
                             <span
                                 key={item.key}
                                 aria-disabled="true"
-                                className="flex items-center gap-2.5 px-3 py-2.5 rounded-customer-item text-customer-md font-semibold text-customer-text2 cursor-not-allowed"
+                                className="flex items-center gap-3 px-3 py-3 rounded-customer-item text-customer-lg font-bold text-customer-text2/50 cursor-not-allowed"
                             >
-                                <Icon name={item.icon} className="w-4 text-center" />
+                                <Icon name={item.icon} className={`text-xl shrink-0 ${item.iconColor} opacity-50`} />
                                 {item.label}
+                                <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-customer-text2/60">Soon</span>
                             </span>
                         );
                     })}
                 </nav>
 
-                <div className="border-t border-customer-divider pt-3">
+                <div className="border-t border-gray-100 pt-3">
                     <Link
                         href="/customer/logout"
                         method="post"
                         as="button"
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-customer-item text-customer-md font-semibold text-customer-text hover:bg-white/60"
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-customer-item text-customer-lg font-bold text-customer-red hover:bg-customer-red-soft"
                     >
-                        <Icon name="box-arrow-right" className="w-4 text-center" />
+                        <Icon name="box-arrow-right" className="text-xl shrink-0" />
                         Log out
                     </Link>
                 </div>
             </aside>
 
-            {/* Main pane — second grid column: the sidebar's floating-panel partner, gradient background, own rounding/shadow on desktop */}
-            <div className="flex-1 min-w-0 flex flex-col relative bg-customer-page-gradient sm:rounded-customer-drawer sm:shadow-customer-soft overflow-hidden">
-                <header className="flex items-center gap-3 px-4 sm:px-8 py-4 sm:py-5">
+            {/* Main pane — flush against the sidebar, keeps the blue gradient background. */}
+            <div className="flex-1 min-w-0 flex flex-col relative bg-customer-page-gradient overflow-hidden">
+                <header className="print:hidden flex items-center gap-3 px-4 sm:px-8 py-4 sm:py-5">
                     <button
                         type="button"
                         onClick={() => setIsDrawerOpen(true)}
@@ -120,9 +123,7 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                     >
                         <Icon name="list" className="text-xl" />
                     </button>
-                    <div className="h-10 w-10 rounded-customer-pill bg-customer-blue text-white font-bold flex items-center justify-center shrink-0">
-                        {avatarInitial}
-                    </div>
+                    <CustomerAvatar name={customerName} avatarUrl={avatarUrl} size={40} />
                     <div className="font-bold text-customer-lg text-customer-text">
                         Hi, {customerName}
                     </div>
@@ -131,44 +132,12 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-6 pb-customer-content-bottom sm:pb-6">
+                <main className="flex-1 overflow-y-auto px-4 sm:px-8 pt-10 sm:pt-14 pb-customer-content-bottom sm:pb-6">
                     {children}
                 </main>
 
                 <CustomerFab />
             </div>
-
-            {/* Mobile taskbar */}
-            <nav className="sm:hidden fixed bottom-0 inset-x-0 h-customer-taskbar bg-white border-t border-customer-taskbar-border shadow-customer-strong flex justify-around items-center px-2 z-30">
-                <Link
-                    href="/customer/dashboard"
-                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/dashboard' ? 'text-customer-blue' : 'text-customer-text2'}`}
-                >
-                    <Icon name="house-door-fill" className="text-xl mb-1" />
-                    <span className="text-xs font-medium">Home</span>
-                </Link>
-                <Link
-                    href="/customer/repairs"
-                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/repairs' ? 'text-customer-blue' : 'text-customer-text2'}`}
-                >
-                    <Icon name="tools" className="text-xl mb-1" />
-                    <span className="text-xs font-medium">Repairs</span>
-                </Link>
-                <Link
-                    href="/customer/orders"
-                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/orders' ? 'text-customer-blue' : 'text-customer-text2'}`}
-                >
-                    <Icon name="bag-check" className="text-xl mb-1" />
-                    <span className="text-xs font-medium">Orders</span>
-                </Link>
-                <Link
-                    href="/customer/profile"
-                    className={`flex flex-col items-center justify-center w-16 ${currentUrl === '/customer/profile' ? 'text-customer-blue' : 'text-customer-text2'}`}
-                >
-                    <Icon name="person" className="text-xl mb-1" />
-                    <span className="text-xs font-medium">Profile</span>
-                </Link>
-            </nav>
 
             <CustomerToastViewport />
             <ConfirmDialogHost />

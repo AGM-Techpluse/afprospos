@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Domain\Warranty\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Payments\Application\Commands\RefundPaymentCommand;
 use Domain\Payments\Application\Contracts\PaymentRefundService;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Domain\Warranty\Application\Commands\ProcessReturnRefundCommand;
+use Domain\Warranty\Domain\Events\ReturnRequestResolved;
 use Domain\Warranty\Domain\Repositories\ReturnRequestRepository;
 use Domain\Warranty\Domain\ValueObjects\ReturnRequestId;
+use Illuminate\Support\Facades\Event;
 
 /** Separation of duties (mirrors Claims' ApproveRefundHandler): approve/deny only records the decision, this is the separate step that actually moves money — gated behind `warranty.approve-refund` at the route level. */
 final class ProcessReturnRefundHandler
@@ -48,6 +51,8 @@ final class ProcessReturnRefundHandler
                 beforeState: $before,
                 afterState: ['resolution_state' => $returnRequest->resolutionState(), 'refund_transaction_id' => $command->paymentTransactionId],
             );
+
+            Event::dispatch(new ReturnRequestResolved($id->value, $returnRequest->customerId(), CarbonImmutable::now()));
         });
     }
 }

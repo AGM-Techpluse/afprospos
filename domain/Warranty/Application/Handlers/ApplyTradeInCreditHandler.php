@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace Domain\Warranty\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Application\Contracts\CheckoutDiscountService;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Domain\Warranty\Application\Commands\ApplyTradeInCreditCommand;
+use Domain\Warranty\Domain\Events\TradeInCreditApplied;
 use Domain\Warranty\Domain\Exceptions\TradeInCreditCouldNotBeApplied;
 use Domain\Warranty\Domain\Repositories\TradeInAssessmentRepository;
 use Domain\Warranty\Domain\ValueObjects\TradeInAssessmentId;
+use Illuminate\Support\Facades\Event;
 
 /** The manual fallback for an already-approved trade-in whose credit didn't auto-apply (no checkout linked at approval time, or that checkout has since closed). */
 final class ApplyTradeInCreditHandler
@@ -55,6 +58,8 @@ final class ApplyTradeInCreditHandler
                 beforeState: $before,
                 afterState: ['resolution_state' => $tradeIn->resolutionState(), 'checkout_id' => $command->checkoutId],
             );
+
+            Event::dispatch(new TradeInCreditApplied($id->value, $tradeIn->customerId(), CarbonImmutable::now()));
         });
     }
 }
