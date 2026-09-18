@@ -13,14 +13,19 @@ interface CustomerListItemProps {
     amount: string;
     details?: CustomerListItemDetail[];
     actions?: ReactNode;
+    /** documentation/UI-ref piggyvest-UI-2.jpeg "Recent Activities" — renders as a plain row (bottom border, no card/shadow/margin) for nesting inside one shared container instead of each item floating as its own card. Default preserves the original per-item card look used elsewhere (Repairs/Warranty claim lists). */
+    bare?: boolean;
 }
 
 /** UI/UX §14C.10 (Recent orders) — each item expands independently (the prototype does not restrict these to single-open, unlike the Admin row-card accordion in §9.6). */
-export default function CustomerListItem({ icon, title, subtitle, amount, details, actions }: CustomerListItemProps) {
+export default function CustomerListItem({ icon, title, subtitle, amount, details, actions, bare = false }: CustomerListItemProps) {
     const [open, setOpen] = useState(false);
+    const wrapperClass = bare
+        ? 'border-b border-gray-100 last:border-0 overflow-hidden'
+        : 'bg-white rounded-customer-item shadow-customer-soft mb-2 overflow-hidden';
 
     return (
-        <div className="bg-white rounded-customer-item shadow-customer-soft mb-2 overflow-hidden">
+        <div className={wrapperClass}>
             <button
                 type="button"
                 onClick={() => setOpen((current) => !current)}

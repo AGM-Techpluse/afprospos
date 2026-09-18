@@ -8,12 +8,14 @@ import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
+import { formatNaira } from '../../../../lib/money';
 
-interface WarrantyClaimRow {
+interface TradeInRow {
     id: number;
     customer: { name: string; phone: string } | null;
+    device_description: { make?: string; model?: string };
+    assessed_value_minor: number | null;
     resolution_state: string;
-    selected_remedy: string | null;
     created_at: string;
 }
 
@@ -25,32 +27,32 @@ interface Paginated<T> {
     total: number;
 }
 
-interface WarrantyClaimsIndexProps {
-    claims: Paginated<WarrantyClaimRow>;
+interface TradeInsIndexProps {
+    tradeIns: Paginated<TradeInRow>;
     filters: { search: string; status: string };
 }
 
 const STATE_BADGE: Record<string, AdminBadgeStatus> = {
     submitted: 'info',
-    under_assessment: 'warning',
-    eligible: 'success',
-    not_eligible: 'danger',
-    remedy_selected: 'warning',
-    resolved: 'neutral',
+    assessed: 'warning',
+    approved: 'success',
+    rejected: 'danger',
+    applied: 'neutral',
 };
 
 const STATE_LABEL: Record<string, string> = {
     submitted: 'Submitted',
-    under_assessment: 'Under assessment',
-    eligible: 'Eligible',
-    not_eligible: 'Not eligible',
-    remedy_selected: 'Remedy selected',
-    resolved: 'Resolved',
+    assessed: 'Assessed',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    applied: 'Applied',
 };
 
-const COLUMNS: DataTableColumn<WarrantyClaimRow>[] = [
-    { key: 'id', label: 'Claim #' },
+const COLUMNS: DataTableColumn<TradeInRow>[] = [
+    { key: 'id', label: 'Trade-in #' },
     { key: 'customer', label: 'Customer', render: (row) => row.customer?.name ?? '—' },
+    { key: 'device_description', label: 'Device', render: (row) => `${row.device_description.make ?? ''} ${row.device_description.model ?? ''}`.trim() || '—' },
+    { key: 'assessed_value_minor', label: 'Assessed value', render: (row) => (row.assessed_value_minor !== null ? formatNaira(row.assessed_value_minor) : '—') },
     {
         key: 'resolution_state',
         label: 'Status',
@@ -60,10 +62,9 @@ const COLUMNS: DataTableColumn<WarrantyClaimRow>[] = [
             </AdminBadge>
         ),
     },
-    { key: 'selected_remedy', label: 'Remedy', render: (row) => row.selected_remedy ?? '—' },
 ];
 
-export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsIndexProps) {
+export default function TradeInsIndex({ tradeIns, filters }: TradeInsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
     const skipNextFetch = useRef(true);
@@ -77,7 +78,7 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
 
         const timeout = setTimeout(() => {
             router.get(
-                '/admin/warranty/claims',
+                '/admin/warranty/trade-ins',
                 { search: search || undefined, status: status || undefined },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
@@ -88,7 +89,7 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
 
     function goToPage(page: number) {
         router.get(
-            '/admin/warranty/claims',
+            '/admin/warranty/trade-ins',
             { search: search || undefined, status: status || undefined, page },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -98,28 +99,28 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
         skipNextFetch.current = true;
         setSearch('');
         setStatus('');
-        router.get('/admin/warranty/claims', {}, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/admin/warranty/trade-ins', {}, { preserveState: true, preserveScroll: true, replace: true });
     }
 
     return (
         <AdminShell>
-            <Head title="Warranty claims" />
+            <Head title="Trade-ins" />
 
             <AdminPageHead
-                title="Warranty claims"
-                description="Assess eligibility, select remedies, and resolve customer warranty claims."
-                actions={<AdminButton onClick={() => router.visit('/admin/warranty/claims/create')}>New claim</AdminButton>}
+                title="Trade-ins"
+                description="Record, assess, and approve customer device trade-ins."
+                actions={<AdminButton onClick={() => router.visit('/admin/warranty/trade-ins/create')}>New trade-in</AdminButton>}
             />
 
             <WarrantySubNav />
 
             <ResponsiveDataTable
                 columns={COLUMNS}
-                rows={claims.data}
+                rows={tradeIns.data}
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="id"
                 mobileStatusField="resolution_state"
-                mobileDetailFields={['selected_remedy']}
+                mobileDetailFields={['assessed_value_minor']}
                 toolbar={
                     <>
                         <input
@@ -148,23 +149,23 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
                     </>
                 }
                 renderActions={(row) => (
-                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/warranty/claims/${row.id}`)}>
+                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/warranty/trade-ins/${row.id}`)}>
                         View
                     </AdminButton>
                 )}
                 emptyState={
                     <AdminEmptyState
-                        icon="shield-exclamation"
-                        title="No warranty claims found"
-                        description={hasActiveFilters ? 'No claims match these filters.' : 'Claims customers submit will show up here.'}
+                        icon="phone"
+                        title="No trade-ins found"
+                        description={hasActiveFilters ? 'No trade-ins match these filters.' : 'Trade-ins staff record will show up here.'}
                     />
                 }
                 footer={
-                    claims.total > 0 ? (
+                    tradeIns.total > 0 ? (
                         <AdminPagination
-                            currentPage={claims.current_page}
-                            totalItems={claims.total}
-                            pageSize={claims.per_page}
+                            currentPage={tradeIns.current_page}
+                            totalItems={tradeIns.total}
+                            pageSize={tradeIns.per_page}
                             onPageChange={goToPage}
                         />
                     ) : undefined

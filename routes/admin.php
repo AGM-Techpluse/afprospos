@@ -12,10 +12,12 @@ use App\Http\Controllers\Admin\InventoryTransferController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RepairsController;
+use App\Http\Controllers\Admin\ReturnRequestController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShopController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\TradeInAssessmentController;
 use App\Http\Controllers\Admin\WarrantyClaimController;
 use App\Http\Controllers\Admin\WarrantyPolicyController;
 use App\Http\Controllers\Auth\StaffAuthController;
@@ -626,4 +628,79 @@ Route::prefix('admin')
             ->post('/warranty/claims/{claim}/approve-refund', [WarrantyClaimController::class, 'approveRefund'])
             ->whereNumber('claim')
             ->name('warranty.claims.approve-refund');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/returns', [ReturnRequestController::class, 'index'])
+            ->name('warranty.returns.index');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/returns/{returnRequest}', [ReturnRequestController::class, 'show'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.show');
+
+        Route::middleware('permission:warranty.assess')
+            ->post('/warranty/returns/{returnRequest}/assess', [ReturnRequestController::class, 'assess'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.assess');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/returns/{returnRequest}/approve', [ReturnRequestController::class, 'approve'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.approve');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/returns/{returnRequest}/deny', [ReturnRequestController::class, 'deny'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.deny');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/returns/{returnRequest}/override-approve', [ReturnRequestController::class, 'overrideApprove'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.override-approve');
+
+        Route::middleware('permission:warranty.approve-refund')
+            ->post('/warranty/returns/{returnRequest}/process-refund', [ReturnRequestController::class, 'processRefund'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.process-refund');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/trade-ins', [TradeInAssessmentController::class, 'index'])
+            ->name('warranty.trade-ins.index');
+
+        Route::middleware('permission:warranty.create')
+            ->get('/warranty/trade-ins/create', [TradeInAssessmentController::class, 'create'])
+            ->name('warranty.trade-ins.create');
+
+        Route::middleware('permission:warranty.create')
+            ->get('/warranty/trade-ins/search-customers', [TradeInAssessmentController::class, 'searchCustomers'])
+            ->name('warranty.trade-ins.search-customers');
+
+        Route::middleware('permission:warranty.create')
+            ->post('/warranty/trade-ins', [TradeInAssessmentController::class, 'store'])
+            ->name('warranty.trade-ins.store');
+
+        Route::middleware('permission:warranty.view')
+            ->get('/warranty/trade-ins/{tradeIn}', [TradeInAssessmentController::class, 'show'])
+            ->whereNumber('tradeIn')
+            ->name('warranty.trade-ins.show');
+
+        Route::middleware('permission:warranty.assess')
+            ->post('/warranty/trade-ins/{tradeIn}/assess', [TradeInAssessmentController::class, 'assess'])
+            ->whereNumber('tradeIn')
+            ->name('warranty.trade-ins.assess');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/trade-ins/{tradeIn}/approve', [TradeInAssessmentController::class, 'approve'])
+            ->whereNumber('tradeIn')
+            ->name('warranty.trade-ins.approve');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/trade-ins/{tradeIn}/reject', [TradeInAssessmentController::class, 'reject'])
+            ->whereNumber('tradeIn')
+            ->name('warranty.trade-ins.reject');
+
+        Route::middleware('permission:warranty.resolve')
+            ->post('/warranty/trade-ins/{tradeIn}/apply-credit', [TradeInAssessmentController::class, 'applyCredit'])
+            ->whereNumber('tradeIn')
+            ->name('warranty.trade-ins.apply-credit');
     });

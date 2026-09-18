@@ -38,6 +38,18 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Return / refund window
+    |--------------------------------------------------------------------
+    |
+    | WAR-BR-12: how many days after a sale a customer may request a
+    | return/refund before it's denied by default (subject to an
+    | authorized administrative override).
+    |
+    */
+    'return_window_days' => 14,
+
+    /*
+    |--------------------------------------------------------------------
     | Repair authorization window
     |--------------------------------------------------------------------
     |

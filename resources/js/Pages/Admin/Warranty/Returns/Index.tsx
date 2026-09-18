@@ -9,11 +9,12 @@ import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 
-interface WarrantyClaimRow {
+interface ReturnRequestRow {
     id: number;
+    sale_id: number;
     customer: { name: string; phone: string } | null;
     resolution_state: string;
-    selected_remedy: string | null;
+    return_window_expires_at: string;
     created_at: string;
 }
 
@@ -25,31 +26,30 @@ interface Paginated<T> {
     total: number;
 }
 
-interface WarrantyClaimsIndexProps {
-    claims: Paginated<WarrantyClaimRow>;
+interface ReturnRequestsIndexProps {
+    returns: Paginated<ReturnRequestRow>;
     filters: { search: string; status: string };
 }
 
 const STATE_BADGE: Record<string, AdminBadgeStatus> = {
-    submitted: 'info',
+    requested: 'info',
     under_assessment: 'warning',
-    eligible: 'success',
-    not_eligible: 'danger',
-    remedy_selected: 'warning',
+    approved: 'success',
+    denied: 'danger',
     resolved: 'neutral',
 };
 
 const STATE_LABEL: Record<string, string> = {
-    submitted: 'Submitted',
+    requested: 'Requested',
     under_assessment: 'Under assessment',
-    eligible: 'Eligible',
-    not_eligible: 'Not eligible',
-    remedy_selected: 'Remedy selected',
+    approved: 'Approved',
+    denied: 'Denied',
     resolved: 'Resolved',
 };
 
-const COLUMNS: DataTableColumn<WarrantyClaimRow>[] = [
-    { key: 'id', label: 'Claim #' },
+const COLUMNS: DataTableColumn<ReturnRequestRow>[] = [
+    { key: 'id', label: 'Return #' },
+    { key: 'sale_id', label: 'Sale', render: (row) => `#${row.sale_id}` },
     { key: 'customer', label: 'Customer', render: (row) => row.customer?.name ?? '—' },
     {
         key: 'resolution_state',
@@ -60,10 +60,10 @@ const COLUMNS: DataTableColumn<WarrantyClaimRow>[] = [
             </AdminBadge>
         ),
     },
-    { key: 'selected_remedy', label: 'Remedy', render: (row) => row.selected_remedy ?? '—' },
+    { key: 'return_window_expires_at', label: 'Window expires', render: (row) => new Date(row.return_window_expires_at).toLocaleDateString() },
 ];
 
-export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsIndexProps) {
+export default function ReturnRequestsIndex({ returns, filters }: ReturnRequestsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
     const skipNextFetch = useRef(true);
@@ -77,7 +77,7 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
 
         const timeout = setTimeout(() => {
             router.get(
-                '/admin/warranty/claims',
+                '/admin/warranty/returns',
                 { search: search || undefined, status: status || undefined },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
@@ -88,7 +88,7 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
 
     function goToPage(page: number) {
         router.get(
-            '/admin/warranty/claims',
+            '/admin/warranty/returns',
             { search: search || undefined, status: status || undefined, page },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -98,28 +98,27 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
         skipNextFetch.current = true;
         setSearch('');
         setStatus('');
-        router.get('/admin/warranty/claims', {}, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/admin/warranty/returns', {}, { preserveState: true, preserveScroll: true, replace: true });
     }
 
     return (
         <AdminShell>
-            <Head title="Warranty claims" />
+            <Head title="Returns" />
 
             <AdminPageHead
-                title="Warranty claims"
-                description="Assess eligibility, select remedies, and resolve customer warranty claims."
-                actions={<AdminButton onClick={() => router.visit('/admin/warranty/claims/create')}>New claim</AdminButton>}
+                title="Returns"
+                description="Assess, approve/deny, and refund customer return requests."
             />
 
             <WarrantySubNav />
 
             <ResponsiveDataTable
                 columns={COLUMNS}
-                rows={claims.data}
+                rows={returns.data}
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="id"
                 mobileStatusField="resolution_state"
-                mobileDetailFields={['selected_remedy']}
+                mobileDetailFields={['sale_id']}
                 toolbar={
                     <>
                         <input
@@ -148,23 +147,23 @@ export default function WarrantyClaimsIndex({ claims, filters }: WarrantyClaimsI
                     </>
                 }
                 renderActions={(row) => (
-                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/warranty/claims/${row.id}`)}>
+                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/warranty/returns/${row.id}`)}>
                         View
                     </AdminButton>
                 )}
                 emptyState={
                     <AdminEmptyState
-                        icon="shield-exclamation"
-                        title="No warranty claims found"
-                        description={hasActiveFilters ? 'No claims match these filters.' : 'Claims customers submit will show up here.'}
+                        icon="arrow-counterclockwise"
+                        title="No return requests found"
+                        description={hasActiveFilters ? 'No returns match these filters.' : 'Returns customers request will show up here.'}
                     />
                 }
                 footer={
-                    claims.total > 0 ? (
+                    returns.total > 0 ? (
                         <AdminPagination
-                            currentPage={claims.current_page}
-                            totalItems={claims.total}
-                            pageSize={claims.per_page}
+                            currentPage={returns.current_page}
+                            totalItems={returns.total}
+                            pageSize={returns.per_page}
                             onPageChange={goToPage}
                         />
                     ) : undefined

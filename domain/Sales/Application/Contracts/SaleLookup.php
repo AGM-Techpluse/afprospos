@@ -18,6 +18,9 @@ interface SaleLookup
      *     id: int,
      *     shop_id: int,
      *     customer_id: int|null,
+     *     total_minor: int,
+     *     invoice_number: string|null,
+     *     payment_transaction_id: int|null,
      *     created_at: string,
      *     items: array<int, array{sku_id: int, inventory_item_id: int|null}>
      * }|null
