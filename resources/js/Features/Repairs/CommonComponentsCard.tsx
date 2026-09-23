@@ -27,7 +27,7 @@ function postComponent(submitUrl: string, component: string): Promise<void> {
     return new Promise((resolve, reject) => {
         router.post(
             submitUrl,
-            { component, condition: 'working', notes: '', outcome: '' },
+            { component, condition: 'working', notes: '' },
             { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: () => resolve(), onError: () => reject() },
         );
     });

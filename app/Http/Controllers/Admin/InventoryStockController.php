@@ -73,11 +73,13 @@ final class InventoryStockController
     public function receive(ReceiveStockRequest $request, int $sku): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id');
+        abort_unless($actor->canAccessShop($shopId), 403);
 
         try {
             $this->receiveStock->handle(new ReceiveStockCommand(
                 skuId: $sku,
-                shopId: $request->integer('shop_id'),
+                shopId: $shopId,
                 condition: $request->string('condition')->toString(),
                 quantity: $request->integer('quantity') ?: null,
                 imeis: $request->array('imeis') ?: null,
@@ -94,6 +96,8 @@ final class InventoryStockController
 
     public function adjustForm(int $sku, int $shop): Response
     {
+        $actor = app(ActorContext::class);
+        abort_unless($actor->canAccessShop($shop), 403);
         $level = $this->stockLevels->find($sku, $shop);
 
         abort_if($level === null, 404);
@@ -104,6 +108,7 @@ final class InventoryStockController
     public function adjust(AdjustStockRequest $request, int $sku, int $shop): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        abort_unless($actor->canAccessShop($shop), 403);
 
         $this->adjustStock->handle(new AdjustStockCommand(
             skuId: $sku,
@@ -133,6 +138,12 @@ final class InventoryStockController
         $failures = [];
 
         foreach ($request->array('items') as $item) {
+            if (! $actor->canAccessShop((int) $item['shop_id'])) {
+                $failures[] = "SKU #{$item['sku_id']}: you do not have access to that shop.";
+
+                continue;
+            }
+
             try {
                 $this->adjustStock->handle(new AdjustStockCommand(
                     skuId: (int) $item['sku_id'],
@@ -156,10 +167,17 @@ final class InventoryStockController
     {
         $actor = app(ActorContext::class);
         $toShopId = $request->integer('to_shop_id');
+        abort_unless($actor->canAccessShop($toShopId), 403);
         $succeeded = 0;
         $failures = [];
 
         foreach ($request->array('items') as $item) {
+            if (! $actor->canAccessShop((int) $item['from_shop_id'])) {
+                $failures[] = "SKU #{$item['sku_id']}: you do not have access to that shop.";
+
+                continue;
+            }
+
             try {
                 $this->initiateTransfer->handle(new InitiateInventoryTransferCommand(
                     skuId: (int) $item['sku_id'],

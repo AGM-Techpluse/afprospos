@@ -157,13 +157,15 @@ final class RepairJob
      * this is the only record for a parts-less repair (reflow, a software
      * fix, reseating a cable), but nothing forces a technician to fill it.
      *
-     * @param  'unpaid'|'partially_paid'|'fully_paid'  $financialStatus
+     * REP-BR-27: completing a repair no longer records a financial status
+     * directly — `financial_status` stays whatever it already was
+     * (`unpaid` at intake) until an approved `RepairPaymentApproval`
+     * authorizes `recordFinancialStatus()`.
      */
-    public function complete(string $financialStatus, ?string $resolutionNotes = null): void
+    public function complete(?string $resolutionNotes = null): void
     {
         $this->assertTransition('completed');
         $this->status = 'completed';
-        $this->financialStatus = $financialStatus;
         $this->resolutionNotes = $resolutionNotes;
     }
 
@@ -187,8 +189,20 @@ final class RepairJob
         $this->unrepairableSettlementState = $settlementState;
     }
 
+    /**
+     * REP-BR-27/28: the only legitimate way `financial_status` changes
+     * after intake — callable only once the repair is `completed`, and
+     * only by the approved-payment-approval Handler (never a bare status
+     * pick on the completion form).
+     *
+     * @param  'unpaid'|'partially_paid'|'fully_paid'  $financialStatus
+     */
     public function recordFinancialStatus(string $financialStatus): void
     {
+        if ($this->status !== 'completed') {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'completed');
+        }
+
         $this->financialStatus = $financialStatus;
     }
 
@@ -197,6 +211,22 @@ final class RepairJob
     {
         if (! in_array($this->status, ['awaiting_parts', 'in_progress'], true)) {
             throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'awaiting_parts');
+        }
+    }
+
+    /** REP-BR-28: a payment-recording request may only be raised once the repair is completed. */
+    public function assertCompleted(): void
+    {
+        if ($this->status !== 'completed') {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'completed');
+        }
+    }
+
+    /** A down-payment approval request may only be raised once the Manager has set requirements (or the job has gone overdue waiting on them). */
+    public function assertAwaitingDownPayment(): void
+    {
+        if (! in_array($this->status, ['awaiting_authorization', 'payment_overdue'], true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'awaiting_authorization');
         }
     }
 

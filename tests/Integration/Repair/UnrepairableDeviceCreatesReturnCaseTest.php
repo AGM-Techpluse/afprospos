@@ -7,7 +7,9 @@ namespace Tests\Integration\Repair;
 use Domain\Collection\Infrastructure\Persistence\Eloquent\CollectionCaseRecord;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
+use Domain\Repair\Application\Commands\RecordDiagnosisConclusionCommand;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
+use Domain\Repair\Application\Handlers\RecordDiagnosisConclusionHandler;
 use Domain\Repair\Application\Handlers\RecordDiagnosisHandler;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\CustomerRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
@@ -44,6 +46,12 @@ class UnrepairableDeviceCreatesReturnCaseTest extends TestCase
             component: 'motherboard',
             condition: 'faulty',
             notes: 'Liquid damage beyond repair',
+            diagnosedByStaffId: $staff->id,
+        ));
+
+        app(RecordDiagnosisConclusionHandler::class)->handle(new RecordDiagnosisConclusionCommand(
+            repairJobId: $jobId,
+            rootCause: 'Liquid damage to motherboard',
             outcome: 'unrepairable',
             diagnosedByStaffId: $staff->id,
         ));

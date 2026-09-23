@@ -8,7 +8,13 @@ use Domain\Repair\Domain\ValueObjects\RepairDiagnosisId;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 
-/** Immutable once recorded (DBDD §11.2 prose) — no mutators, matching Sale's "no updated_at signals immutable" convention. */
+/**
+ * A single component test observation (REP-BR-29's "test common
+ * components" step) — never the diagnosis itself; see
+ * `DiagnosisConclusion` for the root-cause/outcome fact. Immutable once
+ * recorded (DBDD §11.2 prose) — no mutators, matching Sale's "no
+ * updated_at signals immutable" convention.
+ */
 final class RepairDiagnosis
 {
     private function __construct(
@@ -17,7 +23,6 @@ final class RepairDiagnosis
         private readonly string $component,
         private readonly string $condition,
         private readonly ?string $notes,
-        private readonly ?string $outcome,
         private readonly StaffId $diagnosedByStaffId,
     ) {}
 
@@ -26,10 +31,9 @@ final class RepairDiagnosis
         string $component,
         string $condition,
         ?string $notes,
-        ?string $outcome,
         StaffId $diagnosedByStaffId,
     ): self {
-        return new self(null, $repairJobId, $component, $condition, $notes, $outcome, $diagnosedByStaffId);
+        return new self(null, $repairJobId, $component, $condition, $notes, $diagnosedByStaffId);
     }
 
     public static function reconstitute(
@@ -38,10 +42,9 @@ final class RepairDiagnosis
         string $component,
         string $condition,
         ?string $notes,
-        ?string $outcome,
         StaffId $diagnosedByStaffId,
     ): self {
-        return new self($id, $repairJobId, $component, $condition, $notes, $outcome, $diagnosedByStaffId);
+        return new self($id, $repairJobId, $component, $condition, $notes, $diagnosedByStaffId);
     }
 
     public function id(): ?RepairDiagnosisId
@@ -67,11 +70,6 @@ final class RepairDiagnosis
     public function notes(): ?string
     {
         return $this->notes;
-    }
-
-    public function outcome(): ?string
-    {
-        return $this->outcome;
     }
 
     public function diagnosedByStaffId(): StaffId

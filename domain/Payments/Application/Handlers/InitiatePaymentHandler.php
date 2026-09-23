@@ -14,6 +14,7 @@ use Domain\Payments\Domain\Entities\PaymentTransaction;
 use Domain\Payments\Domain\Repositories\PaymentTransactionRepository;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
+use Domain\Payments\Domain\ValueObjects\PaymentPurpose;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use LogicException;
@@ -49,6 +50,7 @@ final class InitiatePaymentHandler
             $transaction = PaymentTransaction::initiate(
                 new PayableType($command->payableType),
                 $command->payableId,
+                new PaymentPurpose($command->purpose),
                 $method,
                 new Money($command->amountMinor),
                 $gatewayResult->providerReference,
@@ -77,6 +79,7 @@ final class InitiatePaymentHandler
                 afterState: [
                     'payable_type' => $command->payableType,
                     'payable_id' => $command->payableId,
+                    'purpose' => $command->purpose,
                     'method' => $command->method,
                     'amount_minor' => $command->amountMinor,
                     'status' => $transaction->status(),

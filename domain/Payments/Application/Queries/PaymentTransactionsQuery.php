@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace Domain\Payments\Application\Queries;
 
+use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
+use Domain\Repair\Application\Contracts\RepairJobLookup;
 
 /** Backs Admin Payments/Index — the reconciliation/dispute queue, filterable by status/method/payable type. */
 final class PaymentTransactionsQuery
 {
+    public function __construct(
+        private readonly RepairJobLookup $repairJobs,
+        private readonly CustomerDirectoryQuery $customers,
+    ) {}
+
     /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
     public function paginate(?string $status, ?string $method, int $page, int $perPage = 20): array
     {
@@ -74,11 +81,30 @@ final class PaymentTransactionsQuery
             'id' => $transaction->id,
             'payable_type' => $transaction->payable_type,
             'payable_id' => $transaction->payable_id,
+            'purpose' => $transaction->purpose,
             'method' => $transaction->method,
             'amount_minor' => $transaction->amount_minor,
             'status' => $transaction->status,
             'provider_reference' => $transaction->provider_reference,
             'created_at' => $transaction->created_at->toIso8601String(),
+            'source_label' => $this->describeSource($transaction->payable_type, $transaction->payable_id),
         ];
+    }
+
+    private function describeSource(string $payableType, int $payableId): string
+    {
+        if ($payableType === 'repair_job') {
+            $job = $this->repairJobs->find($payableId);
+
+            if ($job === null) {
+                return "Repair #{$payableId}";
+            }
+
+            $customerName = $this->customers->find($job['customer_id'])['name'] ?? null;
+
+            return "Repair #{$payableId} — {$job['device_make']} {$job['device_model']}".($customerName !== null ? " ({$customerName})" : '');
+        }
+
+        return "Sale checkout #{$payableId}";
     }
 }

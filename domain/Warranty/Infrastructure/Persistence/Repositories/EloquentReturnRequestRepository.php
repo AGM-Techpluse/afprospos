@@ -33,6 +33,8 @@ final class EloquentReturnRequestRepository implements ReturnRequestRepository
             'denial_reason' => $returnRequest->denialReason(),
             'override_approved_by_staff_id' => $returnRequest->overrideApprovedByStaffId(),
             'refund_transaction_id' => $returnRequest->refundTransactionId(),
+            'resolution_type' => $returnRequest->resolutionType(),
+            'exchange_checkout_id' => $returnRequest->exchangeCheckoutId(),
         ];
 
         if ($returnRequest->id() === null) {
@@ -56,6 +58,8 @@ final class EloquentReturnRequestRepository implements ReturnRequestRepository
             $record->denial_reason,
             $record->override_approved_by_staff_id,
             $record->refund_transaction_id,
+            $record->resolution_type,
+            $record->exchange_checkout_id,
         );
     }
 }

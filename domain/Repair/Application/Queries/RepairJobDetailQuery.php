@@ -7,11 +7,14 @@ namespace Domain\Repair\Application\Queries;
 use Domain\Collection\Application\Contracts\CollectionCaseLookup;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisConclusionRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDiagnosisRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDownPaymentApprovalRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobPhotoRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPartReservationRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPaymentApprovalRecord;
 use Illuminate\Support\Facades\Storage;
 
 /** Full detail: job + diagnoses + part reservations + linked collection case (via Collection's published CollectionCaseLookup contract, never its Eloquent directly — CPNC §4.2). */
@@ -51,9 +54,20 @@ final class RepairJobDetailQuery
                 'component' => $diagnosis->component,
                 'condition' => $diagnosis->condition,
                 'notes' => $diagnosis->notes,
-                'outcome' => $diagnosis->outcome,
                 'diagnosed_by_staff_id' => $diagnosis->diagnosed_by_staff_id,
                 'created_at' => $diagnosis->created_at->toIso8601String(),
+            ])->all();
+
+        $diagnosisConclusions = DiagnosisConclusionRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->orderBy('created_at')
+            ->get()
+            ->map(static fn (DiagnosisConclusionRecord $conclusion): array => [
+                'id' => $conclusion->id,
+                'root_cause' => $conclusion->root_cause,
+                'outcome' => $conclusion->outcome,
+                'diagnosed_by_staff_id' => $conclusion->diagnosed_by_staff_id,
+                'created_at' => $conclusion->created_at->toIso8601String(),
             ])->all();
 
         $partReservations = RepairPartReservationRecord::query()
@@ -72,6 +86,18 @@ final class RepairJobDetailQuery
                     'status' => $reservation->status,
                 ];
             })->all();
+
+        $pendingPaymentApproval = RepairPaymentApprovalRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        $pendingDownPaymentApproval = RepairDownPaymentApprovalRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
 
         $collectionCase = $this->collectionCases->findLatestBySource('repair_job', $repairJobId);
         $customer = $this->customers->find($job->customer_id);
@@ -120,6 +146,20 @@ final class RepairJobDetailQuery
             'resolution_notes' => $job->resolution_notes,
             'created_at' => $job->created_at->toIso8601String(),
             'diagnoses' => $diagnoses,
+            'diagnosis_conclusions' => $diagnosisConclusions,
+            'pending_payment_approval' => $pendingPaymentApproval !== null ? [
+                'id' => $pendingPaymentApproval->id,
+                'requested_financial_status' => $pendingPaymentApproval->requested_financial_status,
+                'amount_minor' => $pendingPaymentApproval->amount_minor,
+                'method' => $pendingPaymentApproval->method,
+                'requested_by_staff_id' => $pendingPaymentApproval->requested_by_staff_id,
+            ] : null,
+            'pending_down_payment_approval' => $pendingDownPaymentApproval !== null ? [
+                'id' => $pendingDownPaymentApproval->id,
+                'amount_minor' => $pendingDownPaymentApproval->amount_minor,
+                'method' => $pendingDownPaymentApproval->method,
+                'requested_by_staff_id' => $pendingDownPaymentApproval->requested_by_staff_id,
+            ] : null,
             'part_reservations' => $partReservations,
             'collection_case' => $collectionCase,
             'photos' => $photos,

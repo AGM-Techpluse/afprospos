@@ -29,6 +29,13 @@ final class CreateProductRequest extends FormRequest
             'initial_quantity' => ['nullable', 'integer', 'min:0'],
             'initial_imeis' => ['nullable', 'array'],
             'initial_imeis.*' => ['string', 'max:20'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.brand' => ['nullable', 'string', 'max:100'],
+            'attributes.color' => ['nullable', 'string', 'max:100'],
+            'attributes.material' => ['nullable', 'string', 'max:100'],
+            'attributes.compatibility' => ['nullable', 'string', 'max:255'],
+            'attributes.custom' => ['nullable', 'array'],
+            'attributes.custom.*' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

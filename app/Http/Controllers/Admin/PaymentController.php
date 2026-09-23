@@ -78,13 +78,13 @@ final class PaymentController
 
         return response()->streamDownload(function () use ($rows): void {
             $handle = fopen('php://output', 'wb');
-            fputcsv($handle, ['ID', 'Payable type', 'Payable ID', 'Method', 'Amount (NGN)', 'Status', 'Provider reference', 'Created at']);
+            fputcsv($handle, ['ID', 'Purpose', 'For', 'Method', 'Amount (NGN)', 'Status', 'Provider reference', 'Created at']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row['id'],
-                    $row['payable_type'],
-                    $row['payable_id'],
+                    $row['purpose'],
+                    $row['source_label'],
                     $row['method'],
                     number_format($row['amount_minor'] / 100, 2, '.', ''),
                     $row['status'],

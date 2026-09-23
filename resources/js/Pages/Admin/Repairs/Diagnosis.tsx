@@ -4,6 +4,7 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import DiagnosisChecklist, { DiagnosisRow } from '../../../Features/Repairs/DiagnosisChecklist';
 import CommonComponentsCard from '../../../Features/Repairs/CommonComponentsCard';
+import DiagnosisConclusionForm, { DiagnosisConclusionRow } from '../../../Features/Repairs/DiagnosisConclusionForm';
 
 type RepairDetail = {
     id: number;
@@ -11,6 +12,7 @@ type RepairDetail = {
     device_model: string;
     repair_status: string;
     diagnoses: DiagnosisRow[];
+    diagnosis_conclusions: DiagnosisConclusionRow[];
 };
 
 interface RepairDiagnosisProps {
@@ -34,18 +36,15 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                 }
             />
 
-            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 items-start">
+            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 items-start mb-6">
                 <div className="max-w-2xl bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                    <h3 className="text-sm font-semibold text-admin-text mb-1">1. Test common components</h3>
+                    <p className="text-xs text-admin-text3 mb-4">Record what is and isn't working before diagnosing the fault.</p>
                     <DiagnosisChecklist
                         submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
                         diagnoses={repair.diagnoses}
                         disabled={finalized}
                     />
-                    {finalized && (
-                        <p className="text-xs text-admin-text3 mt-4 pt-4 border-t border-admin-border">
-                            Diagnosis is finalized for this repair — no further observations can be added.
-                        </p>
-                    )}
                 </div>
 
                 <CommonComponentsCard
@@ -53,6 +52,20 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                     diagnosedComponents={repair.diagnoses.map((d) => d.component)}
                     disabled={finalized}
                 />
+            </div>
+
+            <div className="max-w-2xl">
+                <h3 className="text-sm font-semibold text-admin-text mb-1">2. Diagnosis</h3>
+                <DiagnosisConclusionForm
+                    submitUrl={`/admin/repairs/${repair.id}/diagnosis-conclusion`}
+                    conclusions={repair.diagnosis_conclusions}
+                    disabled={finalized}
+                />
+                {finalized && (
+                    <p className="text-xs text-admin-text3 mt-4">
+                        Diagnosis is finalized for this repair — no further observations can be added.
+                    </p>
+                )}
             </div>
         </AdminShell>
     );

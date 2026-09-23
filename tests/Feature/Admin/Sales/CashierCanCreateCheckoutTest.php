@@ -24,6 +24,7 @@ class CashierCanCreateCheckoutTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
         $sku = SkuRecord::factory()->nonSerialized()->create(['selling_price_minor' => 25000]);
         InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 5, 'reserved' => 0]);
 

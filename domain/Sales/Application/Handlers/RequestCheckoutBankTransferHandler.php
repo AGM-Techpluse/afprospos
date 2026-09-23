@@ -46,6 +46,7 @@ final class RequestCheckoutBankTransferHandler
             $this->payments->initiate(new InitiatePaymentCommand(
                 payableType: 'sales_checkout',
                 payableId: $command->checkoutId,
+                purpose: 'sale_payment',
                 method: 'bank_transfer',
                 amountMinor: $checkout->totalMinor(),
                 initiatedByCustomerId: $command->customerId,

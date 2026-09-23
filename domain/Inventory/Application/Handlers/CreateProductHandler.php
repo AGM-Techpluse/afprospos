@@ -7,25 +7,16 @@ namespace Domain\Inventory\Application\Handlers;
 use App\Support\Transactions\Atomic;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
-use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
-use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
-use Domain\Inventory\Domain\Repositories\InventoryItemRepository;
-use Domain\Inventory\Domain\Repositories\InventoryStockLevelRepository;
+use Domain\Inventory\Application\Services\SkuVariantWriter;
 use Domain\Inventory\Domain\Repositories\ProductRepository;
-use Domain\Inventory\Domain\Repositories\SkuRepository;
-use Domain\Inventory\Domain\Services\SkuGenerator;
 use Domain\Inventory\Domain\ValueObjects\SkuId;
-use Domain\Shared\Domain\ValueObjects\Money;
-use Domain\Shared\Domain\ValueObjects\ShopId;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 
 final class CreateProductHandler
 {
     public function __construct(
         private readonly ProductRepository $products,
-        private readonly SkuRepository $skus,
-        private readonly InventoryItemRepository $items,
-        private readonly InventoryStockLevelRepository $stockLevels,
+        private readonly SkuVariantWriter $skuWriter,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -35,94 +26,34 @@ final class CreateProductHandler
         return $this->atomic->run(function () use ($command): SkuId {
             $productId = $this->products->findOrCreate($command->brand, $command->model, $command->category);
 
-            if (! $command->isSerialized) {
-                $existingSku = $this->skus->findNonSerializedByProduct($productId);
-
-                if ($existingSku !== null) {
-                    $this->receiveInitialStock($command, $existingSku->id());
-
-                    $this->audit->record(
-                        module: 'Inventory',
-                        eventType: 'ProductRestocked',
-                        actorStaffId: new StaffId($command->createdByStaffId),
-                        actorRoleSnapshot: null,
-                        subjectType: 'sku',
-                        subjectId: $existingSku->id()->value,
-                        beforeState: null,
-                        afterState: [
-                            'sku_code' => $existingSku->skuCode(),
-                            'brand' => $command->brand,
-                            'model' => $command->model,
-                            'added_quantity' => $command->initialQuantity,
-                        ],
-                    );
-
-                    return $existingSku->id();
-                }
-            }
-
-            $sequence = $this->skus->nextSequence($command->shopCode, $command->category);
-            $skuCode = SkuGenerator::generate($command->shopCode, $command->category, $sequence);
-
-            if ($this->skus->existsWithCode($skuCode)) {
-                throw DuplicateSkuCode::forCode($skuCode);
-            }
-
-            $costPrice = new Money($command->costPriceMinor);
-            $sellingPriceOverridden = $command->sellingPriceMinorOverride !== null;
-            $sellingPrice = $sellingPriceOverridden
-                ? new Money($command->sellingPriceMinorOverride)
-                : $costPrice->withMarkupPercent($command->markupPercent);
-
-            $skuId = $this->skus->create(
+            $result = $this->skuWriter->write(
                 productId: $productId,
-                skuCode: $skuCode,
+                shopCode: $command->shopCode,
+                category: $command->category,
                 attributes: $command->attributes,
                 isSerialized: $command->isSerialized,
-                costPrice: $costPrice,
+                costPriceMinor: $command->costPriceMinor,
                 markupPercent: $command->markupPercent,
-                sellingPrice: $sellingPrice,
-                sellingPriceOverridden: $sellingPriceOverridden,
+                sellingPriceMinorOverride: $command->sellingPriceMinorOverride,
                 lowStockThreshold: $command->lowStockThreshold,
+                shopId: $command->shopId,
+                condition: $command->condition,
+                initialQuantity: $command->initialQuantity,
+                initialImeis: $command->initialImeis,
             );
-
-            $this->receiveInitialStock($command, $skuId);
 
             $this->audit->record(
                 module: 'Inventory',
-                eventType: 'ProductCreated',
+                eventType: $result['wasExisting'] ? 'ProductRestocked' : 'ProductCreated',
                 actorStaffId: new StaffId($command->createdByStaffId),
                 actorRoleSnapshot: null,
                 subjectType: 'sku',
-                subjectId: $skuId->value,
+                subjectId: $result['skuId']->value,
                 beforeState: null,
-                afterState: ['sku_code' => $skuCode, 'brand' => $command->brand, 'model' => $command->model],
+                afterState: ['brand' => $command->brand, 'model' => $command->model, 'attributes' => $command->attributes],
             );
 
-            return $skuId;
+            return $result['skuId'];
         });
-    }
-
-    private function receiveInitialStock(CreateProductCommand $command, SkuId $skuId): void
-    {
-        $shopId = new ShopId($command->shopId);
-
-        if ($command->isSerialized) {
-            foreach ($command->initialImeis ?? [] as $imei) {
-                if ($this->items->existsWithImei($imei)) {
-                    throw ImeiAlreadyExists::forImei($imei);
-                }
-
-                $this->items->create($skuId, $imei, $shopId, $command->condition);
-            }
-
-            return;
-        }
-
-        if (($command->initialQuantity ?? 0) > 0) {
-            $level = $this->stockLevels->lockForUpdate($skuId, $shopId);
-            $level->receive($command->initialQuantity);
-            $this->stockLevels->save($level);
-        }
     }
 }

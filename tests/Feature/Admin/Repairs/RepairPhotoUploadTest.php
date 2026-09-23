@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin\Repairs;
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobPhotoRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -17,16 +18,18 @@ class RepairPhotoUploadTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_technician_can_upload_and_delete_a_repair_photo(): void
+    public function test_a_cashier_can_upload_and_delete_a_repair_photo(): void
     {
         Storage::fake('public');
         $this->seed(RolePermissionSeeder::class);
 
-        $technician = StaffRecord::factory()->create();
-        $technician->assignRole('Technician');
-        $job = RepairJobRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
+        $job = RepairJobRecord::factory()->create(['shop_id' => $shop->id]);
 
-        $response = $this->actingAs($technician, 'staff')->post("/admin/repairs/{$job->id}/photos", [
+        $response = $this->actingAs($cashier, 'staff')->post("/admin/repairs/{$job->id}/photos", [
             'photo' => UploadedFile::fake()->create('device.jpg', 100, 'image/jpeg'),
             'caption' => 'Cracked screen on arrival',
         ]);
@@ -35,17 +38,17 @@ class RepairPhotoUploadTest extends TestCase
         $this->assertDatabaseHas('repair_job_photos', [
             'repair_job_id' => $job->id,
             'caption' => 'Cracked screen on arrival',
-            'uploaded_by_staff_id' => $technician->id,
+            'uploaded_by_staff_id' => $cashier->id,
         ]);
 
         $photo = RepairJobPhotoRecord::query()->where('repair_job_id', $job->id)->firstOrFail();
         Storage::disk('public')->assertExists($photo->path);
 
-        $showResponse = $this->actingAs($technician, 'staff')->get("/admin/repairs/{$job->id}");
+        $showResponse = $this->actingAs($cashier, 'staff')->get("/admin/repairs/{$job->id}");
         $showResponse->assertInertia(fn ($page) => $page
             ->where('repair.photos.0.caption', 'Cracked screen on arrival'));
 
-        $deleteResponse = $this->actingAs($technician, 'staff')->delete("/admin/repairs/{$job->id}/photos/{$photo->id}");
+        $deleteResponse = $this->actingAs($cashier, 'staff')->delete("/admin/repairs/{$job->id}/photos/{$photo->id}");
 
         $deleteResponse->assertRedirect();
         $this->assertDatabaseMissing('repair_job_photos', ['id' => $photo->id]);
@@ -57,11 +60,13 @@ class RepairPhotoUploadTest extends TestCase
         Storage::fake('public');
         $this->seed(RolePermissionSeeder::class);
 
-        $technician = StaffRecord::factory()->create();
-        $technician->assignRole('Technician');
-        $job = RepairJobRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
+        $job = RepairJobRecord::factory()->create(['shop_id' => $shop->id]);
 
-        $response = $this->actingAs($technician, 'staff')->post("/admin/repairs/{$job->id}/photos", [
+        $response = $this->actingAs($cashier, 'staff')->post("/admin/repairs/{$job->id}/photos", [
             'photo' => UploadedFile::fake()->create('notes.pdf', 100),
         ]);
 

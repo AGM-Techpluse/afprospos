@@ -8,6 +8,7 @@ use Database\Factories\SalesCheckoutAdjustmentRecordFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,6 +17,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $source_id
  * @property int $amount_minor
  * @property int $applied_order
+ * @property string $approval_status
+ * @property int|null $approved_by_staff_id
+ * @property Carbon|null $approved_at
  */
 final class SalesCheckoutAdjustmentRecord extends Model
 {
@@ -23,7 +27,9 @@ final class SalesCheckoutAdjustmentRecord extends Model
 
     protected $table = 'sales_checkout_adjustments';
 
-    protected $fillable = ['sales_checkout_id', 'type', 'source_id', 'amount_minor', 'applied_order'];
+    protected $fillable = ['sales_checkout_id', 'type', 'source_id', 'amount_minor', 'applied_order', 'approval_status', 'approved_by_staff_id', 'approved_at'];
+
+    protected $casts = ['approved_at' => 'datetime'];
 
     public function checkout(): BelongsTo
     {

@@ -119,6 +119,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
                 'source_id' => $adjustment->sourceId(),
                 'amount_minor' => $adjustment->amount()->minor,
                 'applied_order' => $adjustment->appliedOrder(),
+                'approval_status' => $adjustment->approvalStatus(),
+                'approved_by_staff_id' => $adjustment->approvedByStaffId(),
+                'approved_at' => $adjustment->approvedAt(),
             ]);
         }
     }
@@ -139,6 +142,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
             $adjustment->source_id,
             new Money($adjustment->amount_minor),
             $adjustment->applied_order,
+            $adjustment->approval_status,
+            $adjustment->approved_by_staff_id,
+            $adjustment->approved_at?->toDateTimeImmutable(),
         ))->all();
 
         return SalesCheckout::reconstitute(

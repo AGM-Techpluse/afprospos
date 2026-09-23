@@ -20,16 +20,19 @@ class RepairsControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_technician_can_create_a_repair_job_and_view_it(): void
+    public function test_frontdesk_staff_can_create_a_repair_job_and_view_it(): void
     {
         $this->seed(RolePermissionSeeder::class);
 
-        $technician = StaffRecord::factory()->create();
-        $technician->assignRole('Technician');
+        // Frontdesk/sales staff do intake now, not technicians — the technician
+        // reports test/diagnosis findings back to be recorded, per the corrected workflow.
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
         $customer = CustomerRecord::factory()->create();
 
-        $response = $this->actingAs($technician, 'staff')->post('/admin/repairs', [
+        $response = $this->actingAs($cashier, 'staff')->post('/admin/repairs', [
             'shop_id' => $shop->id,
             'customer_id' => $customer->id,
             'device_make' => 'Apple',
@@ -47,7 +50,7 @@ class RepairsControllerTest extends TestCase
 
         $jobId = RepairJobRecord::query()->latest('id')->first()->id;
 
-        $showResponse = $this->actingAs($technician, 'staff')->get("/admin/repairs/{$jobId}");
+        $showResponse = $this->actingAs($cashier, 'staff')->get("/admin/repairs/{$jobId}");
         $showResponse->assertOk();
         $showResponse->assertInertia(fn ($page) => $page->component('Admin/Repairs/Show')->where('repair.id', $jobId));
     }
@@ -56,15 +59,16 @@ class RepairsControllerTest extends TestCase
     {
         $this->seed(RolePermissionSeeder::class);
 
-        $technician = StaffRecord::factory()->create();
-        $technician->assignRole('Technician');
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
         $customer = CustomerRecord::factory()->create();
 
-        $typeId = app(CreateDeviceTypeHandler::class)->handle(new CreateDeviceTypeCommand('Smartphones', 'phone', 0, $technician->id));
-        $tagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Screen', 0, $technician->id));
+        $typeId = app(CreateDeviceTypeHandler::class)->handle(new CreateDeviceTypeCommand('Smartphones', 'phone', 0, $cashier->id));
+        $tagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Screen', 0, $cashier->id));
 
-        $response = $this->actingAs($technician, 'staff')->post('/admin/repairs', [
+        $response = $this->actingAs($cashier, 'staff')->post('/admin/repairs', [
             'shop_id' => $shop->id,
             'customer_id' => $customer->id,
             'device_make' => 'Apple',
@@ -84,7 +88,7 @@ class RepairsControllerTest extends TestCase
             'label_snapshot' => 'Screen',
         ]);
 
-        $showResponse = $this->actingAs($technician, 'staff')->get("/admin/repairs/{$jobId}");
+        $showResponse = $this->actingAs($cashier, 'staff')->get("/admin/repairs/{$jobId}");
         $showResponse->assertInertia(fn ($page) => $page
             ->where('repair.device_imei_serial', '356938035601001')
             ->where('repair.problem_tags.0.label', 'Screen'));
@@ -103,14 +107,28 @@ class RepairsControllerTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('Admin/Repairs/Index'));
     }
 
-    public function test_a_cashier_without_repairs_permission_cannot_create_a_repair_job(): void
+    public function test_a_technician_can_no_longer_create_a_repair_job(): void
     {
         $this->seed(RolePermissionSeeder::class);
 
-        $cashier = StaffRecord::factory()->create();
-        $cashier->assignRole('Cashier'); // no repairs.* per config/afprospos.php
+        // Frontdesk/sales staff do intake now — the corrected workflow has
+        // technicians reporting findings back rather than creating jobs themselves.
+        $technician = StaffRecord::factory()->create();
+        $technician->assignRole('Technician');
 
-        $response = $this->actingAs($cashier, 'staff')->get('/admin/repairs/create');
+        $response = $this->actingAs($technician, 'staff')->get('/admin/repairs/create');
+
+        $response->assertForbidden();
+    }
+
+    public function test_a_marketing_staff_member_without_repairs_permission_cannot_create_a_repair_job(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $marketingStaff = StaffRecord::factory()->create();
+        $marketingStaff->assignRole('Marketing Staff'); // no repairs.* per config/afprospos.php
+
+        $response = $this->actingAs($marketingStaff, 'staff')->get('/admin/repairs/create');
 
         $response->assertForbidden();
     }

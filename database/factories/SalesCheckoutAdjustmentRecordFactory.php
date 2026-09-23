@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutAdjustmentRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /** @extends Factory<SalesCheckoutAdjustmentRecord> */
@@ -22,5 +23,14 @@ final class SalesCheckoutAdjustmentRecordFactory extends Factory
             'amount_minor' => 1000,
             'applied_order' => 1,
         ];
+    }
+
+    public function approved(): self
+    {
+        return $this->state(fn (): array => [
+            'approval_status' => 'approved',
+            'approved_by_staff_id' => StaffRecord::factory(),
+            'approved_at' => now(),
+        ]);
     }
 }

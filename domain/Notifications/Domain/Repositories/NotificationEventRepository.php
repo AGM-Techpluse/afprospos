@@ -31,6 +31,11 @@ interface NotificationEventRepository
     public function paginateForCustomer(int $customerId, int $limit = 10): array;
 
     /**
+     * @return array{data: array<int, array<string, mixed>>, unread_count: int}
+     */
+    public function paginateForStaff(int $staffId, int $limit = 10): array;
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function recentFailedExhausted(int $limit = 20): array;

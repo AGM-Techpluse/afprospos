@@ -26,6 +26,7 @@ class AdminSeesCustomerSubmittedTransferOnCompleteFormTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+        $this->grantShopAccess($cashier, $shop->id);
         $customer = CustomerRecord::factory()->create();
 
         $checkout = SalesCheckoutRecord::factory()->create([

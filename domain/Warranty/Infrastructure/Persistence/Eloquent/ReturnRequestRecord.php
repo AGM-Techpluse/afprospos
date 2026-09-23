@@ -20,6 +20,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $denial_reason
  * @property int|null $override_approved_by_staff_id
  * @property int|null $refund_transaction_id
+ * @property string|null $resolution_type
+ * @property int|null $exchange_checkout_id
  * @property Carbon $created_at
  */
 final class ReturnRequestRecord extends Model
@@ -36,6 +38,8 @@ final class ReturnRequestRecord extends Model
         'denial_reason',
         'override_approved_by_staff_id',
         'refund_transaction_id',
+        'resolution_type',
+        'exchange_checkout_id',
     ];
 
     protected function casts(): array

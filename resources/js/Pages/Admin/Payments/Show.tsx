@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -11,6 +11,7 @@ type PaymentDetail = {
     id: number;
     payable_type: string;
     payable_id: number;
+    purpose: string;
     method: string;
     amount_minor: number;
     status: string;
@@ -22,6 +23,13 @@ type PaymentDetail = {
     dispute_resolved_by_staff_id: number | null;
     dispute_resolved_by_staff_name: string | null;
     created_at: string;
+    source: { label: string; link: string };
+};
+
+const PURPOSE_LABEL: Record<string, string> = {
+    sale_payment: 'Sale payment',
+    repair_down_payment: 'Repair down payment',
+    repair_final_payment: 'Repair final payment',
 };
 
 interface PaymentShowProps {
@@ -112,12 +120,21 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
 
             <AdminPageHead
                 title={`Payment #${payment.id}`}
-                description={`${payment.payable_type.replace('_', ' ')} #${payment.payable_id}`}
+                description={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')}
                 actions={<AdminBadge status={STATUS_BADGE[payment.status] ?? 'neutral'}>{STATUS_LABEL[payment.status] ?? payment.status}</AdminBadge>}
             />
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                    <DetailRow
+                        label="For"
+                        value={
+                            <Link href={payment.source.link} className="text-admin-blue hover:underline">
+                                {payment.source.label}
+                            </Link>
+                        }
+                    />
+                    <DetailRow label="Purpose" value={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')} />
                     <DetailRow label="Method" value={payment.method.replace('_', ' ')} />
                     <DetailRow label="Amount" value={formatNaira(payment.amount_minor)} />
                     <DetailRow label="Provider reference" value={payment.provider_reference ?? '—'} />

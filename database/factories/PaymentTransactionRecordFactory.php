@@ -17,6 +17,7 @@ final class PaymentTransactionRecordFactory extends Factory
         return [
             'payable_type' => 'sales_checkout',
             'payable_id' => 1,
+            'purpose' => 'sale_payment',
             'method' => 'cash',
             'amount_minor' => 10000,
             'status' => 'confirmed',

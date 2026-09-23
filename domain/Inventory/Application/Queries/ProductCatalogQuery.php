@@ -62,6 +62,14 @@ final class ProductCatalogQuery
         ];
     }
 
+    /** Product-level lookup by its own id (not a Sku id) — backs the add-variant form, which only needs the Product's own identity, never any one Sku's pricing/stock. @return array{id:int, brand:string, model:string, category:string}|null */
+    public function findProduct(int $productId): ?array
+    {
+        $product = ProductRecord::query()->find($productId);
+
+        return $product !== null ? ['id' => $product->id, 'brand' => $product->brand, 'model' => $product->model, 'category' => $product->category] : null;
+    }
+
     /** Backs the Products list's category filter — a dropdown of what actually exists, not free text (the create form stays free text; this is only for filtering by an already-typed value). @return string[] */
     public function categories(): array
     {
@@ -77,7 +85,29 @@ final class ProductCatalogQuery
     {
         $sku = SkuRecord::query()->with(['product', 'stockLevels.sku', 'items'])->find($skuId);
 
-        return $sku !== null ? $this->toArray($sku, withStockBreakdown: true) : null;
+        if ($sku === null) {
+            return null;
+        }
+
+        $data = $this->toArray($sku, withStockBreakdown: true);
+        $data['product_id'] = $sku->product_id;
+
+        // INV-BR-17/18: other non-serialized variants of the same product
+        // (e.g. a screenguard's other brands) — never itself, and never a
+        // serialized sibling (a variant is a non-serialized concept only).
+        $data['sibling_skus'] = SkuRecord::query()
+            ->where('product_id', $sku->product_id)
+            ->where('is_serialized', false)
+            ->where('id', '!=', $sku->id)
+            ->get()
+            ->map(static fn (SkuRecord $sibling): array => [
+                'id' => $sibling->id,
+                'sku_code' => $sibling->sku_code,
+                'attributes' => $sibling->attributes,
+                'selling_price_minor' => $sibling->selling_price_minor,
+            ])->all();
+
+        return $data;
     }
 
     /** @return array<string, mixed> */

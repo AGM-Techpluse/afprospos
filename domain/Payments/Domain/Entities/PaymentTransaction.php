@@ -10,6 +10,7 @@ use Domain\Payments\Domain\Exceptions\PaymentAlreadyConfirmed;
 use Domain\Payments\Domain\Policies\PaymentTransitionPolicy;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
+use Domain\Payments\Domain\ValueObjects\PaymentPurpose;
 use Domain\Payments\Domain\ValueObjects\PaymentTransactionId;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
@@ -30,6 +31,7 @@ final class PaymentTransaction
         private readonly ?PaymentTransactionId $id,
         private readonly PayableType $payableType,
         private readonly int $payableId,
+        private readonly PaymentPurpose $purpose,
         private readonly PaymentMethod $method,
         private readonly Money $amount,
         private string $status,
@@ -43,17 +45,19 @@ final class PaymentTransaction
     public static function initiate(
         PayableType $payableType,
         int $payableId,
+        PaymentPurpose $purpose,
         PaymentMethod $method,
         Money $amount,
         ?string $providerReference = null,
     ): self {
-        return new self(null, $payableType, $payableId, $method, $amount, 'pending', $providerReference, null, null, null, null);
+        return new self(null, $payableType, $payableId, $purpose, $method, $amount, 'pending', $providerReference, null, null, null, null);
     }
 
     public static function reconstitute(
         PaymentTransactionId $id,
         PayableType $payableType,
         int $payableId,
+        PaymentPurpose $purpose,
         PaymentMethod $method,
         Money $amount,
         string $status,
@@ -63,7 +67,7 @@ final class PaymentTransaction
         ?string $disputeProofReference,
         ?StaffId $disputeResolvedByStaffId,
     ): self {
-        return new self($id, $payableType, $payableId, $method, $amount, $status, $providerReference, $confirmedByStaffId, $disputeOpenedAt, $disputeProofReference, $disputeResolvedByStaffId);
+        return new self($id, $payableType, $payableId, $purpose, $method, $amount, $status, $providerReference, $confirmedByStaffId, $disputeOpenedAt, $disputeProofReference, $disputeResolvedByStaffId);
     }
 
     public function markPendingConfirmation(?string $providerReference): void
@@ -150,6 +154,11 @@ final class PaymentTransaction
     public function payableId(): int
     {
         return $this->payableId;
+    }
+
+    public function purpose(): PaymentPurpose
+    {
+        return $this->purpose;
     }
 
     public function method(): PaymentMethod

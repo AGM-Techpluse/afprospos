@@ -5,26 +5,20 @@ declare(strict_types=1);
 namespace Domain\Repair\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
-use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
-use Domain\Collection\Application\Commands\CreateCollectionCaseCommand;
-use Domain\Collection\Application\Contracts\CollectionCaseCreator;
 use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
 use Domain\Repair\Domain\Entities\RepairDiagnosis;
-use Domain\Repair\Domain\Events\RepairDiagnosed;
-use Domain\Repair\Domain\Events\RepairReadyForCollection;
 use Domain\Repair\Domain\Repositories\RepairDiagnosisRepository;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\StaffId;
-use Illuminate\Support\Facades\Event;
 
+/** REP-BR-29: records a single component test observation only — see RecordDiagnosisConclusionHandler for the actual diagnosis (root cause + outcome). */
 final class RecordDiagnosisHandler
 {
     public function __construct(
         private readonly RepairJobRepository $repairJobs,
         private readonly RepairDiagnosisRepository $diagnoses,
-        private readonly CollectionCaseCreator $collectionCases,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -38,25 +32,17 @@ final class RecordDiagnosisHandler
 
             if ($job->status() === 'received') {
                 $job->startDiagnosis();
+                $this->repairJobs->save($job);
             }
 
-            if ($command->component !== null) {
-                $diagnosis = RepairDiagnosis::record(
-                    $jobId,
-                    $command->component,
-                    $command->condition,
-                    $command->notes,
-                    $command->outcome,
-                    $actor,
-                );
-                $this->diagnoses->save($diagnosis);
-            }
-
-            if ($command->outcome !== null) {
-                $job->recordDiagnosisOutcome($command->outcome);
-            }
-
-            $this->repairJobs->save($job);
+            $diagnosis = RepairDiagnosis::record(
+                $jobId,
+                $command->component,
+                $command->condition,
+                $command->notes,
+                $actor,
+            );
+            $this->diagnoses->save($diagnosis);
 
             $this->audit->record(
                 module: 'Repair',
@@ -69,30 +55,8 @@ final class RecordDiagnosisHandler
                 afterState: [
                     'component' => $command->component,
                     'condition' => $command->condition,
-                    'outcome' => $command->outcome,
                 ],
             );
-
-            if ($command->outcome === null) {
-                return;
-            }
-
-            Event::dispatch(new RepairDiagnosed($jobId->value, $command->outcome, CarbonImmutable::now()));
-
-            if ($job->status() !== 'unrepairable') {
-                return;
-            }
-
-            $collectionCaseId = $this->collectionCases->create(new CreateCollectionCaseCommand(
-                sourceType: 'repair_job',
-                sourceId: $jobId->value,
-                shopId: $job->shopId()->value,
-                originatingShopId: $job->shopId()->value,
-                context: 'ready_for_return',
-                deadlineDays: (int) config('afprospos.collection.default_deadline_days'),
-            ));
-
-            Event::dispatch(new RepairReadyForCollection($jobId->value, $collectionCaseId, CarbonImmutable::now()));
         });
     }
 }

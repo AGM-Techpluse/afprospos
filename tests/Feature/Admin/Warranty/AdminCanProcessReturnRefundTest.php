@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin\Warranty;
 
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Domain\Warranty\Infrastructure\Persistence\Eloquent\ReturnRequestRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,12 +20,15 @@ class AdminCanProcessReturnRefundTest extends TestCase
     {
         $this->seed(RolePermissionSeeder::class);
 
+        $shop = ShopRecord::factory()->create();
         $technician = StaffRecord::factory()->create();
         $technician->assignRole('Technician');
+        $this->grantShopAccess($technician, $shop->id);
         $accountant = StaffRecord::factory()->create();
         $accountant->assignRole('Accountant');
+        $this->grantShopAccess($accountant, $shop->id);
 
-        $sale = SaleRecord::factory()->create();
+        $sale = SaleRecord::factory()->create(['shop_id' => $shop->id]);
         $returnRequest = ReturnRequestRecord::factory()->create([
             'sale_id' => $sale->id,
             'return_window_expires_at' => now()->addDays(5),

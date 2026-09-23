@@ -81,6 +81,7 @@ final class CreateSaleFromPaidCheckoutHandler
                 $payment = $this->payments->initiate(new InitiatePaymentCommand(
                     payableType: 'sales_checkout',
                     payableId: $command->checkoutId,
+                    purpose: 'sale_payment',
                     method: $command->paymentMethod,
                     amountMinor: $checkout->totalMinor(),
                     initiatedByStaffId: $command->confirmedByStaffId,

@@ -11,6 +11,8 @@ use App\Http\Requests\Admin\Warranty\CreateWarrantyClaimRequest;
 use App\Http\Requests\Admin\Warranty\ResolveClaimRequest;
 use App\Http\Requests\Admin\Warranty\SelectWarrantyClaimRemedyRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
+use Domain\Repair\Application\Contracts\RepairJobLookup;
+use Domain\Sales\Application\Contracts\SaleLookup;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Warranty\Application\Commands\ApproveRefundCommand;
 use Domain\Warranty\Application\Commands\AssessClaimCommand;
@@ -44,6 +46,8 @@ final class WarrantyClaimController
         private readonly WarrantyClaimDetailQuery $detail,
         private readonly WarrantyPolicyDirectoryQuery $policies,
         private readonly CustomerDirectoryQuery $customers,
+        private readonly SaleLookup $saleLookup,
+        private readonly RepairJobLookup $repairJobLookup,
         private readonly CreateWarrantyClaimHandler $createClaim,
         private readonly AssessClaimHandler $assessClaim,
         private readonly SelectWarrantyClaimRemedyHandler $selectRemedy,
@@ -76,11 +80,14 @@ final class WarrantyClaimController
     public function store(CreateWarrantyClaimRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $originatingSaleId = $request->integer('originating_sale_id') ?: null;
+        $originatingRepairJobId = $request->integer('originating_repair_job_id') ?: null;
+        $this->assertOriginShopAccessible($actor, $originatingSaleId, $originatingRepairJobId);
 
         $id = $this->guardTransition(fn () => $this->createClaim->handle(new CreateWarrantyClaimCommand(
             warrantyPolicyId: $request->integer('warranty_policy_id'),
-            originatingSaleId: $request->integer('originating_sale_id') ?: null,
-            originatingRepairJobId: $request->integer('originating_repair_job_id') ?: null,
+            originatingSaleId: $originatingSaleId,
+            originatingRepairJobId: $originatingRepairJobId,
             customerId: $request->integer('customer_id'),
             submittedByStaffId: $actor->staffId->value,
         )));
@@ -92,9 +99,11 @@ final class WarrantyClaimController
 
     public function show(int $claim): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($claim);
 
         abort_if($data === null, 404);
+        $this->assertClaimDataShopAccessible($actor, $data);
 
         return Inertia::render('Admin/Warranty/Claims/Show', ['claim' => $data]);
     }
@@ -102,6 +111,7 @@ final class WarrantyClaimController
     public function assess(AssessClaimRequest $request, int $claim): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertClaimShopAccess($actor, $claim);
 
         $this->guardTransition(fn () => $this->assessClaim->handle(new AssessClaimCommand(
             warrantyClaimId: $claim,
@@ -118,6 +128,7 @@ final class WarrantyClaimController
     public function selectRemedy(SelectWarrantyClaimRemedyRequest $request, int $claim): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertClaimShopAccess($actor, $claim);
 
         $this->guardTransition(fn () => $this->selectRemedy->handle(new SelectWarrantyClaimRemedyCommand(
             warrantyClaimId: $claim,
@@ -133,6 +144,7 @@ final class WarrantyClaimController
     public function resolve(ResolveClaimRequest $request, int $claim): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertClaimShopAccess($actor, $claim);
 
         $this->guardTransition(fn () => $this->resolveClaim->handle(new ResolveClaimCommand(
             warrantyClaimId: $claim,
@@ -148,6 +160,7 @@ final class WarrantyClaimController
     public function approveRefund(ApproveRefundRequest $request, int $claim): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertClaimShopAccess($actor, $claim);
 
         $this->guardTransition(fn () => $this->approveRefund->handle(new ApproveRefundCommand(
             warrantyClaimId: $claim,
@@ -167,6 +180,35 @@ final class WarrantyClaimController
         return response()->json([
             'results' => $term !== '' ? $this->customers->search($term) : [],
         ]);
+    }
+
+    /** BRD RBAC-05: every action on one specific claim is blocked unless the acting staff member (or the Shop Owner) was granted the originating sale/repair's shop. */
+    private function assertClaimShopAccess(ActorContext $actor, int $claimId): void
+    {
+        $data = $this->detail->find($claimId);
+        abort_if($data === null, 404);
+        $this->assertClaimDataShopAccessible($actor, $data);
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private function assertClaimDataShopAccessible(ActorContext $actor, array $data): void
+    {
+        $shopId = $data['originating_sale']['shop_id'] ?? $data['originating_repair_job']['shop_id'] ?? null;
+
+        if ($shopId !== null) {
+            abort_unless($actor->canAccessShop((int) $shopId), 403);
+        }
+    }
+
+    private function assertOriginShopAccessible(ActorContext $actor, ?int $originatingSaleId, ?int $originatingRepairJobId): void
+    {
+        $shopId = $originatingSaleId !== null
+            ? $this->saleLookup->find($originatingSaleId)['shop_id'] ?? null
+            : ($originatingRepairJobId !== null ? $this->repairJobLookup->find($originatingRepairJobId)['shop_id'] ?? null : null);
+
+        if ($shopId !== null) {
+            abort_unless($actor->canAccessShop((int) $shopId), 403);
+        }
     }
 
     /** An illegal transition, unsupported remedy, or invalid source reference surfaces as a friendly validation message, not a 500 — mirrors RepairsController::guardTransition. */

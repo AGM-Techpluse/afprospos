@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -37,6 +37,8 @@ type RepairDetail = {
     resolution_notes: string | null;
     created_at: string;
     collection_case: { id: number; status: string; context: string; collection_deadline_at: string } | null;
+    pending_payment_approval: { id: number; requested_financial_status: string; amount_minor: number; method: string } | null;
+    pending_down_payment_approval: { id: number; amount_minor: number; method: string } | null;
 };
 
 type Technician = { id: number; name: string };
@@ -46,6 +48,7 @@ interface RepairShowProps {
     repair: RepairDetail;
     shop: Shop | null;
     technicians: Technician[];
+    canApprovePayment: boolean;
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -59,13 +62,21 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 const CLOSED_STATUSES = ['completed', 'unrepairable', 'expired_cancelled'];
 
-export default function RepairShow({ repair, shop, technicians }: RepairShowProps) {
+export default function RepairShow({ repair, shop, technicians, canApprovePayment }: RepairShowProps) {
     const confirm = useConfirm();
+    // Multiple staff act on the same repair from different desks (frontdesk
+    // collects payment, Manager sets requirements/approves) — poll just the
+    // `repair` prop so each side sees the other's updates without a manual
+    // refresh. Inertia pauses this automatically while the tab isn't visible.
+    usePoll(5000, { only: ['repair'] });
     const [processing, setProcessing] = useState(false);
     const [downPayment, setDownPayment] = useState('');
-    const [downPaymentMethod, setDownPaymentMethod] = useState('cash');
-    const [financialStatus, setFinancialStatus] = useState('fully_paid');
+    const [downPaymentReceivedAmount, setDownPaymentReceivedAmount] = useState('');
+    const [downPaymentReceivedMethod, setDownPaymentReceivedMethod] = useState('cash');
     const [resolutionNotes, setResolutionNotes] = useState('');
+    const [requestedFinancialStatus, setRequestedFinancialStatus] = useState('fully_paid');
+    const [requestedAmount, setRequestedAmount] = useState('');
+    const [requestedPaymentMethod, setRequestedPaymentMethod] = useState('cash');
     const [failReason, setFailReason] = useState('');
     const [settlementState, setSettlementState] = useState('pending_decision');
     const [technicianId, setTechnicianId] = useState(repair.technician_staff_id?.toString() ?? '');
@@ -100,13 +111,37 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
         e.preventDefault();
         post(`/admin/repairs/${repair.id}/authorize`, {
             down_payment_required_minor: String(Math.round(parseFloat(downPayment || '0') * 100)),
-            down_payment_method: downPaymentMethod,
         });
+    }
+
+    function requestDownPaymentApproval(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/repairs/${repair.id}/down-payment-approval`, {
+            amount_minor: String(Math.round(parseFloat(downPaymentReceivedAmount || '0') * 100)),
+            method: downPaymentReceivedMethod,
+        });
+    }
+
+    function decideDownPaymentApproval(approvalId: number, approved: boolean) {
+        post(`/admin/repairs/${repair.id}/down-payment-approval/${approvalId}/decide`, { approved: approved ? '1' : '0' });
     }
 
     function completeRepair(e: FormEvent) {
         e.preventDefault();
-        post(`/admin/repairs/${repair.id}/complete`, { financial_status: financialStatus, resolution_notes: resolutionNotes });
+        post(`/admin/repairs/${repair.id}/complete`, { resolution_notes: resolutionNotes });
+    }
+
+    function requestPaymentApproval(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/repairs/${repair.id}/payment-approval`, {
+            financial_status: requestedFinancialStatus,
+            amount_minor: String(Math.round(parseFloat(requestedAmount || '0') * 100)),
+            method: requestedPaymentMethod,
+        });
+    }
+
+    function decidePaymentApproval(approvalId: number, approved: boolean) {
+        post(`/admin/repairs/${repair.id}/payment-approval/${approvalId}/decide`, { approved: approved ? '1' : '0' });
     }
 
     async function failRepair(e: FormEvent) {
@@ -294,39 +329,78 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
                     )}
 
                     {(repair.repair_status === 'awaiting_authorization' || repair.repair_status === 'payment_overdue') && (
-                        <form onSubmit={authorize} className="flex flex-col gap-2">
-                            <label className="text-xs font-semibold text-admin-text">Down payment (₦, 0 if none)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={downPayment}
-                                onChange={(e) => setDownPayment(e.target.value)}
-                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                            />
-                            <select
-                                value={downPaymentMethod}
-                                onChange={(e) => setDownPaymentMethod(e.target.value)}
-                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                            >
-                                <option value="cash">Cash</option>
-                                <option value="pos_terminal">POS terminal</option>
-                                <option value="bank_transfer">Bank transfer</option>
-                            </select>
-                            <AdminButton type="submit" isLoading={processing}>
-                                Set authorization
-                            </AdminButton>
-                            <p className="text-xs text-admin-text3">
-                                Once the corresponding payment shows confirmed under Payments, click below to move this job forward.
-                            </p>
-                            <AdminButton
-                                type="button"
-                                variant="neutral"
-                                onClick={() => post(`/admin/repairs/${repair.id}/confirm-down-payment`)}
-                                disabled={processing}
-                            >
-                                Down payment confirmed
-                            </AdminButton>
-                        </form>
+                        <>
+                            <form onSubmit={authorize} className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+                                <label className="text-xs font-semibold text-admin-text">
+                                    {repair.down_payment_required_minor !== null ? 'Update' : 'Set'} down payment requirement (₦, 0 if none)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={downPayment}
+                                    onChange={(e) => setDownPayment(e.target.value)}
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                />
+                                <AdminButton type="submit" isLoading={processing}>
+                                    Set requirement
+                                </AdminButton>
+                            </form>
+
+                            {repair.down_payment_required_minor !== null && repair.down_payment_required_minor > 0 && (
+                                repair.pending_down_payment_approval ? (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="bg-ui-warning-soft text-ui-warning-text rounded-admin-button px-2 py-2 text-xs">
+                                            Down payment recorded, pending Manager approval —{' '}
+                                            {formatNaira(repair.pending_down_payment_approval.amount_minor)} via{' '}
+                                            {repair.pending_down_payment_approval.method.replace(/_/g, ' ')}
+                                        </div>
+                                        {canApprovePayment && (
+                                            <div className="flex items-center gap-2">
+                                                <AdminButton
+                                                    onClick={() => decideDownPaymentApproval(repair.pending_down_payment_approval!.id, true)}
+                                                    isLoading={processing}
+                                                >
+                                                    Approve
+                                                </AdminButton>
+                                                <AdminButton
+                                                    variant="neutral"
+                                                    onClick={() => decideDownPaymentApproval(repair.pending_down_payment_approval!.id, false)}
+                                                    disabled={processing}
+                                                >
+                                                    Reject
+                                                </AdminButton>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <form onSubmit={requestDownPaymentApproval} className="flex flex-col gap-2">
+                                        <label className="text-xs font-semibold text-admin-text">
+                                            Record down payment received ({formatNaira(repair.down_payment_required_minor)} required)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Amount (₦)"
+                                            value={downPaymentReceivedAmount}
+                                            onChange={(e) => setDownPaymentReceivedAmount(e.target.value)}
+                                            className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        />
+                                        <select
+                                            value={downPaymentReceivedMethod}
+                                            onChange={(e) => setDownPaymentReceivedMethod(e.target.value)}
+                                            className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        >
+                                            <option value="cash">Cash</option>
+                                            <option value="pos_terminal">POS terminal</option>
+                                            <option value="bank_transfer">Bank transfer</option>
+                                        </select>
+                                        <AdminButton type="submit" isLoading={processing}>
+                                            Request approval
+                                        </AdminButton>
+                                    </form>
+                                )
+                            )}
+                        </>
                     )}
 
                     {repair.repair_status === 'awaiting_parts' && (
@@ -338,16 +412,6 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
                     {repair.repair_status === 'in_progress' && (
                         <>
                             <form onSubmit={completeRepair} className="flex flex-col gap-2">
-                                <label className="text-xs font-semibold text-admin-text">Complete repair — financial status</label>
-                                <select
-                                    value={financialStatus}
-                                    onChange={(e) => setFinancialStatus(e.target.value)}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                >
-                                    <option value="fully_paid">Fully paid</option>
-                                    <option value="partially_paid">Partially paid</option>
-                                    <option value="unpaid">Unpaid</option>
-                                </select>
                                 <label className="text-xs font-semibold text-admin-text">Resolution notes (optional)</label>
                                 <textarea
                                     value={resolutionNotes}
@@ -376,6 +440,70 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
                         </>
                     )}
 
+                    {repair.repair_status === 'completed' && repair.financial_status !== 'fully_paid' && (
+                        <>
+                            {repair.pending_payment_approval ? (
+                                <div className="flex flex-col gap-2">
+                                    <div className="bg-ui-warning-soft text-ui-warning-text rounded-admin-button px-2 py-2 text-xs">
+                                        Payment recording pending Shop Owner approval —{' '}
+                                        {repair.pending_payment_approval.requested_financial_status.replace(/_/g, ' ')} (
+                                        {formatNaira(repair.pending_payment_approval.amount_minor)} via{' '}
+                                        {repair.pending_payment_approval.method.replace(/_/g, ' ')})
+                                    </div>
+                                    {canApprovePayment && (
+                                        <div className="flex items-center gap-2">
+                                            <AdminButton
+                                                onClick={() => decidePaymentApproval(repair.pending_payment_approval!.id, true)}
+                                                isLoading={processing}
+                                            >
+                                                Approve
+                                            </AdminButton>
+                                            <AdminButton
+                                                variant="neutral"
+                                                onClick={() => decidePaymentApproval(repair.pending_payment_approval!.id, false)}
+                                                disabled={processing}
+                                            >
+                                                Reject
+                                            </AdminButton>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <form onSubmit={requestPaymentApproval} className="flex flex-col gap-2">
+                                    <label className="text-xs font-semibold text-admin-text">Request payment recording</label>
+                                    <select
+                                        value={requestedFinancialStatus}
+                                        onChange={(e) => setRequestedFinancialStatus(e.target.value)}
+                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    >
+                                        <option value="fully_paid">Fully paid</option>
+                                        <option value="partially_paid">Partially paid</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="Amount (₦)"
+                                        value={requestedAmount}
+                                        onChange={(e) => setRequestedAmount(e.target.value)}
+                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    />
+                                    <select
+                                        value={requestedPaymentMethod}
+                                        onChange={(e) => setRequestedPaymentMethod(e.target.value)}
+                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    >
+                                        <option value="cash">Cash</option>
+                                        <option value="pos_terminal">POS terminal</option>
+                                        <option value="bank_transfer">Bank transfer</option>
+                                    </select>
+                                    <AdminButton type="submit" isLoading={processing}>
+                                        Request approval
+                                    </AdminButton>
+                                </form>
+                            )}
+                        </>
+                    )}
+
                     {repair.repair_status === 'failed_requires_resolution' && (
                         <>
                             <AdminButton onClick={resume} disabled={processing}>
@@ -400,7 +528,7 @@ export default function RepairShow({ repair, shop, technicians }: RepairShowProp
                         </>
                     )}
 
-                    {CLOSED_STATUSES.includes(repair.repair_status) && (
+                    {CLOSED_STATUSES.includes(repair.repair_status) && !(repair.repair_status === 'completed' && repair.financial_status !== 'fully_paid') && (
                         <p className="text-xs text-admin-text3">
                             {repair.collection_case ? 'See the linked collection case for next steps.' : 'No further actions available.'}
                         </p>

@@ -136,8 +136,8 @@ return [
     'permissions' => [
         'staff' => ['view', 'create', 'edit', 'deactivate', 'assign'],
         'shops' => ['view', 'create', 'edit'],
-        'repairs' => ['view', 'create', 'edit', 'approve', 'assign', 'manage'],
-        'sales' => ['view', 'create', 'cancel'],
+        'repairs' => ['view', 'create', 'edit', 'progress', 'assign', 'manage', 'approve-payment'],
+        'sales' => ['view', 'create', 'cancel', 'approve-discount'],
         'commission' => ['view', 'manage'],
         'inventory' => ['view', 'create', 'edit', 'delete'],
         'referrals' => ['view', 'manage'],
@@ -146,7 +146,7 @@ return [
         'reports' => ['view'],
         'payments' => ['view', 'confirm', 'reject', 'dispute', 'refund'],
         'collection' => ['view', 'process', 'override'],
-        'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'manage'],
+        'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'process-exchange', 'manage'],
         'audit' => ['view'],
         'settings' => ['view'],
     ],
@@ -166,6 +166,17 @@ return [
     */
     'role_starting_permissions' => [
         'Shop Owner' => ['*' => 'full'],
+        // Per-shop manager: reviews technician findings (reported back
+        // off-system — technicians don't use this software), drives every
+        // repair_status/diagnosis/down-payment decision, and is the
+        // required second approver for both the down payment and the
+        // final settlement frontdesk collects. Deliberately excludes
+        // 'repairs.create'/'sales.create' — intake and cash handling stay
+        // with frontdesk, so a Manager approves rather than self-serves.
+        'Manager' => [
+            'repairs' => ['view', 'progress', 'approve-payment'],
+            'sales' => ['view', 'approve-discount'],
+        ],
         'Accountant' => [
             'shops' => ['view'],
             'repairs' => ['view'],
@@ -178,17 +189,31 @@ return [
             'reports' => 'full',
             'payments' => 'full',
             'collection' => ['view', 'override'],
-            'warranty' => ['view', 'approve-refund'],
+            'warranty' => ['view', 'approve-refund', 'process-exchange'],
         ],
         'Technician' => [
-            'repairs' => 'full',
+            // Confirmed with the stakeholder: technicians don't use this
+            // software at all — they test/diagnose/repair physically and
+            // report back to the Manager (or Shop Owner) by whatever means,
+            // who enters every finding and drives every status change on
+            // their behalf. 'view' stays in case that changes later (e.g. a
+            // workshop tablet), but there is currently no write action a
+            // Technician needs.
+            'repairs' => ['view'],
             'inventory' => ['view'],
             'reports' => ['view'],
             'collection' => ['view', 'process'],
             'warranty' => ['view', 'assess', 'resolve'],
         ],
         'Cashier' => [
-            'sales' => 'full',
+            'sales' => ['view', 'create', 'cancel'],
+            // Frontdesk creates the repair at intake and is the one who
+            // actually touches the customer's money — it records that a
+            // down payment or final payment was received ('edit' covers
+            // the *request* actions) but a Manager/Shop Owner
+            // ('repairs.approve-payment') always has to confirm both
+            // before the repair proceeds or the money counts as settled.
+            'repairs' => ['view', 'create', 'edit', 'assign'],
             'inventory' => ['view'],
             'referrals' => ['view'],
             'reports' => ['view'],

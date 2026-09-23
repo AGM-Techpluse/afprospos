@@ -30,7 +30,6 @@ final class EloquentRepairDiagnosisRepository implements RepairDiagnosisReposito
             'component' => $diagnosis->component(),
             'condition' => $diagnosis->condition(),
             'notes' => $diagnosis->notes(),
-            'outcome' => $diagnosis->outcome(),
             'diagnosed_by_staff_id' => $diagnosis->diagnosedByStaffId()->value,
         ]);
     }
@@ -43,7 +42,6 @@ final class EloquentRepairDiagnosisRepository implements RepairDiagnosisReposito
             $record->component,
             $record->condition,
             $record->notes,
-            $record->outcome,
             new StaffId($record->diagnosed_by_staff_id),
         );
     }

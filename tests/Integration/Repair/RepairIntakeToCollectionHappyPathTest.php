@@ -9,27 +9,35 @@ use Domain\Collection\Application\Handlers\ReleaseRepairDeviceHandler;
 use Domain\Collection\Infrastructure\Persistence\Eloquent\CollectionCaseRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
-use Domain\Payments\Application\Commands\ConfirmPaymentCommand;
-use Domain\Payments\Application\Handlers\ConfirmPaymentHandler;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Application\Commands\CompleteRepairCommand;
-use Domain\Repair\Application\Commands\ConfirmDownPaymentCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
+use Domain\Repair\Application\Commands\DecideRepairDownPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\DecideRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\InstallRepairPartCommand;
 use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
+use Domain\Repair\Application\Commands\RecordDiagnosisConclusionCommand;
+use Domain\Repair\Application\Commands\RequestRepairDownPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\RequestRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Application\Commands\StartRepairCommand;
 use Domain\Repair\Application\Handlers\AuthorizeRepairHandler;
 use Domain\Repair\Application\Handlers\CompleteRepairHandler;
-use Domain\Repair\Application\Handlers\ConfirmDownPaymentHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
+use Domain\Repair\Application\Handlers\DecideRepairDownPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\DecideRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\InstallRepairPartHandler;
+use Domain\Repair\Application\Handlers\RecordDiagnosisConclusionHandler;
 use Domain\Repair\Application\Handlers\RecordDiagnosisHandler;
+use Domain\Repair\Application\Handlers\RequestRepairDownPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\RequestRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Application\Handlers\StartRepairHandler;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDownPaymentApprovalRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPartReservationRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPaymentApprovalRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\CustomerRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
@@ -68,6 +76,12 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
             component: 'screen',
             condition: 'faulty',
             notes: 'Cracked glass',
+            diagnosedByStaffId: $staff->id,
+        ));
+
+        app(RecordDiagnosisConclusionHandler::class)->handle(new RecordDiagnosisConclusionCommand(
+            repairJobId: $jobId,
+            rootCause: 'Cracked screen assembly',
             outcome: 'repairable',
             diagnosedByStaffId: $staff->id,
         ));
@@ -79,23 +93,28 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         app(AuthorizeRepairHandler::class)->handle(new AuthorizeRepairCommand(
             repairJobId: $jobId,
             downPaymentRequiredMinor: 200000,
-            downPaymentMethod: 'cash',
             authorizedByStaffId: $staff->id,
         ));
 
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_authorization']);
+        $this->assertDatabaseMissing('payments_transactions', ['payable_type' => 'repair_job', 'payable_id' => $jobId]);
+
+        app(RequestRepairDownPaymentApprovalHandler::class)->handle(new RequestRepairDownPaymentApprovalCommand(
+            repairJobId: $jobId,
+            amountMinor: 200000,
+            method: 'cash',
+            requestedByStaffId: $staff->id,
+        ));
+        $downPaymentApproval = RepairDownPaymentApprovalRecord::query()->where('repair_job_id', $jobId)->latest('id')->firstOrFail();
+        app(DecideRepairDownPaymentApprovalHandler::class)->handle(new DecideRepairDownPaymentApprovalCommand($downPaymentApproval->id, true, $staff->id));
+
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_parts']);
         $transaction = PaymentTransactionRecord::query()
             ->where('payable_type', 'repair_job')
             ->where('payable_id', $jobId)
             ->firstOrFail();
-
-        app(ConfirmPaymentHandler::class)->handle(new ConfirmPaymentCommand(
-            transactionId: $transaction->id,
-            confirmedByStaffId: $staff->id,
-        ));
-        app(ConfirmDownPaymentHandler::class)->handle(new ConfirmDownPaymentCommand($jobId, $staff->id));
-
-        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_parts']);
+        $this->assertSame('repair_down_payment', $transaction->purpose);
+        $this->assertSame('confirmed', $transaction->status);
 
         app(ReserveRepairPartsHandler::class)->handle(new ReserveRepairPartsCommand(
             repairJobId: $jobId,
@@ -118,8 +137,27 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         app(StartRepairHandler::class)->handle(new StartRepairCommand($jobId, $staff->id));
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'in_progress']);
 
-        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand($jobId, 'fully_paid', 'Replaced screen assembly', $staff->id));
+        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand($jobId, 'Replaced screen assembly', $staff->id));
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed', 'financial_status' => 'unpaid']);
+
+        app(RequestRepairPaymentApprovalHandler::class)->handle(new RequestRepairPaymentApprovalCommand(
+            repairJobId: $jobId,
+            requestedFinancialStatus: 'fully_paid',
+            amountMinor: 500000,
+            method: 'cash',
+            requestedByStaffId: $staff->id,
+        ));
+        $approval = RepairPaymentApprovalRecord::query()->where('repair_job_id', $jobId)->latest('id')->firstOrFail();
+        app(DecideRepairPaymentApprovalHandler::class)->handle(new DecideRepairPaymentApprovalCommand($approval->id, true, $staff->id));
+
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed', 'financial_status' => 'fully_paid']);
+        $this->assertDatabaseHas('payments_transactions', [
+            'payable_type' => 'repair_job',
+            'payable_id' => $jobId,
+            'purpose' => 'repair_final_payment',
+            'amount_minor' => 500000,
+            'status' => 'confirmed',
+        ]);
 
         $case = CollectionCaseRecord::query()->where('source_type', 'repair_job')->where('source_id', $jobId)->firstOrFail();
         $this->assertSame('ready_for_collection', $case->context);

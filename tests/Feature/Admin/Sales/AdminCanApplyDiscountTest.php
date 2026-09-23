@@ -23,6 +23,7 @@ class AdminCanApplyDiscountTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
         $checkout = SalesCheckoutRecord::factory()->create([
             'shop_id' => $shop->id,
             'cashier_staff_id' => $cashier->id,
@@ -54,6 +55,7 @@ class AdminCanApplyDiscountTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
         $checkout = SalesCheckoutRecord::factory()->create([
             'shop_id' => $shop->id,
             'cashier_staff_id' => $cashier->id,

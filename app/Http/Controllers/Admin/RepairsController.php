@@ -9,9 +9,14 @@ use App\Http\Requests\Admin\Repairs\AssignTechnicianRequest;
 use App\Http\Requests\Admin\Repairs\AuthorizeRepairRequest;
 use App\Http\Requests\Admin\Repairs\CompleteRepairRequest;
 use App\Http\Requests\Admin\Repairs\CreateRepairJobRequest;
+use App\Http\Requests\Admin\Repairs\DecideRepairDownPaymentApprovalRequest;
+use App\Http\Requests\Admin\Repairs\DecideRepairPaymentApprovalRequest;
 use App\Http\Requests\Admin\Repairs\FailRepairRequest;
 use App\Http\Requests\Admin\Repairs\MarkRepairUnrepairableRequest;
+use App\Http\Requests\Admin\Repairs\RecordDiagnosisConclusionRequest;
 use App\Http\Requests\Admin\Repairs\RecordDiagnosisRequest;
+use App\Http\Requests\Admin\Repairs\RequestRepairDownPaymentApprovalRequest;
+use App\Http\Requests\Admin\Repairs\RequestRepairPaymentApprovalRequest;
 use App\Http\Requests\Admin\Repairs\ReserveRepairPartsRequest;
 use App\Http\Requests\Admin\Repairs\UpdateDeviceLockRequest;
 use App\Http\Requests\Admin\Repairs\UploadRepairPhotoRequest;
@@ -21,28 +26,37 @@ use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Repair\Application\Commands\AssignTechnicianCommand;
 use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Application\Commands\CompleteRepairCommand;
-use Domain\Repair\Application\Commands\ConfirmDownPaymentCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
+use Domain\Repair\Application\Commands\DecideRepairDownPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\DecideRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\DeleteRepairPhotoCommand;
 use Domain\Repair\Application\Commands\FailRepairCommand;
 use Domain\Repair\Application\Commands\InstallRepairPartCommand;
 use Domain\Repair\Application\Commands\MarkRepairUnrepairableCommand;
 use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
+use Domain\Repair\Application\Commands\RecordDiagnosisConclusionCommand;
+use Domain\Repair\Application\Commands\RequestRepairDownPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\RequestRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Application\Commands\ResumeRepairCommand;
 use Domain\Repair\Application\Commands\StartRepairCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceLockCommand;
 use Domain\Repair\Application\Commands\UploadRepairPhotoCommand;
+use Domain\Repair\Application\Contracts\RepairJobLookup;
 use Domain\Repair\Application\Handlers\AssignTechnicianHandler;
 use Domain\Repair\Application\Handlers\AuthorizeRepairHandler;
 use Domain\Repair\Application\Handlers\CompleteRepairHandler;
-use Domain\Repair\Application\Handlers\ConfirmDownPaymentHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
+use Domain\Repair\Application\Handlers\DecideRepairDownPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\DecideRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\DeleteRepairPhotoHandler;
 use Domain\Repair\Application\Handlers\FailRepairHandler;
 use Domain\Repair\Application\Handlers\InstallRepairPartHandler;
 use Domain\Repair\Application\Handlers\MarkRepairUnrepairableHandler;
+use Domain\Repair\Application\Handlers\RecordDiagnosisConclusionHandler;
 use Domain\Repair\Application\Handlers\RecordDiagnosisHandler;
+use Domain\Repair\Application\Handlers\RequestRepairDownPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\RequestRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Application\Handlers\ResumeRepairHandler;
 use Domain\Repair\Application\Handlers\StartRepairHandler;
@@ -69,17 +83,22 @@ final class RepairsController
     public function __construct(
         private readonly RepairsListQuery $list,
         private readonly RepairJobDetailQuery $detail,
+        private readonly RepairJobLookup $repairJobLookup,
         private readonly ShopDirectoryQuery $shops,
         private readonly CustomerDirectoryQuery $customers,
         private readonly InventoryCatalogQuery $catalog,
         private readonly CreateRepairJobHandler $createRepairJob,
         private readonly RecordDiagnosisHandler $recordDiagnosis,
+        private readonly RecordDiagnosisConclusionHandler $recordDiagnosisConclusion,
         private readonly AuthorizeRepairHandler $authorizeRepair,
-        private readonly ConfirmDownPaymentHandler $confirmDownPayment,
+        private readonly RequestRepairDownPaymentApprovalHandler $requestDownPaymentApproval,
+        private readonly DecideRepairDownPaymentApprovalHandler $decideDownPaymentApproval,
         private readonly ReserveRepairPartsHandler $reserveParts,
         private readonly InstallRepairPartHandler $installPart,
         private readonly StartRepairHandler $startRepair,
         private readonly CompleteRepairHandler $completeRepair,
+        private readonly RequestRepairPaymentApprovalHandler $requestPaymentApproval,
+        private readonly DecideRepairPaymentApprovalHandler $decidePaymentApproval,
         private readonly FailRepairHandler $failRepair,
         private readonly ResumeRepairHandler $resumeRepair,
         private readonly MarkRepairUnrepairableHandler $markUnrepairable,
@@ -163,9 +182,11 @@ final class RepairsController
     public function store(CreateRepairJobRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id');
+        abort_unless($actor->canAccessShop($shopId), 403);
 
         $id = $this->createRepairJob->handle(new CreateRepairJobCommand(
-            shopId: $request->integer('shop_id'),
+            shopId: $shopId,
             customerId: $request->integer('customer_id'),
             deviceMake: $request->string('device_make')->toString(),
             deviceModel: $request->string('device_model')->toString(),
@@ -189,10 +210,12 @@ final class RepairsController
         $data = $this->detail->find($repair, $actor->staffId->value, $actor->isOwner);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Repairs/Show', [
             'repair' => $data,
             'shop' => $this->shops->find((int) $data['shop_id']),
+            'canApprovePayment' => $actor->hasPermission('repairs.approve-payment'),
             'technicians' => $this->staff->paginate(
                 search: null,
                 status: 'active',
@@ -207,6 +230,7 @@ final class RepairsController
     public function updateDeviceLock(UpdateDeviceLockRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->updateDeviceLock->handle(new UpdateDeviceLockCommand(
             repairJobId: $repair,
@@ -224,6 +248,7 @@ final class RepairsController
     public function uploadPhoto(UploadRepairPhotoRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
         $path = $request->file('photo')->store("repairs/{$repair}", 'public');
 
         $this->uploadPhoto->handle(new UploadRepairPhotoCommand(
@@ -241,6 +266,7 @@ final class RepairsController
     public function deletePhoto(int $repair, int $photo): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->deletePhoto->handle(new DeleteRepairPhotoCommand($photo, $actor->staffId->value));
 
@@ -252,6 +278,7 @@ final class RepairsController
     public function assignTechnician(AssignTechnicianRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->assignTechnician->handle(new AssignTechnicianCommand(
             repairJobId: $repair,
@@ -266,9 +293,11 @@ final class RepairsController
 
     public function diagnosis(int $repair): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($repair);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Repairs/Diagnosis', ['repair' => $data]);
     }
@@ -276,13 +305,30 @@ final class RepairsController
     public function recordDiagnosis(RecordDiagnosisRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->recordDiagnosis->handle(new RecordDiagnosisCommand(
             repairJobId: $repair,
-            component: $request->string('component')->toString() ?: null,
-            condition: $request->string('condition')->toString() ?: null,
+            component: $request->string('component')->toString(),
+            condition: $request->string('condition')->toString(),
             notes: $request->string('notes')->toString() ?: null,
-            outcome: $request->string('outcome')->toString() ?: null,
+            diagnosedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess('Component recorded');
+
+        return redirect()->route('admin.repairs.diagnosis', ['repair' => $repair]);
+    }
+
+    public function recordDiagnosisConclusion(RecordDiagnosisConclusionRequest $request, int $repair): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->recordDiagnosisConclusion->handle(new RecordDiagnosisConclusionCommand(
+            repairJobId: $repair,
+            rootCause: $request->string('root_cause')->toString(),
+            outcome: $request->string('outcome')->toString(),
             diagnosedByStaffId: $actor->staffId->value,
         )));
 
@@ -294,11 +340,11 @@ final class RepairsController
     public function authorize(AuthorizeRepairRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->authorizeRepair->handle(new AuthorizeRepairCommand(
             repairJobId: $repair,
             downPaymentRequiredMinor: $request->integer('down_payment_required_minor'),
-            downPaymentMethod: $request->string('down_payment_method')->toString(),
             authorizedByStaffId: $actor->staffId->value,
         )));
 
@@ -307,22 +353,46 @@ final class RepairsController
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
-    public function confirmDownPayment(int $repair): RedirectResponse
+    public function requestDownPaymentApproval(RequestRepairDownPaymentApprovalRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
-        $this->guardTransition(fn () => $this->confirmDownPayment->handle(new ConfirmDownPaymentCommand($repair, $actor->staffId->value)));
+        $this->guardTransition(fn () => $this->requestDownPaymentApproval->handle(new RequestRepairDownPaymentApprovalCommand(
+            repairJobId: $repair,
+            amountMinor: $request->integer('amount_minor'),
+            method: $request->string('method')->toString(),
+            requestedByStaffId: $actor->staffId->value,
+        )));
 
-        $this->flashSuccess('Down payment confirmed');
+        $this->flashSuccess('Down payment approval requested');
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
+    public function decideDownPaymentApproval(DecideRepairDownPaymentApprovalRequest $request, int $repair, int $approval): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->decideDownPaymentApproval->handle(new DecideRepairDownPaymentApprovalCommand(
+            approvalId: $approval,
+            approved: $request->boolean('approved'),
+            decidedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess($request->boolean('approved') ? 'Down payment approved' : 'Down payment request rejected');
 
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
     public function parts(int $repair): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($repair);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Repairs/Parts', [
             'repair' => $data,
@@ -332,9 +402,11 @@ final class RepairsController
 
     public function collection(int $repair): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($repair);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Repairs/Collection', ['repair' => $data]);
     }
@@ -342,6 +414,7 @@ final class RepairsController
     public function reserveParts(ReserveRepairPartsRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->reserveParts->handle(new ReserveRepairPartsCommand(
             repairJobId: $repair,
@@ -357,6 +430,9 @@ final class RepairsController
 
     public function installPart(int $repair, int $reservation): RedirectResponse
     {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
         $this->installPart->handle(new InstallRepairPartCommand($reservation));
 
         $this->flashSuccess('Part installed');
@@ -367,6 +443,7 @@ final class RepairsController
     public function start(int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->startRepair->handle(new StartRepairCommand($repair, $actor->staffId->value)));
 
@@ -378,10 +455,10 @@ final class RepairsController
     public function complete(CompleteRepairRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->completeRepair->handle(new CompleteRepairCommand(
             repairJobId: $repair,
-            financialStatus: $request->string('financial_status')->toString(),
             resolutionNotes: $request->string('resolution_notes')->toString() ?: null,
             completedByStaffId: $actor->staffId->value,
         )));
@@ -391,9 +468,44 @@ final class RepairsController
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
+    public function requestPaymentApproval(RequestRepairPaymentApprovalRequest $request, int $repair): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->requestPaymentApproval->handle(new RequestRepairPaymentApprovalCommand(
+            repairJobId: $repair,
+            requestedFinancialStatus: $request->string('financial_status')->toString(),
+            amountMinor: $request->integer('amount_minor'),
+            method: $request->string('method')->toString(),
+            requestedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess('Payment approval requested');
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
+    public function decidePaymentApproval(DecideRepairPaymentApprovalRequest $request, int $repair, int $approval): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->decidePaymentApproval->handle(new DecideRepairPaymentApprovalCommand(
+            approvalId: $approval,
+            approved: $request->boolean('approved'),
+            decidedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess($request->boolean('approved') ? 'Payment approved' : 'Payment request rejected');
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
     public function fail(FailRepairRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->failRepair->handle(new FailRepairCommand(
             repairJobId: $repair,
@@ -409,6 +521,7 @@ final class RepairsController
     public function resume(int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->resumeRepair->handle(new ResumeRepairCommand($repair, $actor->staffId->value)));
 
@@ -420,6 +533,7 @@ final class RepairsController
     public function markUnrepairable(MarkRepairUnrepairableRequest $request, int $repair): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
 
         $this->guardTransition(fn () => $this->markUnrepairable->handle(new MarkRepairUnrepairableCommand(
             repairJobId: $repair,
@@ -443,14 +557,24 @@ final class RepairsController
 
     public function searchParts(Request $request, int $repair): JsonResponse
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($repair);
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         $term = $request->string('q')->toString();
 
         return response()->json([
             'results' => $term !== '' ? $this->catalog->search($term, (int) $data['shop_id']) : [],
         ]);
+    }
+
+    /** BRD RBAC-05: every action on one specific repair is blocked unless the acting staff member (or the Shop Owner, who bypasses scope entirely) was actually granted that repair's shop — the permission string alone only proves they hold the action in general, never that this particular record is theirs to touch. */
+    private function assertRepairShopAccess(ActorContext $actor, int $repairId): void
+    {
+        $repair = $this->repairJobLookup->find($repairId);
+        abort_if($repair === null, 404);
+        abort_unless($actor->canAccessShop($repair['shop_id']), 403);
     }
 
     /** An illegal transition (or a mutation attempt on a closed job) surfaces as a friendly validation message, not a 500 — mirrors PaymentController::guardTransition. */

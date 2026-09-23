@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Domain\Sales\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Domain\Entities\SalesCheckoutAdjustment;
+use Domain\Sales\Domain\Events\CheckoutDiscountApplied;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
 use Domain\Sales\Domain\ValueObjects\CheckoutId;
 use Domain\Shared\Domain\ValueObjects\Money;
+use Illuminate\Support\Facades\Event;
 
 final class ApplyDiscountHandler
 {
@@ -40,6 +43,14 @@ final class ApplyDiscountHandler
                 beforeState: null,
                 afterState: ['type' => $command->type, 'source_id' => $command->sourceId, 'amount_minor' => $command->amountMinor],
             );
+
+            Event::dispatch(new CheckoutDiscountApplied(
+                $command->checkoutId,
+                $checkout->shopId()->value,
+                $command->amountMinor,
+                $checkout->cashierStaffId()->value,
+                CarbonImmutable::now(),
+            ));
         });
     }
 }

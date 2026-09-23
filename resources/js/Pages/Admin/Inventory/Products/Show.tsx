@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
@@ -9,13 +9,16 @@ import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 type SerializedUnit = { id: number; imei: string; shop_id: number; condition: string; status: string };
+type SiblingSku = { id: number; sku_code: string; attributes: Record<string, unknown>; selling_price_minor: number };
 
 type Sku = {
     id: number;
+    product_id: number;
     sku_code: string;
     brand: string;
     model: string;
     category: string;
+    attributes: Record<string, unknown>;
     is_serialized: boolean;
     cost_price_minor: number;
     markup_percent: number;
@@ -24,10 +27,19 @@ type Sku = {
     low_stock_threshold: number | null;
     stock_by_shop: StockByShop[];
     serialized_units: SerializedUnit[];
+    sibling_skus: SiblingSku[];
     on_hand: number;
     reserved: number;
     available: number;
 };
+
+function variantLabel(attributes: Record<string, unknown>): string {
+    const parts = ['brand', 'color', 'material', 'compatibility']
+        .map((key) => attributes[key])
+        .filter((value): value is string => typeof value === 'string' && value !== '');
+
+    return parts.length > 0 ? parts.join(' · ') : 'No attributes set';
+}
 
 function formatNaira(minor: number): string {
     return `₦${(minor / 100).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`;
@@ -175,6 +187,41 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                     )}
                 </AdminInfoCard>
             </div>
+
+            {!sku.is_serialized && (
+                <div className="mt-8">
+                    <AdminInfoCard title="Variants" icon="grid-3x3-gap" iconColor="blue">
+                        <div className="mb-3">
+                            <div className="flex items-center justify-between py-2.5 border-b border-admin-border">
+                                <span className="text-sm text-admin-text">{variantLabel(sku.attributes)} (this variant)</span>
+                                <span className="text-sm font-medium text-admin-text">{formatNaira(sku.selling_price_minor)}</span>
+                            </div>
+                            {sku.sibling_skus.length === 0 ? (
+                                <p className="text-admin-text2 text-sm py-2.5">No other variants yet.</p>
+                            ) : (
+                                sku.sibling_skus.map((sibling) => (
+                                    <button
+                                        key={sibling.id}
+                                        type="button"
+                                        onClick={() => router.visit(`/admin/inventory/products/${sibling.id}`)}
+                                        className="w-full flex items-center justify-between py-2.5 border-b border-admin-border last:border-b-0 text-left hover:bg-admin-hover"
+                                    >
+                                        <span className="text-sm text-admin-text">{variantLabel(sibling.attributes)}</span>
+                                        <span className="text-sm font-medium text-admin-text">{formatNaira(sibling.selling_price_minor)}</span>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                        <AdminButton
+                            type="button"
+                            variant="neutral"
+                            onClick={() => router.visit(`/admin/inventory/products/${sku.product_id}/variants/create`)}
+                        >
+                            Add variant
+                        </AdminButton>
+                    </AdminInfoCard>
+                </div>
+            )}
 
             {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
             <div className="mt-8 max-w-lg">

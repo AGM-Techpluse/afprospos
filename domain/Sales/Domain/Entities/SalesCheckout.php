@@ -7,6 +7,8 @@ namespace Domain\Sales\Domain\Entities;
 use DateTimeImmutable;
 use Domain\Sales\Domain\Exceptions\CheckoutNotOpen;
 use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
+use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
+use Domain\Sales\Domain\Exceptions\NoAdjustmentToApprove;
 use Domain\Sales\Domain\Policies\CheckoutReservationPolicy;
 use Domain\Sales\Domain\Services\CheckoutPricingService;
 use Domain\Sales\Domain\ValueObjects\CheckoutId;
@@ -118,12 +120,24 @@ final class SalesCheckout
         throw new InvalidArgumentException("Checkout item [{$itemId->value}] is not on this checkout.");
     }
 
-    /** MKT-BR-06: non-stackable by default — a new adjustment replaces any existing one. */
+    /** MKT-BR-06: non-stackable by default — a new adjustment replaces any existing one (and its prior approval, if any — MKT-BR-15 requires re-approval of the replacement). */
     public function applyAdjustment(SalesCheckoutAdjustment $adjustment): void
     {
         $this->assertOpen();
         $this->adjustments = [$adjustment];
         $this->recompute();
+    }
+
+    /** MKT-BR-15: approves the checkout's current adjustment (there is at most one — MKT-BR-06). */
+    public function approveAdjustment(int $approvedByStaffId, DateTimeImmutable $now): void
+    {
+        $this->assertOpen();
+
+        if ($this->adjustments === []) {
+            throw NoAdjustmentToApprove::forCheckout($this->id?->value ?? 0);
+        }
+
+        $this->adjustments[0]->approve($approvedByStaffId, $now);
     }
 
     public function cancel(): void
@@ -139,10 +153,16 @@ final class SalesCheckout
         $this->status = 'expired';
     }
 
-    /** SALE/PAY-BR-08: defense-in-depth clock check against the expiry worker racing this call. */
+    /** SALE/PAY-BR-08: defense-in-depth clock check against the expiry worker racing this call. MKT-BR-15: every adjustment must be approved first. */
     public function markPaid(DateTimeImmutable $now): void
     {
         $this->assertOpen();
+
+        foreach ($this->adjustments as $adjustment) {
+            if (! $adjustment->isApproved()) {
+                throw DiscountNotApproved::forCheckout($this->id?->value ?? 0);
+            }
+        }
 
         if (! (new CheckoutReservationPolicy)->isMutable($this->status, $this->reservationExpiresAt, $now)) {
             throw CheckoutReservationExpired::forCheckout($this->id?->value ?? 0);

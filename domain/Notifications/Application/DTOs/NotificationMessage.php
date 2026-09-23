@@ -14,5 +14,6 @@ final readonly class NotificationMessage
         public string $recipientName,
         public string $title,
         public string $body,
+        public string $actionUrl = '',
     ) {}
 }

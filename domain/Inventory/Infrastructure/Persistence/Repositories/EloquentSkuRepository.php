@@ -23,14 +23,36 @@ final class EloquentSkuRepository implements SkuRepository
         return SkuRecord::query()->where('sku_code', $skuCode)->exists();
     }
 
-    public function findNonSerializedByProduct(ProductId $productId): ?Sku
+    public function findNonSerializedByProduct(ProductId $productId, array $attributes): ?Sku
     {
+        // Compared in PHP rather than a DB-level JSON-equality clause — a
+        // product has at most a handful of variants, and JSON comparison
+        // semantics differ enough between MySQL and the SQLite used in
+        // tests that an in-PHP compare is the more portable correctness bet.
+        ksort($attributes);
+
         $record = SkuRecord::query()
             ->where('product_id', $productId->value)
             ->where('is_serialized', false)
-            ->first();
+            ->get()
+            ->first(function (SkuRecord $candidate) use ($attributes): bool {
+                $candidateAttributes = $candidate->attributes ?? [];
+                ksort($candidateAttributes);
+
+                return $candidateAttributes === $attributes;
+            });
 
         return $record !== null ? $this->toDomain($record) : null;
+    }
+
+    public function findAllNonSerializedByProduct(ProductId $productId): array
+    {
+        return SkuRecord::query()
+            ->where('product_id', $productId->value)
+            ->where('is_serialized', false)
+            ->get()
+            ->map(fn (SkuRecord $record): Sku => $this->toDomain($record))
+            ->all();
     }
 
     public function nextSequence(string $shopCode, string $category): int

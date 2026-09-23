@@ -25,6 +25,7 @@ class DeviceLockVisibilityTest extends TestCase
         $technician = StaffRecord::factory()->create();
         $technician->assignRole('Technician');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($technician, $shop->id);
         $customer = CustomerRecord::factory()->create();
 
         $job = RepairJobRecord::factory()->create([
@@ -75,6 +76,7 @@ class DeviceLockVisibilityTest extends TestCase
         $viewingTechnician = StaffRecord::factory()->create();
         $viewingTechnician->assignRole('Technician');
         $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($viewingTechnician, $shop->id);
         $customer = CustomerRecord::factory()->create();
 
         $job = RepairJobRecord::factory()->create([

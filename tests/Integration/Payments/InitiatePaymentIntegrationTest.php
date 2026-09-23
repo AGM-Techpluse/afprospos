@@ -22,6 +22,7 @@ class InitiatePaymentIntegrationTest extends TestCase
         $result = app(InitiatePaymentHandler::class)->handle(new InitiatePaymentCommand(
             payableType: 'sales_checkout',
             payableId: 1,
+            purpose: 'sale_payment',
             method: 'cash',
             amountMinor: 5000,
             initiatedByStaffId: $staff->id,
@@ -42,6 +43,7 @@ class InitiatePaymentIntegrationTest extends TestCase
         $result = app(InitiatePaymentHandler::class)->handle(new InitiatePaymentCommand(
             payableType: 'sales_checkout',
             payableId: 1,
+            purpose: 'sale_payment',
             method: 'pos_terminal',
             amountMinor: 7500,
             initiatedByStaffId: $staff->id,
@@ -63,6 +65,7 @@ class InitiatePaymentIntegrationTest extends TestCase
         $result = app(InitiatePaymentHandler::class)->handle(new InitiatePaymentCommand(
             payableType: 'sales_checkout',
             payableId: 2,
+            purpose: 'sale_payment',
             method: 'bank_transfer',
             amountMinor: 12000,
             initiatedByStaffId: $staff->id,

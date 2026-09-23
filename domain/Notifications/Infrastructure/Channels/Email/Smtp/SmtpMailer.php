@@ -33,7 +33,7 @@ final class SmtpMailer implements EmailChannel
         }
 
         try {
-            Mail::to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body));
+            Mail::to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body, $message->actionUrl));
 
             return DeliveryResult::delivered(config('mail.default', 'smtp'));
         } catch (Throwable $exception) {

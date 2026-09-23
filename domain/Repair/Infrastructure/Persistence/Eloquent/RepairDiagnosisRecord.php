@@ -15,7 +15,6 @@ use Illuminate\Support\Carbon;
  * @property string $component
  * @property string $condition
  * @property string|null $notes
- * @property string|null $outcome
  * @property int $diagnosed_by_staff_id
  * @property Carbon $created_at
  */
@@ -32,7 +31,6 @@ final class RepairDiagnosisRecord extends Model
         'component',
         'condition',
         'notes',
-        'outcome',
         'diagnosed_by_staff_id',
     ];
 

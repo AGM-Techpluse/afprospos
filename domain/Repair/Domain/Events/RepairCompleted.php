@@ -10,7 +10,6 @@ final readonly class RepairCompleted
 {
     public function __construct(
         public int $repairJobId,
-        public string $financialStatus,
         public CarbonImmutable $occurredAt,
     ) {}
 }

@@ -12,6 +12,7 @@ final class NotificationMailable extends Mailable
     public function __construct(
         private readonly string $title,
         private readonly string $body,
+        private readonly string $actionUrl = '',
     ) {}
 
     public function build(): self
@@ -19,6 +20,7 @@ final class NotificationMailable extends Mailable
         return $this->subject($this->title)->text('notifications.email-plain', [
             'title' => $this->title,
             'body' => $this->body,
+            'actionUrl' => $this->actionUrl,
         ]);
     }
 }

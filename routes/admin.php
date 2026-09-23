@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\InventoryImportController;
 use App\Http\Controllers\Admin\InventorySerializedUnitsController;
 use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\NotificationSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductController;
@@ -56,6 +57,10 @@ Route::prefix('admin')
     ->name('admin.')
     ->group(function (): void {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+            ->whereNumber('notification')
+            ->name('notifications.read');
 
         Route::middleware('permission:staff.view')
             ->get('/staff', [StaffController::class, 'index'])
@@ -175,10 +180,24 @@ Route::prefix('admin')
             ->post('/inventory/products', [ProductController::class, 'store'])
             ->name('inventory.products.store');
 
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/products/with-variants', [ProductController::class, 'storeWithVariants'])
+            ->name('inventory.products.store-with-variants');
+
         Route::middleware('permission:inventory.view')
             ->get('/inventory/products/{product}', [ProductController::class, 'show'])
             ->whereNumber('product')
             ->name('inventory.products.show');
+
+        Route::middleware('permission:inventory.create')
+            ->get('/inventory/products/{product}/variants/create', [ProductController::class, 'addVariantForm'])
+            ->whereNumber('product')
+            ->name('inventory.products.variants.create');
+
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/products/{product}/variants', [ProductController::class, 'storeVariant'])
+            ->whereNumber('product')
+            ->name('inventory.products.variants.store');
 
         Route::middleware('permission:inventory.create')
             ->post('/inventory/products/{sku}/receive', [InventoryStockController::class, 'receive'])
@@ -234,6 +253,10 @@ Route::prefix('admin')
         Route::middleware('permission:inventory.edit')
             ->get('/inventory/transfers/create', [InventoryTransferController::class, 'create'])
             ->name('inventory.transfers.create');
+
+        Route::middleware('permission:inventory.edit')
+            ->get('/inventory/transfers/search', [InventoryTransferController::class, 'searchStock'])
+            ->name('inventory.transfers.search');
 
         Route::middleware('permission:inventory.edit')
             ->post('/inventory/transfers', [InventoryTransferController::class, 'store'])
@@ -303,6 +326,11 @@ Route::prefix('admin')
             ->post('/sales/checkout/{checkout}/discount', [SalesController::class, 'applyDiscount'])
             ->whereNumber('checkout')
             ->name('sales.checkout.discount');
+
+        Route::middleware('permission:sales.approve-discount')
+            ->post('/sales/checkout/{checkout}/discount/approve', [SalesController::class, 'approveDiscount'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.discount.approve');
 
         Route::middleware('permission:sales.create')
             ->post('/sales/checkout/{checkout}/complete', [SalesController::class, 'complete'])
@@ -451,20 +479,30 @@ Route::prefix('admin')
             ->whereNumber('repair')
             ->name('repairs.diagnosis');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/diagnosis', [RepairsController::class, 'recordDiagnosis'])
             ->whereNumber('repair')
             ->name('repairs.diagnosis.store');
 
-        Route::middleware('permission:repairs.approve')
+        Route::middleware('permission:repairs.progress')
+            ->post('/repairs/{repair}/diagnosis-conclusion', [RepairsController::class, 'recordDiagnosisConclusion'])
+            ->whereNumber('repair')
+            ->name('repairs.diagnosis-conclusion.store');
+
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/authorize', [RepairsController::class, 'authorize'])
             ->whereNumber('repair')
             ->name('repairs.authorize');
 
-        Route::middleware('permission:repairs.approve')
-            ->post('/repairs/{repair}/confirm-down-payment', [RepairsController::class, 'confirmDownPayment'])
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/down-payment-approval', [RepairsController::class, 'requestDownPaymentApproval'])
             ->whereNumber('repair')
-            ->name('repairs.confirm-down-payment');
+            ->name('repairs.down-payment-approval.request');
+
+        Route::middleware('permission:repairs.approve-payment')
+            ->post('/repairs/{repair}/down-payment-approval/{approval}/decide', [RepairsController::class, 'decideDownPaymentApproval'])
+            ->whereNumber(['repair', 'approval'])
+            ->name('repairs.down-payment-approval.decide');
 
         Route::middleware('permission:repairs.view')
             ->get('/repairs/{repair}/parts', [RepairsController::class, 'parts'])
@@ -481,12 +519,12 @@ Route::prefix('admin')
             ->whereNumber('repair')
             ->name('repairs.collection');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/parts', [RepairsController::class, 'reserveParts'])
             ->whereNumber('repair')
             ->name('repairs.parts.reserve');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/parts/{reservation}/install', [RepairsController::class, 'installPart'])
             ->whereNumber('repair')
             ->whereNumber('reservation')
@@ -512,27 +550,37 @@ Route::prefix('admin')
             ->whereNumber(['repair', 'photo'])
             ->name('repairs.photos.destroy');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/start', [RepairsController::class, 'start'])
             ->whereNumber('repair')
             ->name('repairs.start');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/complete', [RepairsController::class, 'complete'])
             ->whereNumber('repair')
             ->name('repairs.complete');
 
         Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/payment-approval', [RepairsController::class, 'requestPaymentApproval'])
+            ->whereNumber('repair')
+            ->name('repairs.payment-approval.request');
+
+        Route::middleware('permission:repairs.approve-payment')
+            ->post('/repairs/{repair}/payment-approval/{approval}/decide', [RepairsController::class, 'decidePaymentApproval'])
+            ->whereNumber(['repair', 'approval'])
+            ->name('repairs.payment-approval.decide');
+
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/fail', [RepairsController::class, 'fail'])
             ->whereNumber('repair')
             ->name('repairs.fail');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/resume', [RepairsController::class, 'resume'])
             ->whereNumber('repair')
             ->name('repairs.resume');
 
-        Route::middleware('permission:repairs.edit')
+        Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/unrepairable', [RepairsController::class, 'markUnrepairable'])
             ->whereNumber('repair')
             ->name('repairs.unrepairable');
@@ -667,6 +715,11 @@ Route::prefix('admin')
             ->post('/warranty/returns/{returnRequest}/process-refund', [ReturnRequestController::class, 'processRefund'])
             ->whereNumber('returnRequest')
             ->name('warranty.returns.process-refund');
+
+        Route::middleware('permission:warranty.process-exchange')
+            ->post('/warranty/returns/{returnRequest}/process-exchange', [ReturnRequestController::class, 'processExchange'])
+            ->whereNumber('returnRequest')
+            ->name('warranty.returns.process-exchange');
 
         Route::middleware('permission:warranty.view')
             ->get('/warranty/trade-ins', [TradeInAssessmentController::class, 'index'])

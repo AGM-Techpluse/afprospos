@@ -24,6 +24,7 @@ class AdminCanCompleteCashSaleTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+        $this->grantShopAccess($cashier, $shop->id);
         $sku = SkuRecord::factory()->nonSerialized()->create(['selling_price_minor' => 30000]);
         InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 5, 'reserved' => 0]);
 
@@ -48,6 +49,7 @@ class AdminCanCompleteCashSaleTest extends TestCase
         $cashier = StaffRecord::factory()->create();
         $cashier->assignRole('Cashier');
         $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+        $this->grantShopAccess($cashier, $shop->id);
 
         $checkout = SalesCheckoutRecord::factory()->expired()->create([
             'shop_id' => $shop->id,

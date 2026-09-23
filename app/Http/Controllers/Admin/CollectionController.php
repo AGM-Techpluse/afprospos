@@ -57,9 +57,11 @@ final class CollectionController
 
     public function show(int $collectionCase): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->detail->find($collectionCase);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Collection/Show', ['collectionCase' => $data]);
     }
@@ -67,6 +69,7 @@ final class CollectionController
     public function notify(RecordNotifiedRequest $request, int $collectionCase): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertCollectionCaseShopAccess($actor, $collectionCase);
 
         $this->recordNotified->handle(new RecordCollectionNotifiedCommand(
             collectionCaseId: $collectionCase,
@@ -82,6 +85,7 @@ final class CollectionController
     public function extend(ExtendDeadlineRequest $request, int $collectionCase): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertCollectionCaseShopAccess($actor, $collectionCase);
 
         $this->extendDeadline->handle(new ExtendCollectionDeadlineCommand(
             collectionCaseId: $collectionCase,
@@ -99,6 +103,7 @@ final class CollectionController
     public function override(RecordOverrideRequest $request, int $collectionCase): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertCollectionCaseShopAccess($actor, $collectionCase);
 
         $this->recordOverride->handle(new RecordCollectionOverrideCommand(
             collectionCaseId: $collectionCase,
@@ -114,6 +119,7 @@ final class CollectionController
     public function release(int $collectionCase): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $this->assertCollectionCaseShopAccess($actor, $collectionCase);
 
         try {
             $this->releaseDevice->handle(new ReleaseRepairDeviceCommand($collectionCase, $actor->staffId->value));
@@ -124,5 +130,13 @@ final class CollectionController
         $this->flashSuccess('Device released');
 
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
+    }
+
+    /** BRD RBAC-05: every action on one specific collection case is blocked unless the acting staff member (or the Shop Owner) was granted that case's shop. */
+    private function assertCollectionCaseShopAccess(ActorContext $actor, int $collectionCaseId): void
+    {
+        $data = $this->detail->find($collectionCaseId);
+        abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
     }
 }

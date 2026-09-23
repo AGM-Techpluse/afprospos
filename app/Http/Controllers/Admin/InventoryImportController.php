@@ -62,6 +62,7 @@ final class InventoryImportController
         $shop = $this->shops->find($request->integer('shop_id'));
 
         abort_if($shop === null, 404);
+        abort_unless($actor->canAccessShop($shop['id']), 403);
 
         [$rows, $preValidationFailures] = $this->parseCsv($request->file('file'));
 

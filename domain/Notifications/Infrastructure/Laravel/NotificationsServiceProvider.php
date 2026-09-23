@@ -13,7 +13,10 @@ use Domain\Notifications\Infrastructure\Channels\Sms\UnconfiguredSmsChannel;
 use Domain\Notifications\Infrastructure\Channels\WhatsApp\UnconfiguredWhatsAppChannel;
 use Domain\Notifications\Infrastructure\Persistence\Repositories\EloquentNotificationEventRepository;
 use Domain\Repair\Domain\Events\RepairCompleted;
+use Domain\Repair\Domain\Events\RepairDownPaymentApprovalRequested;
+use Domain\Repair\Domain\Events\RepairPaymentApprovalRequested;
 use Domain\Repair\Domain\Events\RepairReadyForCollection;
+use Domain\Sales\Domain\Events\CheckoutDiscountApplied;
 use Domain\Sales\Domain\Events\SaleCompleted;
 use Domain\Warranty\Domain\Events\ReturnRequestResolved;
 use Domain\Warranty\Domain\Events\TradeInCreditApplied;
@@ -42,9 +45,12 @@ final class NotificationsServiceProvider extends ServiceProvider
     {
         Event::listen(RepairCompleted::class, Listeners\OnRepairCompleted::class);
         Event::listen(RepairReadyForCollection::class, Listeners\OnRepairReadyForCollection::class);
+        Event::listen(RepairPaymentApprovalRequested::class, Listeners\OnRepairPaymentApprovalRequested::class);
+        Event::listen(RepairDownPaymentApprovalRequested::class, Listeners\OnRepairDownPaymentApprovalRequested::class);
         Event::listen(WarrantyClaimSubmitted::class, Listeners\OnWarrantyClaimSubmitted::class);
         Event::listen(WarrantyClaimResolved::class, Listeners\OnWarrantyClaimResolved::class);
         Event::listen(SaleCompleted::class, Listeners\OnSaleCompleted::class);
+        Event::listen(CheckoutDiscountApplied::class, Listeners\OnCheckoutDiscountApplied::class);
         Event::listen(ReturnRequestResolved::class, Listeners\OnReturnRequestResolved::class);
         Event::listen(TradeInCreditApplied::class, Listeners\OnTradeInCreditApplied::class);
     }

@@ -21,6 +21,7 @@ final readonly class InitiatePaymentCommand
     public function __construct(
         public string $payableType,
         public int $payableId,
+        public string $purpose,
         public string $method,
         public int $amountMinor,
         public ?int $initiatedByStaffId = null,

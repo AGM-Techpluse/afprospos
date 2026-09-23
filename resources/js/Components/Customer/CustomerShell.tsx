@@ -16,19 +16,19 @@ interface NavItem {
     key: string;
     label: string;
     icon: string;
-    iconColor: string;
+    iconBg: string;
     href: string;
     /** Coming-soon items render inert (cursor-not-allowed), not a dead link to a page that 404s. */
     enabled: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { key: 'home', label: 'Home', icon: 'house-door-fill', iconColor: 'text-customer-blue', href: '/customer/dashboard', enabled: true },
-    { key: 'repairs', label: 'Repairs', icon: 'tools', iconColor: 'text-customer-green', href: '/customer/repairs', enabled: true },
-    { key: 'orders', label: 'Orders', icon: 'bag-check', iconColor: 'text-customer-yellow-text', href: '/customer/orders', enabled: true },
-    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', iconColor: 'text-customer-red', href: '/customer/warranty/claims', enabled: true },
-    { key: 'shops', label: 'Shops', icon: 'shop', iconColor: 'text-customer-card-lime-text', href: '/customer/dashboard', enabled: false },
-    { key: 'profile', label: 'Profile', icon: 'person', iconColor: 'text-gray-500', href: '/customer/profile', enabled: true },
+    { key: 'home', label: 'Home', icon: 'house-door-fill', iconBg: 'bg-customer-blue', href: '/customer/dashboard', enabled: true },
+    { key: 'repairs', label: 'Repairs', icon: 'tools', iconBg: 'bg-customer-green', href: '/customer/repairs', enabled: true },
+    { key: 'orders', label: 'Orders', icon: 'bag-check', iconBg: 'bg-customer-yellow-text', href: '/customer/orders', enabled: true },
+    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', iconBg: 'bg-customer-red', href: '/customer/warranty/claims', enabled: true },
+    { key: 'shops', label: 'Shops', icon: 'shop', iconBg: 'bg-customer-card-lime-text', href: '/customer/dashboard', enabled: false },
+    { key: 'profile', label: 'Profile', icon: 'person', iconBg: 'bg-gray-500', href: '/customer/profile', enabled: true },
 ];
 
 export default function CustomerShell({ children }: CustomerShellProps) {
@@ -82,7 +82,9 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                                     isActive ? 'bg-customer-blue-soft text-customer-blue' : 'text-customer-text2 hover:bg-gray-50'
                                 }`}
                             >
-                                <Icon name={item.icon} className={`text-xl shrink-0 ${isActive ? '' : item.iconColor}`} />
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-white shrink-0 ${isActive ? 'bg-customer-blue' : item.iconBg}`}>
+                                    <Icon name={item.icon} className="text-base" />
+                                </div>
                                 {item.label}
                             </Link>
                         ) : (
@@ -91,7 +93,9 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                                 aria-disabled="true"
                                 className="flex items-center gap-3 px-3 py-3 rounded-customer-item text-customer-lg font-bold text-customer-text2/50 cursor-not-allowed"
                             >
-                                <Icon name={item.icon} className={`text-xl shrink-0 ${item.iconColor} opacity-50`} />
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-white shrink-0 ${item.iconBg} opacity-50`}>
+                                    <Icon name={item.icon} className="text-base" />
+                                </div>
                                 {item.label}
                                 <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-customer-text2/60">Soon</span>
                             </span>

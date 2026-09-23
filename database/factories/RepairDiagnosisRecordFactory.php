@@ -21,7 +21,6 @@ final class RepairDiagnosisRecordFactory extends Factory
             'component' => 'screen',
             'condition' => 'faulty',
             'notes' => null,
-            'outcome' => null,
             'diagnosed_by_staff_id' => StaffRecord::factory(),
         ];
     }

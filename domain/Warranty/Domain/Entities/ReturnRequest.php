@@ -22,11 +22,13 @@ final class ReturnRequest
         private ?string $denialReason,
         private ?int $overrideApprovedByStaffId,
         private ?int $refundTransactionId,
+        private ?string $resolutionType,
+        private ?int $exchangeCheckoutId,
     ) {}
 
     public static function request(int $saleId, int $customerId, DateTimeImmutable $returnWindowExpiresAt): self
     {
-        return new self(null, $saleId, $customerId, 'requested', $returnWindowExpiresAt, null, null, null);
+        return new self(null, $saleId, $customerId, 'requested', $returnWindowExpiresAt, null, null, null, null, null);
     }
 
     public static function reconstitute(
@@ -38,8 +40,10 @@ final class ReturnRequest
         ?string $denialReason,
         ?int $overrideApprovedByStaffId,
         ?int $refundTransactionId,
+        ?string $resolutionType,
+        ?int $exchangeCheckoutId,
     ): self {
-        return new self($id, $saleId, $customerId, $resolutionState, $returnWindowExpiresAt, $denialReason, $overrideApprovedByStaffId, $refundTransactionId);
+        return new self($id, $saleId, $customerId, $resolutionState, $returnWindowExpiresAt, $denialReason, $overrideApprovedByStaffId, $refundTransactionId, $resolutionType, $exchangeCheckoutId);
     }
 
     public function assess(): void
@@ -80,6 +84,16 @@ final class ReturnRequest
         $this->assertTransition('resolved');
         $this->resolutionState = 'resolved';
         $this->refundTransactionId = $refundTransactionId;
+        $this->resolutionType = 'refund';
+    }
+
+    /** WAR-BR-13: the sale's full paid value has already been applied as a store-credit adjustment on `$exchangeCheckoutId` by the time this is called. */
+    public function resolveAsExchange(int $exchangeCheckoutId): void
+    {
+        $this->assertTransition('resolved');
+        $this->resolutionState = 'resolved';
+        $this->resolutionType = 'exchange';
+        $this->exchangeCheckoutId = $exchangeCheckoutId;
     }
 
     private function assertTransition(string $to): void
@@ -127,5 +141,15 @@ final class ReturnRequest
     public function refundTransactionId(): ?int
     {
         return $this->refundTransactionId;
+    }
+
+    public function resolutionType(): ?string
+    {
+        return $this->resolutionType;
+    }
+
+    public function exchangeCheckoutId(): ?int
+    {
+        return $this->exchangeCheckoutId;
     }
 }

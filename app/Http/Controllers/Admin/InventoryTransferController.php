@@ -13,10 +13,13 @@ use Domain\Inventory\Application\Handlers\CancelInventoryTransferHandler;
 use Domain\Inventory\Application\Handlers\InitiateInventoryTransferHandler;
 use Domain\Inventory\Application\Handlers\ReceiveInventoryTransferHandler;
 use Domain\Inventory\Application\Queries\InventoryTransferQuery;
+use Domain\Inventory\Application\Queries\ProductCatalogQuery;
+use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotTransferable;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +33,8 @@ final class InventoryTransferController
     public function __construct(
         private readonly InventoryTransferQuery $transfers,
         private readonly ShopDirectoryQuery $shops,
+        private readonly StockLevelQuery $stockLevels,
+        private readonly ProductCatalogQuery $catalog,
         private readonly InitiateInventoryTransferHandler $initiate,
         private readonly ReceiveInventoryTransferHandler $receiveTransfer,
         private readonly CancelInventoryTransferHandler $cancel,
@@ -39,7 +44,36 @@ final class InventoryTransferController
     {
         return Inertia::render('Admin/Inventory/Transfers/Create', [
             'shops' => $this->shops->all(),
+            'categories' => $this->catalog->categories(),
         ]);
+    }
+
+    /**
+     * Backs the bulk-transfer picker on Transfers/Create — non-serialized
+     * stock only (mirrors BulkInitiateInventoryTransferRequest's own
+     * scope), searchable by SKU/brand/model and filterable by category,
+     * rather than requiring staff to already know a raw SKU ID.
+     */
+    public function searchStock(Request $request): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $shopId = $request->integer('from_shop_id') ?: null;
+
+        if ($shopId === null) {
+            return response()->json(['results' => []]);
+        }
+
+        abort_unless($actor->canAccessShop($shopId), 403);
+
+        $results = $this->stockLevels->paginate(
+            search: $request->string('search')->toString() ?: null,
+            shopId: $shopId,
+            page: 1,
+            perPage: 50,
+            category: $request->string('category')->toString() ?: null,
+        );
+
+        return response()->json(['results' => $results['data']]);
     }
 
     public function index(Request $request): Response
@@ -60,9 +94,11 @@ final class InventoryTransferController
 
     public function show(int $transfer): Response
     {
+        $actor = app(ActorContext::class);
         $detail = $this->transfers->find($transfer);
 
         abort_if($detail === null, 404);
+        $this->assertTransferShopAccess($actor, $detail);
 
         return Inertia::render('Admin/Inventory/Transfers/Show', ['transfer' => $detail, 'shops' => $this->shops->all()]);
     }
@@ -70,14 +106,17 @@ final class InventoryTransferController
     public function store(InitiateInventoryTransferRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $fromShopId = $request->integer('from_shop_id');
+        $toShopId = $request->integer('to_shop_id');
+        abort_unless($actor->canAccessShop($fromShopId) && $actor->canAccessShop($toShopId), 403);
 
         try {
             $transferId = $this->initiate->handle(new InitiateInventoryTransferCommand(
                 skuId: $request->integer('sku_id'),
                 inventoryItemId: $request->integer('inventory_item_id') ?: null,
                 quantity: $request->integer('quantity') ?: null,
-                fromShopId: $request->integer('from_shop_id'),
-                toShopId: $request->integer('to_shop_id'),
+                fromShopId: $fromShopId,
+                toShopId: $toShopId,
                 initiatedByStaffId: $actor->staffId->value,
             ));
         } catch (InsufficientAvailableStock|ItemNotTransferable $exception) {
@@ -92,6 +131,9 @@ final class InventoryTransferController
     public function receive(int $transfer): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $detail = $this->transfers->find($transfer);
+        abort_if($detail === null, 404);
+        $this->assertTransferShopAccess($actor, $detail);
 
         $this->receiveTransfer->handle(new ReceiveInventoryTransferCommand(
             transferId: $transfer,
@@ -106,6 +148,9 @@ final class InventoryTransferController
     public function cancel(int $transfer): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $detail = $this->transfers->find($transfer);
+        abort_if($detail === null, 404);
+        $this->assertTransferShopAccess($actor, $detail);
 
         $this->cancel->handle(new CancelInventoryTransferCommand(
             transferId: $transfer,
@@ -115,5 +160,21 @@ final class InventoryTransferController
         $this->flashWarning('Transfer cancelled');
 
         return redirect()->route('admin.inventory.transfers.show', $transfer);
+    }
+
+    /**
+     * BRD RBAC-05: a transfer touches two shops — either end being outside
+     * the actor's granted shops (or the Shop Owner, who bypasses scope)
+     * blocks the action, since both the shop losing stock and the shop
+     * receiving it are the actor's business to act on.
+     *
+     * @param  array<string, mixed>  $detail
+     */
+    private function assertTransferShopAccess(ActorContext $actor, array $detail): void
+    {
+        abort_unless(
+            $actor->canAccessShop((int) $detail['from_shop_id']) && $actor->canAccessShop((int) $detail['to_shop_id']),
+            403,
+        );
     }
 }

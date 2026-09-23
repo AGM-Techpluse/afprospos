@@ -79,6 +79,25 @@ final class EloquentNotificationEventRepository implements NotificationEventRepo
         ];
     }
 
+    public function paginateForStaff(int $staffId, int $limit = 10): array
+    {
+        $records = NotificationEventRecord::query()
+            ->where('recipient_type', 'staff')
+            ->where('recipient_id', $staffId)
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'data' => $records->map(fn (NotificationEventRecord $record): array => $this->toArray($record))->all(),
+            'unread_count' => NotificationEventRecord::query()
+                ->where('recipient_type', 'staff')
+                ->where('recipient_id', $staffId)
+                ->whereNull('read_at')
+                ->count(),
+        ];
+    }
+
     public function recentFailedExhausted(int $limit = 20): array
     {
         return NotificationEventRecord::query()

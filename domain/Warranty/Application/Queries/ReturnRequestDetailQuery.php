@@ -34,6 +34,8 @@ final class ReturnRequestDetailQuery
             'denial_reason' => $returnRequest->denial_reason,
             'override_approved_by_staff_id' => $returnRequest->override_approved_by_staff_id,
             'refund_transaction_id' => $returnRequest->refund_transaction_id,
+            'resolution_type' => $returnRequest->resolution_type,
+            'exchange_checkout_id' => $returnRequest->exchange_checkout_id,
             'created_at' => $returnRequest->created_at->toIso8601String(),
         ];
     }

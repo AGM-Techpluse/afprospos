@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import AdminAccountMenu from './AdminAccountMenu';
+import NotificationDropdown from './NotificationDropdown';
 import ShopSwitcher from './ShopSwitcher';
 import { AdminToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
@@ -227,15 +228,14 @@ export default function AdminShell({ children }: AdminShellProps) {
                         <button className="sm:hidden mr-4 text-admin-text2 hover:text-admin-text" onClick={() => setIsMobileDrawerOpen(true)}>
                             <Icon name="list" className="text-xl" />
                         </button>
-                        <h1 className="text-admin-md font-semibold sm:hidden">Admin</h1>
-                        {shopSwitcher?.accessible && (
-                            <div className="hidden sm:block">
-                                <ShopSwitcher accessible={shopSwitcher.accessible} active={shopSwitcher.active ?? null} />
-                            </div>
+                        {shopSwitcher?.accessible ? (
+                            <ShopSwitcher accessible={shopSwitcher.accessible} active={shopSwitcher.active ?? null} />
+                        ) : (
+                            <h1 className="text-admin-md font-semibold sm:hidden">Admin</h1>
                         )}
                     </div>
                     <div className="flex items-center space-x-4 text-admin-text2">
-                        <Icon name="bell" className="cursor-pointer hover:text-admin-text" />
+                        <NotificationDropdown />
                         <AdminAccountMenu name={staffName} email={staffEmail} />
                     </div>
                 </header>

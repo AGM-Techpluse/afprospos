@@ -17,6 +17,7 @@ use Domain\Inventory\Domain\Exceptions\ItemNotReservable;
 use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
 use Domain\Sales\Application\Commands\AddCheckoutItemCommand;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
+use Domain\Sales\Application\Commands\ApproveCheckoutDiscountCommand;
 use Domain\Sales\Application\Commands\CancelCheckoutCommand;
 use Domain\Sales\Application\Commands\CreateCheckoutCommand;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
@@ -24,6 +25,7 @@ use Domain\Sales\Application\Commands\RemoveCheckoutItemCommand;
 use Domain\Sales\Application\Commands\UpdateCheckoutItemQuantityCommand;
 use Domain\Sales\Application\Handlers\AddCheckoutItemHandler;
 use Domain\Sales\Application\Handlers\ApplyDiscountHandler;
+use Domain\Sales\Application\Handlers\ApproveCheckoutDiscountHandler;
 use Domain\Sales\Application\Handlers\CancelCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateSaleFromPaidCheckoutHandler;
@@ -34,6 +36,8 @@ use Domain\Sales\Application\Queries\SaleDetailQuery;
 use Domain\Sales\Application\Queries\SalesHistoryQuery;
 use Domain\Sales\Domain\Exceptions\CheckoutNotOpen;
 use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
+use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
+use Domain\Sales\Domain\Exceptions\NoAdjustmentToApprove;
 use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
@@ -61,6 +65,7 @@ final class SalesController
         private readonly RemoveCheckoutItemHandler $removeItem,
         private readonly UpdateCheckoutItemQuantityHandler $updateItemQuantity,
         private readonly ApplyDiscountHandler $applyDiscount,
+        private readonly ApproveCheckoutDiscountHandler $approveDiscount,
         private readonly CancelCheckoutHandler $cancelCheckout,
         private readonly CreateSaleFromPaidCheckoutHandler $completeSale,
     ) {}
@@ -82,18 +87,22 @@ final class SalesController
 
     public function show(int $sale): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->saleDetail->find($sale);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Sales/Show', ['sale' => $data]);
     }
 
     public function receipt(int $sale): Response
     {
+        $actor = app(ActorContext::class);
         $data = $this->saleDetail->find($sale);
 
         abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
         return Inertia::render('Admin/Sales/Receipt', ['sale' => $data]);
     }
@@ -113,6 +122,7 @@ final class SalesController
         }
 
         $checkout = $checkoutId !== null ? $this->checkoutDetail->find($checkoutId) : null;
+        abort_if($checkout !== null && ! $actor->canAccessShop((int) $checkout['shop_id']), 403);
 
         return Inertia::render('Admin/Sales/Checkout', [
             'checkout' => $checkout,
@@ -123,13 +133,16 @@ final class SalesController
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
             'shops' => $this->shops->all(),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),
+            'canApproveDiscount' => $actor->hasPermission('sales.approve-discount'),
         ]);
     }
 
     public function search(Request $request): JsonResponse
     {
+        $actor = app(ActorContext::class);
         $term = $request->string('q')->toString();
         $shopId = $request->integer('shop_id');
+        abort_unless($actor->canAccessShop($shopId), 403);
 
         return response()->json([
             'results' => $term !== '' ? $this->catalog->search($term, $shopId) : [],
@@ -148,9 +161,11 @@ final class SalesController
     public function store(CreateCheckoutRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id');
+        abort_unless($actor->canAccessShop($shopId), 403);
 
         $id = $this->createCheckout->handle(new CreateCheckoutCommand(
-            shopId: $request->integer('shop_id'),
+            shopId: $shopId,
             customerId: $request->integer('customer_id') ?: null,
             cashierStaffId: $actor->staffId->value,
         ));
@@ -160,6 +175,8 @@ final class SalesController
 
     public function addItem(AddCheckoutItemRequest $request, int $checkout): RedirectResponse
     {
+        $this->assertCheckoutShopAccess(app(ActorContext::class), $checkout);
+
         try {
             $this->addItem->handle(new AddCheckoutItemCommand(
                 checkoutId: $checkout,
@@ -175,6 +192,8 @@ final class SalesController
 
     public function updateItemQuantity(UpdateCheckoutItemQuantityRequest $request, int $checkout, int $item): RedirectResponse
     {
+        $this->assertCheckoutShopAccess(app(ActorContext::class), $checkout);
+
         try {
             $this->updateItemQuantity->handle(new UpdateCheckoutItemQuantityCommand(
                 checkoutId: $checkout,
@@ -190,6 +209,8 @@ final class SalesController
 
     public function removeItem(int $checkout, int $item): RedirectResponse
     {
+        $this->assertCheckoutShopAccess(app(ActorContext::class), $checkout);
+
         try {
             $this->removeItem->handle(new RemoveCheckoutItemCommand($checkout, $item));
         } catch (CheckoutNotOpen $exception) {
@@ -201,6 +222,8 @@ final class SalesController
 
     public function applyDiscount(ApplyDiscountRequest $request, int $checkout): RedirectResponse
     {
+        $this->assertCheckoutShopAccess(app(ActorContext::class), $checkout);
+
         try {
             $this->applyDiscount->handle(new ApplyDiscountCommand(
                 checkoutId: $checkout,
@@ -215,8 +238,29 @@ final class SalesController
         return redirect()->route('admin.sales.checkout', ['checkout' => $checkout]);
     }
 
+    public function approveDiscount(int $checkout): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertCheckoutShopAccess($actor, $checkout);
+
+        try {
+            $this->approveDiscount->handle(new ApproveCheckoutDiscountCommand(
+                checkoutId: $checkout,
+                approvedByStaffId: $actor->staffId->value,
+            ));
+        } catch (CheckoutNotOpen|NoAdjustmentToApprove $exception) {
+            throw ValidationException::withMessages(['discount' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Discount approved');
+
+        return redirect()->route('admin.sales.checkout', ['checkout' => $checkout]);
+    }
+
     public function cancel(int $checkout): RedirectResponse
     {
+        $this->assertCheckoutShopAccess(app(ActorContext::class), $checkout);
+
         $this->cancelCheckout->handle(new CancelCheckoutCommand($checkout));
 
         $this->flashWarning('Checkout cancelled');
@@ -230,6 +274,7 @@ final class SalesController
         $checkoutData = $this->checkoutDetail->find($checkout);
 
         abort_if($checkoutData === null, 404);
+        abort_unless($actor->canAccessShop((int) $checkoutData['shop_id']), 403);
 
         $shop = $this->shops->find($checkoutData['shop_id']);
 
@@ -244,12 +289,30 @@ final class SalesController
                 shopCode: $shop['sku_prefix_code'],
                 existingPaymentTransactionId: $request->integer('existing_payment_transaction_id') ?: null,
             ));
-        } catch (CheckoutReservationExpired|CheckoutNotOpen $exception) {
+        } catch (CheckoutReservationExpired|CheckoutNotOpen|DiscountNotApproved $exception) {
             throw ValidationException::withMessages(['payment_method' => $exception->getMessage()]);
         }
 
         $this->flashSuccess('Sale completed');
 
         return redirect()->route('admin.sales.receipt', ['sale' => $saleId]);
+    }
+
+    /**
+     * BRD RBAC-05: every action on one specific checkout is blocked unless
+     * the acting staff member (or the Shop Owner, who bypasses scope
+     * entirely) was actually granted that checkout's shop — the
+     * permission string alone only proves they hold the action in
+     * general, never that this particular record is theirs to touch.
+     *
+     * @return array<string, mixed>
+     */
+    private function assertCheckoutShopAccess(ActorContext $actor, int $checkoutId): array
+    {
+        $checkout = $this->checkoutDetail->find($checkoutId);
+        abort_if($checkout === null, 404);
+        abort_unless($actor->canAccessShop((int) $checkout['shop_id']), 403);
+
+        return $checkout;
     }
 }

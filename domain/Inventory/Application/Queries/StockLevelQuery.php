@@ -37,7 +37,7 @@ final class StockLevelQuery
     /**
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $search, ?int $shopId, int $page, int $perPage = 20): array
+    public function paginate(?string $search, ?int $shopId, int $page, int $perPage = 20, ?string $category = null, ?string $brand = null): array
     {
         $query = InventoryStockLevelRecord::query()->with(['sku.product']);
 
@@ -55,6 +55,14 @@ final class StockLevelQuery
             });
         }
 
+        if ($category !== null && $category !== '') {
+            $query->whereHas('sku.product', fn ($productQuery) => $productQuery->where('category', $category));
+        }
+
+        if ($brand !== null && $brand !== '') {
+            $query->whereHas('sku.product', fn ($productQuery) => $productQuery->where('brand', $brand));
+        }
+
         $paginator = $query->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
 
         return [
@@ -64,6 +72,7 @@ final class StockLevelQuery
                 'sku_code' => $level->sku->sku_code,
                 'brand' => $level->sku->product->brand,
                 'model' => $level->sku->product->model,
+                'category' => $level->sku->product->category,
                 'shop_id' => $level->shop_id,
                 'on_hand' => $level->on_hand,
                 'reserved' => $level->reserved,

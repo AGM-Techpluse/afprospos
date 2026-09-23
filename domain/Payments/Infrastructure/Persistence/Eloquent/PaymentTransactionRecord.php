@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $payable_type
  * @property int $payable_id
+ * @property string $purpose
  * @property string $method
  * @property int $amount_minor
  * @property string $status
@@ -31,6 +32,7 @@ final class PaymentTransactionRecord extends Model
     protected $fillable = [
         'payable_type',
         'payable_id',
+        'purpose',
         'method',
         'amount_minor',
         'status',

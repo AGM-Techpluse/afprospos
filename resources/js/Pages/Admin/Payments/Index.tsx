@@ -14,11 +14,13 @@ type PaymentRow = {
     id: number;
     payable_type: string;
     payable_id: number;
+    purpose: string;
     method: string;
     amount_minor: number;
     status: string;
     provider_reference: string | null;
     created_at: string;
+    source_label: string;
 };
 
 type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
@@ -46,9 +48,16 @@ const STATUS_LABEL: Record<string, string> = {
     exception: 'Exception',
 };
 
+const PURPOSE_LABEL: Record<string, string> = {
+    sale_payment: 'Sale payment',
+    repair_down_payment: 'Repair down payment',
+    repair_final_payment: 'Repair final payment',
+};
+
 const COLUMNS: DataTableColumn<PaymentRow>[] = [
     { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
-    { key: 'payable_type', label: 'For', render: (row) => `${row.payable_type.replace('_', ' ')} #${row.payable_id}` },
+    { key: 'purpose', label: 'Purpose', render: (row) => PURPOSE_LABEL[row.purpose] ?? row.purpose.replace(/_/g, ' ') },
+    { key: 'source_label', label: 'For' },
     { key: 'method', label: 'Method' },
     { key: 'amount_minor', label: 'Amount', render: (row) => formatNaira(row.amount_minor) },
     {

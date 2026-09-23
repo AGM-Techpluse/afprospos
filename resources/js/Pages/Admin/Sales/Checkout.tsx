@@ -16,6 +16,14 @@ import CheckoutExpiryTimer from '../../../Features/Sales/CheckoutExpiryTimer';
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
+type CheckoutAdjustment = {
+    id: number;
+    type: string;
+    amount_minor: number;
+    approval_status: string;
+    approved_by_staff_id: number | null;
+};
+
 type CheckoutView = {
     id: number;
     shop_id: number;
@@ -27,6 +35,7 @@ type CheckoutView = {
     discount_minor: number;
     total_minor: number;
     items: CheckoutItemView[];
+    adjustments: CheckoutAdjustment[];
 };
 
 type RecentSale = {
@@ -57,6 +66,7 @@ interface CheckoutPageProps {
     checkoutReservationMinutes: number;
     recentSales: RecentSale[];
     todaysSales: TodaysSales | null;
+    canApproveDiscount: boolean;
 }
 
 const DISCOUNT_TYPES = [
@@ -142,7 +152,14 @@ function RecentSales({ sales }: { sales: RecentSale[] }) {
     );
 }
 
-export default function SalesCheckout({ checkout, pendingPaymentTransaction, shops, recentSales, todaysSales }: CheckoutPageProps) {
+export default function SalesCheckout({
+    checkout,
+    pendingPaymentTransaction,
+    shops,
+    recentSales,
+    todaysSales,
+    canApproveDiscount,
+}: CheckoutPageProps) {
     const confirm = useConfirm();
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -229,6 +246,8 @@ export default function SalesCheckout({ checkout, pendingPaymentTransaction, sho
     const shop = shops.find((s) => s.id === checkout.shop_id);
     const closed = isExpired || checkout.status !== 'open';
     const locked = isSubmitting || closed;
+    const currentAdjustment = checkout.adjustments[0] ?? null;
+    const hasPendingDiscount = currentAdjustment?.approval_status === 'pending';
 
     function addItem(skuId: number) {
         setInlineError(null);
@@ -284,6 +303,14 @@ export default function SalesCheckout({ checkout, pendingPaymentTransaction, sho
             showProgress: false,
             onFinish: () => setIsSubmitting(false),
         });
+    }
+
+    function approveDiscount() {
+        router.post(
+            `/admin/sales/checkout/${checkout!.id}/discount/approve`,
+            {},
+            { preserveScroll: true },
+        );
     }
 
     function submitDiscount(e: FormEvent) {
@@ -394,23 +421,46 @@ export default function SalesCheckout({ checkout, pendingPaymentTransaction, sho
                             </div>
                         </form>
                     ) : (
-                        <div className="flex items-center gap-3 mb-3">
-                            <button
-                                type="button"
-                                disabled={locked}
-                                onClick={() => setDiscountOpen(true)}
-                                className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
-                            >
-                                + Apply discount
-                            </button>
-                            <button
-                                type="button"
-                                disabled={locked}
-                                onClick={() => router.visit(`/admin/warranty/trade-ins/create?checkout=${checkout.id}`)}
-                                className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
-                            >
-                                + Trade-in
-                            </button>
+                        <div className="mb-3">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    disabled={locked}
+                                    onClick={() => setDiscountOpen(true)}
+                                    className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
+                                >
+                                    + Apply discount
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={locked}
+                                    onClick={() => router.visit(`/admin/warranty/trade-ins/create?checkout=${checkout.id}`)}
+                                    className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
+                                >
+                                    + Trade-in
+                                </button>
+                            </div>
+
+                            {currentAdjustment && (
+                                <div
+                                    className={`mt-2 rounded-admin-button px-2 py-1.5 text-xs ${
+                                        hasPendingDiscount ? 'bg-ui-warning-soft text-ui-warning-text' : 'bg-ui-success-soft text-ui-success'
+                                    }`}
+                                >
+                                    {hasPendingDiscount ? (
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span>Discount pending Shop Owner approval</span>
+                                            {canApproveDiscount && (
+                                                <button type="button" onClick={approveDiscount} className="font-semibold underline shrink-0">
+                                                    Approve
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span>Discount approved</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -453,7 +503,7 @@ export default function SalesCheckout({ checkout, pendingPaymentTransaction, sho
                             <AdminButton
                                 type="submit"
                                 isLoading={completeForm.processing}
-                                disabled={checkout.items.length === 0 || locked}
+                                disabled={checkout.items.length === 0 || locked || hasPendingDiscount}
                             >
                                 Complete sale
                             </AdminButton>

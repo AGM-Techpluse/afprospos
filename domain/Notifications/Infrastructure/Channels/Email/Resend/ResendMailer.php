@@ -26,7 +26,7 @@ final class ResendMailer implements EmailChannel
         }
 
         try {
-            Mail::mailer('resend')->to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body));
+            Mail::mailer('resend')->to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body, $message->actionUrl));
 
             return DeliveryResult::delivered('resend');
         } catch (Throwable $exception) {

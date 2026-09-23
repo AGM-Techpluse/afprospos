@@ -423,13 +423,19 @@ collection are now separated out as their own decision points:
 
 **3.2 Diagnosis as a Structured Business Object**
 
-Diagnosis is recorded, not merely concluded. For each relevant
-component/function, the technician records one of: Working, Faulty, Not
-Tested, or Unable to Test --- the last two being legitimate outcomes for
-dead, severely damaged, water-damaged, or locked devices, rather than
-being silently assumed "working." Diagnosis then resolves to one of
-three outcomes: Repairable, Unrepairable, or Requires Further
-Assessment.
+Diagnosis is recorded, not merely concluded, and is split into two
+distinct steps (REP-BR-29) so the record of "what we tested" is never
+confused with "what we concluded." First, common-component testing: for
+each relevant component/function, the technician records one of:
+Working, Faulty, Not Tested, or Unable to Test --- the last two being
+legitimate outcomes for dead, severely damaged, water-damaged, or locked
+devices, rather than being silently assumed "working." Second, and
+separately, the diagnosis itself: the technician states the main cause
+of the fault (a root-cause narrative, informed by the component tests
+but not derived automatically from them) and resolves it to one of three
+outcomes: Repairable, Unrepairable, or Requires Further Assessment. Only
+this second step transitions the repair's status --- a component test
+observation never does.
 
 **3.3 Parts Reservation & Conflict Handling**
 
@@ -587,6 +593,46 @@ authorize release if money is still owed.
     release the device, subject to recording the authorization, the
     staff member, and the reason --- real businesses need this
     exception, and it must be auditable.
+
+-   **REP-BR-27 --- Payment Recording Approval.** A repair job's
+    financial status shall not be recorded directly at the moment the
+    repair is marked complete; it shall only be recorded once a
+    payment-recording request for that repair has been approved.
+
+-   **REP-BR-28 --- Payment Approval Authority.** Every payment-recording
+    request for a completed repair shall require approval by an
+    authorized administrator (Shop Owner), distinct from the
+    pre-work down-payment authorization permission (REP-BR-19).
+
+-   **REP-BR-29 --- Diagnosis Distinct From Component Testing.** The
+    technician's diagnosis (a stated root cause and a
+    repairable/unrepairable/requires-further-assessment
+    classification) shall be recorded as a fact distinct from the
+    per-component test observations recorded under REP-BR-02; only the
+    diagnosis, not a component observation, shall transition the
+    repair's status.
+
+-   **REP-BR-30 --- Down-Payment Approval Symmetry.** The pre-work down
+    payment shall follow the same two-step shape as REP-BR-27/28: the
+    down-payment requirement (amount) is set by an authorized
+    administrator, frontdesk records that the customer paid it, and the
+    repair is only authorized to proceed (and the real payment
+    transaction only created) once that record is approved by an
+    authorized administrator --- frontdesk alone recording a cash
+    handoff shall never itself move the repair forward.
+
+-   **REP-BR-31 --- Manager Drives Repair Progress, Frontdesk Drives
+    Payment Collection.** Confirmed with the business: technicians do
+    not use this software --- they report test results, diagnosis, and
+    completion back to a Manager (or Shop Owner) by whatever means, who
+    records every finding and drives every repair-status transition
+    (diagnosis, diagnosis conclusion, down-payment requirement, parts
+    reservation/installation, start, completion, fail/resume/
+    unrepairable) on their behalf. Frontdesk's role is limited to
+    intake (creating the repair) and the two payment-collection
+    touchpoints (down payment, final settlement), each of which still
+    requires a Manager/Shop Owner's approval per REP-BR-28/REP-BR-30
+    before it takes effect.
 
 **3.8 Collection & Abandonment Management**
 
@@ -1022,6 +1068,14 @@ netted away.
     separate from the staff member who performed the assessment, to
     prevent a single employee from both setting and approving an
     inflated value.
+
+-   **WAR-BR-13 --- Sale Exchange.** An approved Return may resolve as
+    an Exchange in place of a Refund: the originating sale's full paid
+    value shall be applied as a store-credit adjustment on a new
+    checkout for a different item, rather than being refunded through
+    the original payment method, so the customer is never required to
+    pay twice for value already handed over. No restocking-fee
+    deduction is applied to the credited value at this stage.
 
 **5.8 Regulatory Consideration (Nigeria)**
 
@@ -1465,6 +1519,12 @@ traceable back to exactly why it was deducted.
     the override, user, reason, affected campaign, and resulting
     adjustment.
 
+-   **MKT-BR-15 --- Discount Approval.** Every discount or adjustment
+    applied to a Sales checkout shall require approval by an
+    authorized administrator (Shop Owner) before the checkout may be
+    paid. An unapproved adjustment shall block payment confirmation
+    until approved or removed.
+
 **8.3 Customer Segment Source of Truth**
 
 A segment like "first-time customer" is defined by Marketing but never
@@ -1552,6 +1612,30 @@ between shops never needs a second SKU.
     the historical record of transfers between shops --- the
     current-shop field alone is state, not history.
 
+A single Product frequently exists in several otherwise-identical
+variants distinguished only by an attribute such as brand, colour, or
+material --- a screen protector sold under several brands is one
+Product with several Sku variants, not several unrelated Products.
+This applies to non-serialized products only; a serialized (IMEI-
+tracked) device is never a "variant" of anything, since each physical
+unit is already its own inventory item.
+
+-   **INV-BR-16 --- Variant Attributes.** A non-serialized Sku's
+    attributes shall support a fixed common set (brand, colour,
+    material, compatibility) plus business-defined free-form
+    attributes, so a product's variants can be distinguished
+    consistently while still accommodating category-specific detail.
+
+-   **INV-BR-17 --- Multi-Variant Product Creation.** Product staff
+    shall be able to create a Product together with multiple
+    non-serialized Sku variants, each with its own attributes, pricing,
+    and initial stock, in a single administrative action.
+
+-   **INV-BR-18 --- Adding a Variant Later.** Product staff shall be
+    able to add a new non-serialized Sku variant to an already-existing
+    Product at any time, without affecting that Product's other
+    variants.
+
 **9.2 Inter-Shop Transfers**
 
 A transfer moves inventory belonging to a SKU between shops; it never
@@ -1583,6 +1667,19 @@ the item actually is.
     reserved (per Section 2.1), allocated to an incomplete transaction,
     or otherwise unavailable for transfer according to configured
     business rules.
+
+-   **INV-BR-19 --- Transfer Product Discovery.** Staff initiating an
+    inter-shop transfer shall be able to locate transferable products
+    by searching name, brand, or SKU and by filtering by category and
+    source shop, rather than being required to already know a
+    product's numeric SKU identifier.
+
+-   **INV-BR-20 --- Bulk Transfer.** The system shall support
+    initiating a transfer of multiple non-serialized products to a
+    single destination shop in one submission, with each product's
+    quantity independently specified, while preserving per-product
+    atomicity so one product's transfer failure does not roll back the
+    others in the same batch.
 
 **9.3 Available Stock for Allocation**
 
@@ -2190,6 +2287,21 @@ is in the referenced section.
 
   REP-BR-26       System distinguishes "Ready for Collection"  3.8
                   vs "Ready for Return"                        
+
+  REP-BR-27       Financial status only recorded via an        3.6
+                  approved payment-recording request            
+
+  REP-BR-28       Payment-recording approval is distinct       3.6
+                  from pre-work down-payment authorization      
+
+  REP-BR-29       Diagnosis (root cause + classification)      3.2
+                  distinct from per-component test observations
+
+  REP-BR-30       Down payment follows the same two-step        3.6
+                  request/approve shape as the final payment    
+
+  REP-BR-31       Manager drives repair-status progress;         3.6
+                  frontdesk drives payment collection only       
   --------------------------------------------------------------------------
 
 **Sales / POS ↔ Inventory ↔ Payments**
@@ -2278,6 +2390,10 @@ is in the referenced section.
 
   TRADE-BR-05    Trade-in value requires separate approval    5.7
                  from assessment                              
+
+  WAR-BR-13      Approved return may resolve as an exchange   5.7
+                 (store credit on a new checkout), not only   
+                 a refund                                     
   -------------------------------------------------------------------------
 
 **Commission Management**
@@ -2400,6 +2516,9 @@ is in the referenced section.
 
   MKT-BR-09      Stacking overrides recorded with user/reason 8.2
 
+  MKT-BR-15      Every checkout discount requires Shop Owner  8.2
+                 approval before payment                      
+
   MKT-BR-10      Segments defined by Marketing, not           8.3
                  duplicated as stored data                    
 
@@ -2429,6 +2548,15 @@ is in the referenced section.
   INV-BR-10      Current-shop is state; transfers are         9.1
                  separately logged history                    
 
+  INV-BR-16      Non-serialized variant attributes: fixed     9.1
+                 fields + free-form custom attributes          
+
+  INV-BR-17      A Product may be created with several        9.1
+                 non-serialized Sku variants in one action     
+
+  INV-BR-18      A Sku variant may be added to an existing     9.1
+                 Product later                                 
+
   INV-BR-11      Transfer moves inventory under a SKU; never  9.2
                  creates a new SKU                            
 
@@ -2440,6 +2568,12 @@ is in the referenced section.
 
   INV-BR-14      Reserved/allocated inventory cannot be       9.2
                  transferred                                  
+
+  INV-BR-19      Transfer picker supports name/brand/SKU      9.2
+                 search and category filter                   
+
+  INV-BR-20      Bulk transfer of multiple products to one    9.2
+                 destination shop, per-product atomicity       
 
   INV-BR-15      Available stock (not On-hand) governs all    9.3
                  allocation                                   

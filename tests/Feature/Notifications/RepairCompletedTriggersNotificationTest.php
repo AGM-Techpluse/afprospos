@@ -29,7 +29,7 @@ class RepairCompletedTriggersNotificationTest extends TestCase
             'repair_status' => 'completed',
         ]);
 
-        Event::dispatch(new RepairCompleted($repairJob->id, 'settled', CarbonImmutable::now()));
+        Event::dispatch(new RepairCompleted($repairJob->id, CarbonImmutable::now()));
 
         $this->assertDatabaseHas('notification_events', [
             'event_type' => 'RepairCompleted',

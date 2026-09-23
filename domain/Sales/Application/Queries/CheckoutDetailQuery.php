@@ -85,6 +85,8 @@ final class CheckoutDetailQuery
                 'source_id' => $adjustment->source_id,
                 'amount_minor' => $adjustment->amount_minor,
                 'applied_order' => $adjustment->applied_order,
+                'approval_status' => $adjustment->approval_status,
+                'approved_by_staff_id' => $adjustment->approved_by_staff_id,
             ])->all(),
         ];
     }

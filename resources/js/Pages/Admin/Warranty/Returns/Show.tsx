@@ -25,6 +25,8 @@ interface ReturnRequestDetail {
     denial_reason: string | null;
     override_approved_by_staff_id: number | null;
     refund_transaction_id: number | null;
+    resolution_type: string | null;
+    exchange_checkout_id: number | null;
     created_at: string;
 }
 
@@ -63,6 +65,7 @@ export default function ReturnRequestShow({ returnRequest }: ReturnRequestShowPr
     const [paymentTransactionId, setPaymentTransactionId] = useState(
         returnRequest.sale?.payment_transaction_id ? String(returnRequest.sale.payment_transaction_id) : '',
     );
+    const [newCheckoutId, setNewCheckoutId] = useState('');
 
     function post(url: string, data: Record<string, string> = {}) {
         setProcessing(true);
@@ -91,6 +94,11 @@ export default function ReturnRequestShow({ returnRequest }: ReturnRequestShowPr
     function processRefund(e: FormEvent) {
         e.preventDefault();
         post(`/admin/warranty/returns/${returnRequest.id}/process-refund`, { payment_transaction_id: paymentTransactionId });
+    }
+
+    function processExchange(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/warranty/returns/${returnRequest.id}/process-exchange`, { new_checkout_id: newCheckoutId });
     }
 
     const isExpired = new Date(returnRequest.return_window_expires_at) < new Date();
@@ -135,6 +143,9 @@ export default function ReturnRequestShow({ returnRequest }: ReturnRequestShowPr
                     />
                     {returnRequest.denial_reason && <DetailRow label="Denial reason" value={returnRequest.denial_reason} />}
                     {returnRequest.refund_transaction_id && <DetailRow label="Refund transaction" value={`#${returnRequest.refund_transaction_id}`} />}
+                    {returnRequest.resolution_type === 'exchange' && returnRequest.exchange_checkout_id && (
+                        <DetailRow label="Exchanged into checkout" value={`#${returnRequest.exchange_checkout_id}`} />
+                    )}
                     <DetailRow label="Requested" value={new Date(returnRequest.created_at).toLocaleString()} />
                 </div>
 
@@ -201,6 +212,35 @@ export default function ReturnRequestShow({ returnRequest }: ReturnRequestShowPr
                                 required
                             />
                             <AdminButton type="submit" isLoading={processing}>Process refund</AdminButton>
+                        </form>
+                    </div>
+                )}
+
+                {canRefund && (
+                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                        <div className="text-sm font-semibold text-admin-text mb-1">Exchange for a different item instead</div>
+                        <p className="text-xs text-admin-text2 mb-3">
+                            The sale's full value ({returnRequest.sale ? formatNaira(returnRequest.sale.total_minor) : '—'}) is applied as
+                            store credit on a new checkout — no cash changes hands, the customer only settles the difference. Start a new
+                            checkout for this customer from Sales / POS first, add the new item(s), then enter that checkout's ID below.
+                        </p>
+                        <AdminButton
+                            type="button"
+                            variant="neutral"
+                            onClick={() => router.visit('/admin/sales/checkout')}
+                        >
+                            Go to Sales / POS
+                        </AdminButton>
+                        <form onSubmit={processExchange} className="mt-4">
+                            <AdminInput
+                                label="New checkout ID"
+                                type="number"
+                                min={1}
+                                value={newCheckoutId}
+                                onChange={(e) => setNewCheckoutId(e.target.value)}
+                                required
+                            />
+                            <AdminButton type="submit" isLoading={processing}>Apply as exchange credit</AdminButton>
                         </form>
                     </div>
                 )}

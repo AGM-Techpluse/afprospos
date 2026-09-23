@@ -7,8 +7,6 @@ namespace Domain\Repair\Application\Handlers;
 use App\Support\Transactions\Atomic;
 use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
-use Domain\Payments\Application\Commands\InitiatePaymentCommand;
-use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
@@ -20,12 +18,14 @@ use Domain\Shared\Domain\ValueObjects\StaffId;
  * deadline (Phase 6 scope decision) — set here regardless of whether a
  * down payment is actually required, so a zero-down-payment repair still
  * has a response window before ExpireRepairAuthorizations can cancel it.
+ * A positive amount only records the requirement; the real payable is
+ * only created once frontdesk records receipt and Manager approves it
+ * (`DecideRepairDownPaymentApprovalHandler`).
  */
 final class AuthorizeRepairHandler
 {
     public function __construct(
         private readonly RepairJobRepository $repairJobs,
-        private readonly PaymentInitiationService $payments,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -45,14 +45,6 @@ final class AuthorizeRepairHandler
 
             if ($command->downPaymentRequiredMinor === 0) {
                 $job->grantAuthorization();
-            } else {
-                $this->payments->initiate(new InitiatePaymentCommand(
-                    payableType: 'repair_job',
-                    payableId: $jobId->value,
-                    method: $command->downPaymentMethod,
-                    amountMinor: $command->downPaymentRequiredMinor,
-                    initiatedByStaffId: $command->authorizedByStaffId,
-                ));
             }
 
             $this->repairJobs->save($job);

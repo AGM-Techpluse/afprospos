@@ -9,6 +9,7 @@ use Domain\Payments\Domain\Exceptions\InvalidPaymentStateTransition;
 use Domain\Payments\Domain\Exceptions\PaymentAlreadyConfirmed;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
+use Domain\Payments\Domain\ValueObjects\PaymentPurpose;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Tests\TestCase;
@@ -20,6 +21,7 @@ class PaymentTransactionTest extends TestCase
         $transaction = PaymentTransaction::initiate(
             new PayableType('sales_checkout'),
             1,
+            new PaymentPurpose('sale_payment'),
             new PaymentMethod('cash'),
             new Money(5000),
         );
@@ -35,6 +37,7 @@ class PaymentTransactionTest extends TestCase
         $transaction = PaymentTransaction::initiate(
             new PayableType('sales_checkout'),
             1,
+            new PaymentPurpose('sale_payment'),
             new PaymentMethod('cash'),
             new Money(5000),
         );
@@ -49,6 +52,7 @@ class PaymentTransactionTest extends TestCase
         $transaction = PaymentTransaction::initiate(
             new PayableType('sales_checkout'),
             1,
+            new PaymentPurpose('sale_payment'),
             new PaymentMethod('cash'),
             new Money(5000),
         );
@@ -64,6 +68,7 @@ class PaymentTransactionTest extends TestCase
         $transaction = PaymentTransaction::initiate(
             new PayableType('sales_checkout'),
             1,
+            new PaymentPurpose('sale_payment'),
             new PaymentMethod('bank_transfer'),
             new Money(5000),
         );
@@ -77,6 +82,7 @@ class PaymentTransactionTest extends TestCase
         $transaction = PaymentTransaction::initiate(
             new PayableType('sales_checkout'),
             1,
+            new PaymentPurpose('sale_payment'),
             new PaymentMethod('bank_transfer'),
             new Money(5000),
         );

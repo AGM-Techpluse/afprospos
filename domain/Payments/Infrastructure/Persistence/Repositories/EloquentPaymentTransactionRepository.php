@@ -8,6 +8,7 @@ use Domain\Payments\Domain\Entities\PaymentTransaction;
 use Domain\Payments\Domain\Repositories\PaymentTransactionRepository;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
+use Domain\Payments\Domain\ValueObjects\PaymentPurpose;
 use Domain\Payments\Domain\ValueObjects\PaymentTransactionId;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Shared\Domain\ValueObjects\Money;
@@ -33,6 +34,7 @@ final class EloquentPaymentTransactionRepository implements PaymentTransactionRe
         $attributes = [
             'payable_type' => $transaction->payableType()->value,
             'payable_id' => $transaction->payableId(),
+            'purpose' => $transaction->purpose()->value,
             'method' => $transaction->method()->value,
             'amount_minor' => $transaction->amount()->minor,
             'status' => $transaction->status(),
@@ -69,6 +71,7 @@ final class EloquentPaymentTransactionRepository implements PaymentTransactionRe
             new PaymentTransactionId($record->id),
             new PayableType($record->payable_type),
             $record->payable_id,
+            new PaymentPurpose($record->purpose),
             new PaymentMethod($record->method),
             new Money($record->amount_minor),
             $record->status,

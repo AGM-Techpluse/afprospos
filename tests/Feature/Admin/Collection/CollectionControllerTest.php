@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin\Collection;
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Collection\Infrastructure\Persistence\Eloquent\CollectionCaseRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -21,7 +22,9 @@ class CollectionControllerTest extends TestCase
 
         $technician = StaffRecord::factory()->create();
         $technician->assignRole('Technician');
-        $case = CollectionCaseRecord::factory()->create();
+        $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($technician, $shop->id);
+        $case = CollectionCaseRecord::factory()->create(['shop_id' => $shop->id]);
 
         $indexResponse = $this->actingAs($technician, 'staff')->get('/admin/collection');
         $indexResponse->assertOk();
@@ -61,8 +64,10 @@ class CollectionControllerTest extends TestCase
 
         $accountant = StaffRecord::factory()->create();
         $accountant->assignRole('Accountant');
-        $job = RepairJobRecord::factory()->create(['financial_status' => 'partially_paid']);
-        $case = CollectionCaseRecord::factory()->create(['source_type' => 'repair_job', 'source_id' => $job->id]);
+        $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($accountant, $shop->id);
+        $job = RepairJobRecord::factory()->create(['shop_id' => $shop->id, 'financial_status' => 'partially_paid']);
+        $case = CollectionCaseRecord::factory()->create(['shop_id' => $shop->id, 'source_type' => 'repair_job', 'source_id' => $job->id]);
 
         $response = $this->actingAs($accountant, 'staff')->post("/admin/collection/{$case->id}/override", [
             'reason' => 'Longtime customer goodwill release',

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Domain\Notifications\Application\Queries\CustomerNotificationInboxQuery;
+use Domain\Notifications\Application\Queries\StaffNotificationInboxQuery;
 use Domain\RBAC\Application\Queries\EffectivePermissionsQuery;
 use Domain\Shop\Application\Contracts\ActiveShopSessionStore;
 use Domain\Shop\Application\Handlers\EnsureActiveShopSelectedHandler;
@@ -19,6 +20,7 @@ class HandleInertiaRequests extends Middleware
         private readonly ActiveShopSessionStore $activeShopSession,
         private readonly EnsureActiveShopSelectedHandler $ensureActiveShop,
         private readonly CustomerNotificationInboxQuery $customerNotifications,
+        private readonly StaffNotificationInboxQuery $staffNotifications,
     ) {}
 
     /**
@@ -78,6 +80,9 @@ class HandleInertiaRequests extends Middleware
             // Feeds Customer/NotificationDropdown.tsx on every Customer page. Lazy
             // so Admin requests (no customer session) never pay for the query.
             'notifications' => fn () => $customer !== null ? $this->customerNotifications->forCustomer((int) $customer->id) : null,
+            // Feeds Admin/NotificationDropdown.tsx on every Admin page. Lazy so
+            // Customer requests (no staff session) never pay for the query.
+            'staffNotifications' => fn () => $staff !== null ? $this->staffNotifications->forStaff((int) $staff->id) : null,
             // Set by App\Http\Controllers\Concerns\FlashesToast; consumed by
             // resources/js/hooks/useFlashToast.ts. Lazy so it isn't evaluated
             // (and doesn't get pulled from the session) on requests that
