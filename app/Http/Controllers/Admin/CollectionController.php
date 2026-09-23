@@ -42,15 +42,20 @@ final class CollectionController
 
     public function index(Request $request): Response
     {
+        $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id') ?: null;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
+
         return Inertia::render('Admin/Collection/Index', [
             'cases' => $this->queue->paginate(
                 status: $request->string('status')->toString() ?: null,
-                shopId: $request->integer('shop_id') ?: null,
+                shopId: $shopId,
                 page: $request->integer('page', 1),
+                restrictToShopIds: $actor->isOwner ? null : $actor->shopIds,
             ),
             'filters' => [
                 'status' => $request->string('status')->toString(),
-                'shop_id' => $request->integer('shop_id') ?: null,
+                'shop_id' => $shopId,
             ],
         ]);
     }

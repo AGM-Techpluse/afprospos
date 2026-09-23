@@ -12,9 +12,15 @@ final class InventoryTransferQuery
     public function __construct(private readonly StaffDirectoryQuery $staff) {}
 
     /**
+     * `$restrictToShopIds` scopes the unfiltered ("all shops") view for a
+     * non-owner staff member to only the shops they're actually granted —
+     * ignored once `$shopId` narrows to one specific shop, since that's
+     * already validated by the caller against the same grant list.
+     *
+     * @param  int[]|null  $restrictToShopIds
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20): array
+    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null): array
     {
         $query = InventoryTransferRecord::query()->with('sku.product')->latest('id');
 
@@ -25,6 +31,10 @@ final class InventoryTransferQuery
         if ($shopId !== null) {
             $query->where(function ($inner) use ($shopId): void {
                 $inner->where('from_shop_id', $shopId)->orWhere('to_shop_id', $shopId);
+            });
+        } elseif ($restrictToShopIds !== null) {
+            $query->where(function ($inner) use ($restrictToShopIds): void {
+                $inner->whereIn('from_shop_id', $restrictToShopIds)->orWhereIn('to_shop_id', $restrictToShopIds);
             });
         }
 

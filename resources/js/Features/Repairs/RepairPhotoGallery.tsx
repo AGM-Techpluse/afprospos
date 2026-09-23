@@ -79,13 +79,13 @@ export default function RepairPhotoGallery({ repairId, photos, disabled = false 
             )}
 
             {!disabled && (
-                <form onSubmit={submit} className="flex items-center gap-2">
+                <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
                         onChange={(e) => setData('photo', e.target.files?.[0] ?? null)}
-                        className="text-xs flex-1"
+                        className="text-xs min-w-0 sm:flex-1"
                     />
                     <input
                         type="text"
@@ -95,7 +95,7 @@ export default function RepairPhotoGallery({ repairId, photos, disabled = false 
                             setData('caption', e.target.value);
                         }}
                         placeholder="Caption (optional)"
-                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs w-32"
+                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs w-full sm:w-32"
                     />
                     <AdminButton type="submit" variant="neutral" isLoading={processing} disabled={!data.photo}>
                         Upload

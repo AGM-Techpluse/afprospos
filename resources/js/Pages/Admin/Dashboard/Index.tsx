@@ -192,11 +192,11 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
 
             {shopAnalytics && (
                 <div className="grid gap-4 lg:grid-cols-2 mb-6 items-stretch">
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
+                    <div className="min-w-0 bg-admin-surface border border-admin-border rounded-admin-card p-5">
                         <h2 className="text-sm font-semibold text-admin-text mb-3">Revenue (last 14 days)</h2>
                         <RevenueChart series={shopAnalytics.revenue_series} />
                     </div>
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
+                    <div className="min-w-0 bg-admin-surface border border-admin-border rounded-admin-card p-5">
                         <h2 className="text-sm font-semibold text-admin-text mb-3">Revenue by stream</h2>
                         <RevenueBreakdownChart breakdown={shopAnalytics.revenue_breakdown} />
                     </div>

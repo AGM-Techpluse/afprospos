@@ -19,6 +19,7 @@ use Domain\Inventory\Application\Queries\ProductCatalogQuery;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ final class ProductController
     public function __construct(
         private readonly ProductCatalogQuery $catalog,
         private readonly ShopDirectoryQuery $shops,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly CreateProductHandler $createProduct,
         private readonly CreateProductWithVariantsHandler $createProductWithVariants,
         private readonly AddProductVariantHandler $addVariant,
@@ -42,6 +44,7 @@ final class ProductController
     {
         $actor = app(ActorContext::class);
         $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
         return Inertia::render('Admin/Inventory/Products/Index', [
             'products' => $this->catalog->paginate(
@@ -57,40 +60,44 @@ final class ProductController
                 'brand' => $request->string('brand')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => $this->catalog->categories(),
         ]);
     }
 
     public function create(): Response
     {
+        $actor = app(ActorContext::class);
+
         return Inertia::render('Admin/Inventory/Products/Create', [
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
     public function show(int $product): Response
     {
+        $actor = app(ActorContext::class);
         $sku = $this->catalog->find($product);
 
         abort_if($sku === null, 404);
 
         return Inertia::render('Admin/Inventory/Products/Show', [
             'sku' => $sku,
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
     /** The add-variant form for an already-existing Product — reached from Products/Show's "Add variant" action, keyed by product id (not a Sku id — see ProductCatalogQuery::findProduct). */
     public function addVariantForm(int $product): Response
     {
+        $actor = app(ActorContext::class);
         $productData = $this->catalog->findProduct($product);
 
         abort_if($productData === null, 404);
 
         return Inertia::render('Admin/Inventory/Products/AddVariant', [
             'product' => $productData,
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 

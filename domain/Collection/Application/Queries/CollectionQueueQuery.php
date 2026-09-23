@@ -10,7 +10,8 @@ use Domain\Collection\Infrastructure\Persistence\Eloquent\CollectionCaseRecord;
 final class CollectionQueueQuery
 {
     /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
-    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20): array
+    /** @param  int[]|null  $restrictToShopIds */
+    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null): array
     {
         $query = CollectionCaseRecord::query();
 
@@ -20,6 +21,8 @@ final class CollectionQueueQuery
 
         if ($shopId !== null) {
             $query->where('shop_id', $shopId);
+        } elseif ($restrictToShopIds !== null) {
+            $query->whereIn('shop_id', $restrictToShopIds);
         }
 
         $paginator = $query->orderBy('collection_deadline_at')->paginate($perPage, ['*'], 'page', $page);

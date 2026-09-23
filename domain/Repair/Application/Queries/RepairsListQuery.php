@@ -13,8 +13,16 @@ final class RepairsListQuery
 {
     public function __construct(private readonly CustomerDirectoryQuery $customers) {}
 
-    /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
-    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20): array
+    /**
+     * `$restrictToShopIds` narrows an "all shops" view (no explicit
+     * `$shopId`) to a non-owner staff member's actual grants — passed by
+     * every caller except the Owner's, closing off both the "All shops"
+     * filter option and a crafted `?shop_id=` bypass at once.
+     *
+     * @param  int[]|null  $restrictToShopIds
+     * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
+     */
+    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null): array
     {
         $query = RepairJobRecord::query();
 
@@ -24,6 +32,8 @@ final class RepairsListQuery
 
         if ($shopId !== null) {
             $query->where('shop_id', $shopId);
+        } elseif ($restrictToShopIds !== null) {
+            $query->whereIn('shop_id', $restrictToShopIds);
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
@@ -71,10 +81,15 @@ final class RepairsListQuery
      * Backs the CSV export — same filters as paginate() minus pagination,
      * or an explicit set of IDs (the "export selected" mode), never both.
      *
+     * `$restrictToShopIds` applies regardless of `$ids` vs. filter mode —
+     * an "export selected" request naming an out-of-scope repair id must
+     * not leak it just because it skipped the status/shop filter branch.
+     *
      * @param  int[]|null  $ids
+     * @param  int[]|null  $restrictToShopIds
      * @return array<int, array<string, mixed>>
      */
-    public function exportRows(?string $status, ?int $shopId, ?array $ids): array
+    public function exportRows(?string $status, ?int $shopId, ?array $ids, ?array $restrictToShopIds = null): array
     {
         $query = RepairJobRecord::query();
 
@@ -88,6 +103,10 @@ final class RepairsListQuery
             if ($shopId !== null) {
                 $query->where('shop_id', $shopId);
             }
+        }
+
+        if ($restrictToShopIds !== null) {
+            $query->whereIn('shop_id', $restrictToShopIds);
         }
 
         $jobs = $query->orderByDesc('created_at')->get();

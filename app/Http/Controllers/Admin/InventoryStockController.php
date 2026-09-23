@@ -19,6 +19,7 @@ use Domain\Inventory\Application\Queries\LowStockQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ final class InventoryStockController
         private readonly StockLevelQuery $stockLevels,
         private readonly LowStockQuery $lowStock,
         private readonly ShopDirectoryQuery $shops,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ReceiveStockHandler $receiveStock,
         private readonly AdjustStockHandler $adjustStock,
         private readonly InitiateInventoryTransferHandler $initiateTransfer,
@@ -44,6 +46,7 @@ final class InventoryStockController
     {
         $actor = app(ActorContext::class);
         $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
         return Inertia::render('Admin/Inventory/Stock/Index', [
             'stock' => $this->stockLevels->paginate(
@@ -55,18 +58,20 @@ final class InventoryStockController
                 'search' => $request->string('search')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
     public function lowStock(Request $request): Response
     {
+        $actor = app(ActorContext::class);
         $shopId = $request->integer('shop_id') ?: null;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
         return Inertia::render('Admin/Inventory/Stock/LowStock', [
             'items' => $this->lowStock->forShop($shopId),
             'filters' => ['shop_id' => $shopId],
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 

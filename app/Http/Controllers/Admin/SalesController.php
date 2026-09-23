@@ -40,6 +40,7 @@ use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
 use Domain\Sales\Domain\Exceptions\NoAdjustmentToApprove;
 use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -59,6 +60,7 @@ final class SalesController
         private readonly InventoryCatalogQuery $catalog,
         private readonly CustomerDirectoryQuery $customerDirectory,
         private readonly ShopDirectoryQuery $shops,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly PaymentTransactionLookup $paymentLookup,
         private readonly CreateCheckoutHandler $createCheckout,
         private readonly AddCheckoutItemHandler $addItem,
@@ -72,15 +74,20 @@ final class SalesController
 
     public function index(Request $request): Response
     {
+        $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id') ?: null;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
+
         return Inertia::render('Admin/Sales/Index', [
             'sales' => $this->history->paginate(
                 search: $request->string('search')->toString() ?: null,
-                shopId: $request->integer('shop_id') ?: null,
+                shopId: $shopId,
                 page: $request->integer('page', 1),
+                restrictToShopIds: $actor->isOwner ? null : $actor->shopIds,
             ),
             'filters' => [
                 'search' => $request->string('search')->toString(),
-                'shop_id' => $request->integer('shop_id') ?: null,
+                'shop_id' => $shopId,
             ],
         ]);
     }
@@ -131,7 +138,7 @@ final class SalesController
                 : null,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),
             'canApproveDiscount' => $actor->hasPermission('sales.approve-discount'),
         ]);

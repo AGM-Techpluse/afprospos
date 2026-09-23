@@ -67,6 +67,7 @@ use Domain\Repair\Application\Queries\RepairJobDetailQuery;
 use Domain\Repair\Application\Queries\RepairsListQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -85,6 +86,7 @@ final class RepairsController
         private readonly RepairJobDetailQuery $detail,
         private readonly RepairJobLookup $repairJobLookup,
         private readonly ShopDirectoryQuery $shops,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly CustomerDirectoryQuery $customers,
         private readonly InventoryCatalogQuery $catalog,
         private readonly CreateRepairJobHandler $createRepairJob,
@@ -118,18 +120,20 @@ final class RepairsController
         // to whatever shop is active in the switcher; an explicit empty value
         // (picking "All shops" in the filter) is a deliberate override.
         $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
         return Inertia::render('Admin/Repairs/Index', [
             'repairs' => $this->list->paginate(
                 status: $request->string('status')->toString() ?: null,
                 shopId: $shopId,
                 page: $request->integer('page', 1),
+                restrictToShopIds: $actor->isOwner ? null : $actor->shopIds,
             ),
             'filters' => [
                 'status' => $request->string('status')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -144,11 +148,13 @@ final class RepairsController
         $actor = app(ActorContext::class);
         $ids = $request->has('ids') ? array_map('intval', $request->array('ids')) : null;
         $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : $actor->activeShopId;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
         $rows = $this->list->exportRows(
             status: $ids === null ? ($request->string('status')->toString() ?: null) : null,
             shopId: $ids === null ? $shopId : null,
             ids: $ids,
+            restrictToShopIds: $actor->isOwner ? null : $actor->shopIds,
         );
 
         return response()->streamDownload(function () use ($rows): void {
@@ -173,8 +179,10 @@ final class RepairsController
 
     public function create(): Response
     {
+        $actor = app(ActorContext::class);
+
         return Inertia::render('Admin/Repairs/Create', [
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'deviceCatalog' => $this->deviceCatalog->structure(),
         ]);
     }

@@ -52,7 +52,7 @@ export default function RevenueChart({ series }: { series: RevenuePoint[] }) {
     };
 
     return (
-        <div className="h-64">
+        <div className="relative h-64 w-full min-w-0">
             <Line data={data} options={options} />
         </div>
     );

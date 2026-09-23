@@ -241,7 +241,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:pt-5 sm:px-admin-content-x sm:pb-10">
+                <main className="flex-1 min-w-0 overflow-x-hidden p-4 sm:pt-5 sm:px-admin-content-x sm:pb-10">
                     {children}
                 </main>
             </div>

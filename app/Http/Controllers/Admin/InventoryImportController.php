@@ -10,6 +10,7 @@ use Domain\Inventory\Application\DTOs\ProductImportRow;
 use Domain\Inventory\Application\DTOs\ProductImportRowResult;
 use Domain\Inventory\Application\Handlers\ImportProductsHandler;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
@@ -33,13 +34,16 @@ final class InventoryImportController
 
     public function __construct(
         private readonly ShopDirectoryQuery $shops,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ImportProductsHandler $importProducts,
     ) {}
 
     public function create(): Response
     {
+        $actor = app(ActorContext::class);
+
         return Inertia::render('Admin/Inventory/Import/Create', [
-            'shops' => $this->shops->all(),
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'expectedHeader' => self::EXPECTED_HEADER,
         ]);
     }
