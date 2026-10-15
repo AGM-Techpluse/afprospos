@@ -30,6 +30,9 @@ final class EloquentSaleRepository implements SaleRepository
             'sales_checkout_id' => $sale->checkoutId()->value,
             'shop_id' => $sale->shopId()->value,
             'customer_id' => $sale->customerId()?->value,
+            'walk_in_name' => $sale->walkInName(),
+            'walk_in_phone' => $sale->walkInPhone(),
+            'walk_in_email' => $sale->walkInEmail(),
             'cashier_staff_id' => $sale->cashierStaffId()->value,
             'total_minor' => $sale->total()->minor,
             'payment_transaction_id' => $sale->paymentTransactionId(),
@@ -60,6 +63,9 @@ final class EloquentSaleRepository implements SaleRepository
             $record->payment_method,
             $record->payment_reference,
             new InvoiceNumber($record->invoice_number),
+            $record->walk_in_name,
+            $record->walk_in_phone,
+            $record->walk_in_email,
         );
     }
 }

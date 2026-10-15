@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $sales_checkout_id
  * @property int $shop_id
  * @property int|null $customer_id
+ * @property string|null $walk_in_name
+ * @property string|null $walk_in_phone
+ * @property string|null $walk_in_email
  * @property int $cashier_staff_id
  * @property int $total_minor
  * @property int|null $payment_transaction_id
@@ -31,7 +34,7 @@ final class SaleRecord extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'sales_checkout_id', 'shop_id', 'customer_id', 'cashier_staff_id',
+        'sales_checkout_id', 'shop_id', 'customer_id', 'walk_in_name', 'walk_in_phone', 'walk_in_email', 'cashier_staff_id',
         'total_minor', 'payment_transaction_id', 'payment_method',
         'payment_reference', 'invoice_number',
     ];

@@ -22,6 +22,9 @@ type Sale = {
     shop_id: number;
     customer_id: number | null;
     customer_name: string | null;
+    walk_in_name: string | null;
+    walk_in_phone: string | null;
+    walk_in_email: string | null;
     invoice_number: string;
     payment_method: string;
     payment_reference: string | null;
@@ -51,7 +54,12 @@ export default function SalesShow({ sale }: { sale: Sale }) {
             <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 max-w-2xl">
                 <dl className="grid grid-cols-2 gap-y-2 text-sm mb-6">
                     <dt className="text-admin-text2">Customer</dt>
-                    <dd className="text-admin-text text-right">{sale.customer_id ? (sale.customer_name ?? 'Customer') : 'Walk-in'}</dd>
+                    <dd className="text-admin-text text-right">
+                        {sale.customer_id ? (sale.customer_name ?? 'Customer') : sale.walk_in_name ?? 'Walk-in'}
+                        {!sale.customer_id && (sale.walk_in_phone || sale.walk_in_email) && (
+                            <div className="text-xs text-admin-text2">{[sale.walk_in_phone, sale.walk_in_email].filter(Boolean).join(' · ')}</div>
+                        )}
+                    </dd>
                     <dt className="text-admin-text2">Payment method</dt>
                     <dd className="text-admin-text text-right capitalize">{sale.payment_method.replace('_', ' ')}</dd>
                     {sale.payment_reference && (

@@ -9,7 +9,7 @@ import AdminTextarea from '../../../Components/Admin/Forms/AdminTextarea';
 import CustomerSearch, { CustomerSearchResult } from '../../../Features/Sales/CustomerSearch';
 import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
 import DeviceTypePicker, { DeviceType } from '../../../Features/Repairs/DeviceTypePicker';
-import CommonComponentsCard from '../../../Features/Repairs/CommonComponentsCard';
+import CommonComponentsCard, { CommonComponentOption } from '../../../Features/Repairs/CommonComponentsCard';
 
 type Shop = { id: number; name: string; is_warehouse?: boolean };
 type Technician = { id: number; name: string };
@@ -18,14 +18,18 @@ interface Props {
     shops: Shop[];
     technicians: Technician[];
     deviceCatalog: DeviceType[];
+    commonComponents: CommonComponentOption[];
 }
 
-export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog }: Props) {
+export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog, commonComponents }: Props) {
     const intakeShops = shops.filter((shop) => !shop.is_warehouse);
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
     const { data, setData, post, processing, errors } = useForm({
         shop_id: intakeShops[0]?.id.toString() ?? '',
         customer_id: '',
+        walk_in_name: '',
+        walk_in_phone: '',
+        walk_in_email: '',
         device_model_id: '',
         diagnosis_technician_staff_id: '',
         device_make: '',
@@ -34,14 +38,14 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog 
         device_imei_serial: '',
         device_lock_type: 'none' as DeviceLockType,
         device_lock_value: '',
-        revealed_faults: [] as { device_problem_tag_id: number | null; label: string; notes: string }[],
+        revealed_faults: [] as { device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string }[],
     });
 
-    function addCommonFaults(components: { label: string }[]) {
+    function addCommonFaults(components: CommonComponentOption[]) {
         const next = [...data.revealed_faults];
         components.forEach((component) => {
             if (!next.some((fault) => fault.label === component.label)) {
-                next.push({ device_problem_tag_id: null, label: component.label, notes: '' });
+                next.push({ device_problem_tag_id: null, common_component_id: component.id, label: component.label, notes: '' });
             }
         });
         setData('revealed_faults', next);
@@ -71,6 +75,10 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog 
                         }}
                         searchUrl="/admin/repairs/customers/search"
                         error={errors.customer_id}
+                        walkIn={{ name: data.walk_in_name, phone: data.walk_in_phone, email: data.walk_in_email }}
+                        onWalkInChange={(walkIn) =>
+                            setData({ ...data, walk_in_name: walkIn.name, walk_in_phone: walkIn.phone, walk_in_email: walkIn.email })
+                        }
                     />
 
                     <AdminSelect label="Diagnosis technician" value={data.diagnosis_technician_staff_id} onChange={(e) => setData('diagnosis_technician_staff_id', e.target.value)} error={errors.diagnosis_technician_staff_id}>
@@ -110,6 +118,7 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog 
                     </div>
 
                     <CommonComponentsCard
+                        components={commonComponents}
                         diagnosedComponents={data.revealed_faults.map((fault) => fault.label)}
                         onMarkSelected={addCommonFaults}
                     />

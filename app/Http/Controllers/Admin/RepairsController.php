@@ -234,6 +234,9 @@ final class RepairsController
             $id = $this->createRepairJob->handle(new CreateRepairJobCommand(
                 shopId: $shopId,
                 customerId: $request->integer('customer_id') ?: null,
+                walkInName: $request->string('walk_in_name')->toString() ?: null,
+                walkInPhone: $request->string('walk_in_phone')->toString() ?: null,
+                walkInEmail: $request->string('walk_in_email')->toString() ?: null,
                 deviceMake: $request->string('device_make')->toString(),
                 deviceModel: $request->string('device_model')->toString(),
                 reportedIssue: $request->string('reported_issue')->toString() ?: null,
@@ -276,6 +279,20 @@ final class RepairsController
                 perPage: 100,
                 shopId: (int) $data['shop_id'],
             )['data'],
+        ]);
+    }
+
+    public function receipt(int $repair): Response
+    {
+        $actor = app(ActorContext::class);
+        $data = $this->detail->find($repair, $actor->staffId->value, $actor->isOwner);
+
+        abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
+
+        return Inertia::render('Admin/Repairs/Receipt', [
+            'repair' => $data,
+            'shop' => $this->shops->find((int) $data['shop_id']),
         ]);
     }
 
@@ -823,6 +840,7 @@ final class RepairsController
                     'id' => $case->id,
                     'shop_id' => $case->shop_id,
                     'customer_name' => $customer['name'] ?? null,
+                    'walk_in_name' => $case->walk_in_name,
                     'device' => trim($case->device_make.' '.$case->device_model),
                     'device_imei_serial' => $case->device_imei_serial,
                     'reported_issue' => $case->reported_issue,

@@ -20,6 +20,7 @@ type SaleRow = {
     id: number;
     customer_id: number | null;
     customer_name: string | null;
+    walk_in_name: string | null;
     total_minor: number;
     payment_method: string;
     invoice_number: string;
@@ -30,7 +31,7 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 const salesColumns: DataTableColumn<SaleRow>[] = [
     { key: 'invoice_number', label: 'Invoice' },
     { key: 'created_at', label: 'Date', render: (row) => new Date(row.created_at).toLocaleString() },
-    { key: 'customer_id', label: 'Customer', render: (row) => (row.customer_id ? (row.customer_name ?? 'Customer') : 'Walk-in') },
+    { key: 'customer_id', label: 'Customer', render: (row) => (row.customer_id ? (row.customer_name ?? 'Customer') : row.walk_in_name ?? 'Walk-in') },
     { key: 'payment_method', label: 'Payment' },
     { key: 'total_minor', label: 'Total', render: (row) => formatNaira(row.total_minor) },
 ];

@@ -4,17 +4,21 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
+import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
 import { formatNaira } from '../../../lib/money';
 
 type Technician = { id: number; name: string };
 type FaultCatalogItem = { id: number; label: string };
-type RevealedFault = { id: number; device_problem_tag_id: number | null; label: string; notes: string | null };
+type RevealedFault = { id: number; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null };
 type DiagnosisCase = {
     id: number;
     shop_id: number;
     customer_name: string | null;
     customer_phone: string | null;
     customer_email: string | null;
+    walk_in_name: string | null;
+    walk_in_phone: string | null;
+    walk_in_email: string | null;
     device_make: string;
     device_model: string;
     device_imei_serial: string | null;
@@ -68,6 +72,7 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
         diagnosis_fee_naira: diagnosisCase.diagnosis_fee_minor !== null ? String(diagnosisCase.diagnosis_fee_minor / 100) : '',
         revealed_faults: diagnosisCase.revealed_faults.map((fault) => ({
             device_problem_tag_id: fault.device_problem_tag_id,
+            common_component_id: fault.common_component_id,
             label: fault.label,
             notes: fault.notes ?? '',
         })),
@@ -109,14 +114,14 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
     function addFault() {
         const catalogFault = faultCatalog.find((fault) => String(fault.id) === selectedFaultId);
         if (!catalogFault || revealedLabels.has(catalogFault.label)) return;
-        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: catalogFault.id, label: catalogFault.label, notes: '' }]);
+        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: catalogFault.id, common_component_id: null, label: catalogFault.label, notes: '' }]);
         setSelectedFaultId('');
     }
 
     function addCustomFault() {
         const label = customFault.trim();
         if (label === '' || revealedLabels.has(label)) return;
-        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: null, label, notes: '' }]);
+        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: null, common_component_id: null, label, notes: '' }]);
         setCustomFault('');
     }
 
@@ -159,7 +164,7 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
             <Head title={`${diagnosisCase.device_make} ${diagnosisCase.device_model} diagnosis`} />
             <AdminPageHead
                 title={`${diagnosisCase.device_make} ${diagnosisCase.device_model} diagnosis`}
-                description={diagnosisCase.customer_name ? `${diagnosisCase.customer_name} - ${shop?.name ?? 'Unknown shop'}` : shop?.name ?? 'Unknown shop'}
+                description={(diagnosisCase.customer_name ?? diagnosisCase.walk_in_name) ? `${diagnosisCase.customer_name ?? diagnosisCase.walk_in_name} - ${shop?.name ?? 'Unknown shop'}` : shop?.name ?? 'Unknown shop'}
             />
 
             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -176,7 +181,10 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                         <p className="text-sm text-admin-text whitespace-pre-wrap">{diagnosisCase.reported_issue ?? 'No issue recorded'}</p>
                     </div>
 
-                    <Row label="Customer" value={diagnosisCase.customer_name ?? 'Unknown customer'} />
+                    <Row label="Customer" value={diagnosisCase.customer_name ?? diagnosisCase.walk_in_name ?? 'Unknown customer'} />
+                    {!diagnosisCase.customer_name && (diagnosisCase.walk_in_phone || diagnosisCase.walk_in_email) && (
+                        <Row label="Contact" value={[diagnosisCase.walk_in_phone, diagnosisCase.walk_in_email].filter(Boolean).join(' · ')} />
+                    )}
                     <Row label="Shop" value={shop?.name ?? 'Unknown shop'} />
                     <Row label="Device" value={`${diagnosisCase.device_make} ${diagnosisCase.device_model}`} />
                     <Row label="IMEI / serial" value={diagnosisCase.device_imei_serial ?? 'Not recorded'} />
@@ -192,7 +200,10 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                             <ul className="flex flex-col gap-2">
                                 {diagnosisCase.revealed_faults.map((fault) => (
                                     <li key={fault.id} className="border border-admin-border rounded-admin-card px-3 py-2">
-                                        <div className="text-sm font-semibold text-admin-text">{fault.label}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-admin-text">{fault.label}</span>
+                                            <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
+                                        </div>
                                         {fault.notes && <p className="text-xs text-admin-text2 mt-1">{fault.notes}</p>}
                                     </li>
                                 ))}

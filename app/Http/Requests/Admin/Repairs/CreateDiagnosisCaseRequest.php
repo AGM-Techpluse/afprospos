@@ -25,6 +25,9 @@ final class CreateDiagnosisCaseRequest extends FormRequest
         return [
             'shop_id' => ['required', 'integer', 'exists:shops,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'walk_in_name' => ['nullable', 'string', 'max:150'],
+            'walk_in_phone' => ['nullable', 'string', 'max:30'],
+            'walk_in_email' => ['nullable', 'string', 'max:150'],
             'device_model_id' => ['nullable', 'integer', 'exists:device_models,id'],
             'diagnosis_technician_staff_id' => ['nullable', 'integer', 'exists:staff,id'],
             'device_make' => ['required', 'string', 'max:100'],
@@ -35,6 +38,7 @@ final class CreateDiagnosisCaseRequest extends FormRequest
             'device_lock_value' => ['nullable', 'required_unless:device_lock_type,none', 'string', 'max:100'],
             'revealed_faults' => ['nullable', 'array'],
             'revealed_faults.*.device_problem_tag_id' => ['nullable', 'integer', 'exists:device_problem_tags,id'],
+            'revealed_faults.*.common_component_id' => ['nullable', 'integer', 'exists:common_components,id'],
             'revealed_faults.*.label' => ['required', 'string', 'max:100'],
             'revealed_faults.*.notes' => ['nullable', 'string'],
         ];

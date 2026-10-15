@@ -15,6 +15,7 @@ type RepairRow = {
     shop_id: number;
     customer_id: number;
     customer_name: string | null;
+    walk_in_name: string | null;
     device_make: string;
     device_model: string;
     technician_staff_id: number | null;
@@ -69,7 +70,7 @@ export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexPr
     const columns: DataTableColumn<RepairRow>[] = [
         { key: 'device_make', label: 'Device', render: (row) => `${row.device_make} ${row.device_model}` },
         { key: 'shop_id', label: 'Shop', render: (row) => shopName(row.shop_id) },
-        { key: 'customer_id', label: 'Customer', render: (row) => row.customer_name ?? 'Customer' },
+        { key: 'customer_id', label: 'Customer', render: (row) => row.customer_name ?? row.walk_in_name ?? 'Customer' },
         {
             key: 'repair_status',
             label: 'Status',

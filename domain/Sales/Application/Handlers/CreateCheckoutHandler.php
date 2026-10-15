@@ -47,6 +47,9 @@ final class CreateCheckoutHandler
                 $command->customerId !== null ? new CustomerId($command->customerId) : null,
                 new StaffId($command->cashierStaffId),
                 $expiresAt,
+                $command->walkInName,
+                $command->walkInPhone,
+                $command->walkInEmail,
             );
 
             $id = $this->checkouts->save($checkout);

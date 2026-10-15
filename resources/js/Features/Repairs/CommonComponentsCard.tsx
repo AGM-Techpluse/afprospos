@@ -2,26 +2,14 @@ import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import AdminButton from '../../Components/Admin/AdminButton';
 
-export const COMMON_COMPONENTS = [
-    { key: 'screen', label: 'Screen / display' },
-    { key: 'battery', label: 'Battery' },
-    { key: 'camera', label: 'Camera' },
-    { key: 'speaker', label: 'Speaker' },
-    { key: 'microphone', label: 'Microphone' },
-    { key: 'charging_port', label: 'Charging port' },
-    { key: 'power_button', label: 'Power button' },
-    { key: 'volume_buttons', label: 'Volume buttons' },
-    { key: 'sim_tray', label: 'SIM tray' },
-    { key: 'vibration_motor', label: 'Vibration motor' },
-    { key: 'wifi_bluetooth', label: 'Wi-Fi / Bluetooth' },
-    { key: 'back_cover', label: 'Back cover / housing' },
-];
+export type CommonComponentOption = { id: number; label: string };
 
 interface CommonComponentsCardProps {
+    components: CommonComponentOption[];
     submitUrl?: string;
     diagnosedComponents: string[];
     disabled?: boolean;
-    onMarkSelected?: (components: { key: string; label: string }[]) => void;
+    onMarkSelected?: (components: CommonComponentOption[]) => void;
     bare?: boolean;
 }
 
@@ -35,25 +23,27 @@ function postComponent(submitUrl: string, component: string): Promise<void> {
     });
 }
 
-/** Bulk "mark as working" for the components most repairs touch, so a technician isn't retyping the same handful of names every job — anything not listed still goes through the manual form. */
-export default function CommonComponentsCard({ submitUrl, diagnosedComponents, disabled = false, onMarkSelected, bare = false }: CommonComponentsCardProps) {
-    const [selected, setSelected] = useState<string[]>([]);
+/** Bulk "mark as faulty" for the catalog-managed quick-check components (Settings > Common components), so a technician isn't retyping the same handful of names every job — anything not listed still goes through the manual form. */
+export default function CommonComponentsCard({ components, submitUrl, diagnosedComponents, disabled = false, onMarkSelected, bare = false }: CommonComponentsCardProps) {
+    const [selected, setSelected] = useState<number[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
-    const recorded = new Set(diagnosedComponents.map((c) => c.toLowerCase()));
-    const available = COMMON_COMPONENTS.filter((c) => !recorded.has(c.key));
+    const recorded = new Set(diagnosedComponents.map((label) => label.toLowerCase()));
+    const available = components.filter((component) => !recorded.has(component.label.toLowerCase()));
 
-    function toggle(key: string) {
-        setSelected((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
+    function toggle(id: number) {
+        setSelected((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
     }
 
     function toggleAll() {
-        setSelected((current) => (current.length === available.length ? [] : available.map((component) => component.key)));
+        setSelected((current) => (current.length === available.length ? [] : available.map((component) => component.id)));
     }
 
     async function markSelectedFaulty() {
+        const chosen = available.filter((component) => selected.includes(component.id));
+
         if (onMarkSelected) {
-            onMarkSelected(available.filter((component) => selected.includes(component.key)));
+            onMarkSelected(chosen);
             setSelected([]);
             return;
         }
@@ -62,8 +52,8 @@ export default function CommonComponentsCard({ submitUrl, diagnosedComponents, d
 
         setSubmitting(true);
         try {
-            for (const key of selected) {
-                await postComponent(submitUrl, key);
+            for (const component of chosen) {
+                await postComponent(submitUrl, component.label);
             }
             setSelected([]);
         } finally {
@@ -90,11 +80,11 @@ export default function CommonComponentsCard({ submitUrl, diagnosedComponents, d
                         Select all common components
                     </label>
                     {available.map((component) => (
-                        <label key={component.key} className="flex items-center gap-2 text-sm text-admin-text">
+                        <label key={component.id} className="flex items-center gap-2 text-sm text-admin-text">
                             <input
                                 type="checkbox"
-                                checked={selected.includes(component.key)}
-                                onChange={() => toggle(component.key)}
+                                checked={selected.includes(component.id)}
+                                onChange={() => toggle(component.id)}
                                 disabled={disabled || submitting}
                             />
                             {component.label}
@@ -105,7 +95,7 @@ export default function CommonComponentsCard({ submitUrl, diagnosedComponents, d
 
             {recorded.size > 0 && (
                 <p className="text-xs text-admin-text3 mb-4">
-                    Already recorded: {[...recorded].map((key) => COMMON_COMPONENTS.find((c) => c.key === key)?.label ?? key).join(', ')}
+                    Already recorded: {[...recorded].join(', ')}
                 </p>
             )}
 

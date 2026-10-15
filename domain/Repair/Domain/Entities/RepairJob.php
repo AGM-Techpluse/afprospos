@@ -30,6 +30,9 @@ final class RepairJob
         private readonly ?RepairJobId $id,
         private ShopId $shopId,
         private readonly ?CustomerId $customerId,
+        private readonly ?string $walkInName,
+        private readonly ?string $walkInPhone,
+        private readonly ?string $walkInEmail,
         private readonly string $deviceMake,
         private readonly string $deviceModel,
         private readonly ?string $reportedIssue,
@@ -51,9 +54,9 @@ final class RepairJob
     ) {}
 
     /** @param  'none'|'code'|'pattern'  $deviceLockType */
-    public static function intake(ShopId $shopId, ?CustomerId $customerId, string $deviceMake, string $deviceModel, ?Money $labourCharge = null, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null): self
+    public static function intake(ShopId $shopId, ?CustomerId $customerId, string $deviceMake, string $deviceModel, ?Money $labourCharge = null, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null): self
     {
-        return new self(null, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, null, 'received', 'unpaid', null, null, null, null, null);
+        return new self(null, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, null, 'received', 'unpaid', null, null, null, null, null);
     }
 
     public static function reconstitute(
@@ -78,8 +81,11 @@ final class RepairJob
         ?string $resolutionNotes,
         ?Money $failureServiceCharge = null,
         ?Money $failureRefundDue = null,
+        ?string $walkInName = null,
+        ?string $walkInPhone = null,
+        ?string $walkInEmail = null,
     ): self {
-        return new self($id, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $repairCost, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes, $failureServiceCharge, $failureRefundDue);
+        return new self($id, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $repairCost, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes, $failureServiceCharge, $failureRefundDue);
     }
 
     /** Staff have saved the diagnosis and send it for the manager to quote and authorize. */
@@ -355,6 +361,22 @@ final class RepairJob
     public function customerId(): ?CustomerId
     {
         return $this->customerId;
+    }
+
+    /** Only meaningful when customerId() is null — a walk-in's contact details captured at intake for follow-up. */
+    public function walkInName(): ?string
+    {
+        return $this->walkInName;
+    }
+
+    public function walkInPhone(): ?string
+    {
+        return $this->walkInPhone;
+    }
+
+    public function walkInEmail(): ?string
+    {
+        return $this->walkInEmail;
     }
 
     public function deviceMake(): string

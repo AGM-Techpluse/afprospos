@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 
 const TABS = [
     { key: 'device-catalog', label: 'Device catalog', href: '/admin/settings/device-catalog' },
+    { key: 'common-components', label: 'Common components', href: '/admin/settings/common-components' },
     { key: 'inventory-catalog', label: 'Inventory catalog', href: '/admin/settings/inventory-catalog' },
     { key: 'appearance', label: 'Site appearance', href: '/admin/settings/appearance' },
     { key: 'repair-workflow', label: 'Repair workflow', href: '/admin/settings/repair-workflow' },

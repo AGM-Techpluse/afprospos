@@ -137,6 +137,7 @@ final class RepairsListQuery
             'shop_id' => $job->shop_id,
             'customer_id' => $job->customer_id,
             'customer_name' => $customers[$job->customer_id]['name'] ?? null,
+            'walk_in_name' => $job->walk_in_name,
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
             'technician_staff_id' => $job->technician_staff_id,

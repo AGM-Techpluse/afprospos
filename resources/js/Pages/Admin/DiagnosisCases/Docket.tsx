@@ -7,6 +7,8 @@ type DiagnosisCase = {
     id: number;
     customer_name: string | null;
     customer_phone: string | null;
+    walk_in_name: string | null;
+    walk_in_phone: string | null;
     device_make: string;
     device_model: string;
     device_imei_serial: string | null;
@@ -47,8 +49,9 @@ export default function DiagnosisCaseDocket({ diagnosisCase, shop }: Props) {
                 <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                     <div>
                         <div className="text-admin-text2">Customer</div>
-                        <div className="font-semibold">{diagnosisCase.customer_name ?? 'Unknown customer'}</div>
+                        <div className="font-semibold">{diagnosisCase.customer_name ?? diagnosisCase.walk_in_name ?? 'Unknown customer'}</div>
                         {diagnosisCase.customer_phone && <div>{diagnosisCase.customer_phone}</div>}
+                        {!diagnosisCase.customer_name && diagnosisCase.walk_in_phone && <div>{diagnosisCase.walk_in_phone}</div>}
                     </div>
                     <div>
                         <div className="text-admin-text2">Device</div>

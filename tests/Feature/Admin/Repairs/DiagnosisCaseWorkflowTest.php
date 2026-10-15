@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Repairs;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\CommonComponentRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceTypeRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
@@ -358,5 +359,128 @@ final class DiagnosisCaseWorkflowTest extends TestCase
 
         $case->refresh();
         $this->assertSame($technician->id, $case->diagnosis_technician_staff_id);
+    }
+
+    public function test_a_common_component_quick_check_fault_carries_its_origin_through_and_earns_commission(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $shop = ShopRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $technician = StaffRecord::factory()->create();
+        $technician->assignRole('Technician');
+        $this->grantShopAccess($cashier, $shop->id);
+        $this->grantShopAccess($technician, $shop->id);
+
+        $battery = CommonComponentRecord::query()->create([
+            'label' => 'Battery',
+            'sort_order' => 0,
+            'commission_amount_minor' => 80000,
+        ]);
+
+        $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
+            'shop_id' => $shop->id,
+            'customer_id' => '',
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone 15 Pro',
+            'device_lock_type' => 'none',
+            'diagnosis_technician_staff_id' => $technician->id,
+            'revealed_faults' => [
+                ['common_component_id' => $battery->id, 'label' => 'Battery', 'notes' => ''],
+            ],
+        ])->assertRedirect();
+
+        $case = DiagnosisCaseRecord::query()->firstOrFail();
+        $diagnosisFault = DiagnosisCaseFaultRecord::query()->where('diagnosis_case_id', $case->id)->firstOrFail();
+        $this->assertSame($battery->id, $diagnosisFault->common_component_id);
+        $this->assertNull($diagnosisFault->device_problem_tag_id);
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/diagnosis-cases/{$case->id}/result", [
+            'outcome' => 'repairable',
+            'revealed_faults' => [
+                ['common_component_id' => $battery->id, 'label' => 'Battery', 'notes' => ''],
+            ],
+        ])->assertRedirect();
+
+        $diagnosisFault = DiagnosisCaseFaultRecord::query()->where('diagnosis_case_id', $case->id)->firstOrFail();
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/diagnosis-cases/{$case->id}/repairs", [
+            'fault_ids' => [$diagnosisFault->id],
+        ])->assertRedirect();
+
+        $repair = RepairJobRecord::query()->firstOrFail();
+
+        $this->assertDatabaseHas('repair_job_problem_tags', [
+            'repair_job_id' => $repair->id,
+            'common_component_id' => $battery->id,
+        ]);
+
+        $repair->update(['repair_status' => 'in_progress']);
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/{$repair->id}/complete", [
+            'resolution_notes' => 'Replaced battery.',
+            'fixed_faults' => [
+                [
+                    'diagnosis_case_fault_id' => $diagnosisFault->id,
+                    'common_component_id' => $battery->id,
+                    'label' => 'Battery',
+                    'notes' => '',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('repair_fixed_faults', [
+            'repair_job_id' => $repair->id,
+            'common_component_id' => $battery->id,
+            'device_problem_tag_id' => null,
+        ]);
+
+        $this->assertDatabaseHas('commission_ledger_entries', [
+            'staff_id' => $technician->id,
+            'source_type' => 'repair',
+            'source_id' => $repair->id,
+            'commissionable_amount_minor' => 80000,
+            'entry_type' => 'earned',
+            'status' => 'earned',
+        ]);
+    }
+
+    public function test_a_walk_in_contact_captured_at_intake_carries_through_to_the_repair_job(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $shop = ShopRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $this->grantShopAccess($cashier, $shop->id);
+
+        $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
+            'shop_id' => $shop->id,
+            'customer_id' => '',
+            'walk_in_name' => 'Chidi Okafor',
+            'walk_in_phone' => '08012345678',
+            'walk_in_email' => 'chidi@example.com',
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone 15 Pro',
+            'device_lock_type' => 'none',
+        ])->assertRedirect();
+
+        $case = DiagnosisCaseRecord::query()->firstOrFail();
+        $this->assertNull($case->customer_id);
+        $this->assertSame('Chidi Okafor', $case->walk_in_name);
+        $this->assertSame('08012345678', $case->walk_in_phone);
+        $this->assertSame('chidi@example.com', $case->walk_in_email);
+
+        $case->update(['status' => 'diagnosed', 'outcome' => 'repairable']);
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/diagnosis-cases/{$case->id}/repairs", [])
+            ->assertRedirect();
+
+        $repair = RepairJobRecord::query()->firstOrFail();
+        $this->assertNull($repair->customer_id);
+        $this->assertSame('Chidi Okafor', $repair->walk_in_name);
+        $this->assertSame('08012345678', $repair->walk_in_phone);
+        $this->assertSame('chidi@example.com', $repair->walk_in_email);
     }
 }

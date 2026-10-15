@@ -198,6 +198,9 @@ final class SalesController
                 shopId: $shopId,
                 customerId: $request->integer('customer_id') ?: null,
                 cashierStaffId: $actor->staffId->value,
+                walkInName: $request->string('walk_in_name')->toString() ?: null,
+                walkInPhone: $request->string('walk_in_phone')->toString() ?: null,
+                walkInEmail: $request->string('walk_in_email')->toString() ?: null,
             ));
         } catch (WarehouseCannotSell $exception) {
             throw ValidationException::withMessages(['shop_id' => $exception->getMessage()]);

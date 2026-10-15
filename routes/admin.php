@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\CommonComponentController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DeviceCatalogController;
 use App\Http\Controllers\Admin\DiagnosisCasesController;
@@ -467,6 +468,24 @@ Route::prefix('admin')
             ->name('inventory.masters.destroy');
 
         Route::middleware('permission:repairs.manage')
+            ->get('/settings/common-components', [CommonComponentController::class, 'index'])
+            ->name('settings.common-components.index');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/common-components', [CommonComponentController::class, 'store'])
+            ->name('settings.common-components.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/common-components/{component}', [CommonComponentController::class, 'update'])
+            ->whereNumber('component')
+            ->name('settings.common-components.update');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/common-components/{component}', [CommonComponentController::class, 'destroy'])
+            ->whereNumber('component')
+            ->name('settings.common-components.destroy');
+
+        Route::middleware('permission:repairs.manage')
             ->get('/settings/device-catalog', [DeviceCatalogController::class, 'index'])
             ->name('settings.device-catalog.index');
 
@@ -605,6 +624,11 @@ Route::prefix('admin')
             ->get('/repairs/{repair}', [RepairsController::class, 'show'])
             ->whereNumber('repair')
             ->name('repairs.show');
+
+        Route::middleware('permission:repairs.view')
+            ->get('/repairs/{repair}/receipt', [RepairsController::class, 'receipt'])
+            ->whereNumber('repair')
+            ->name('repairs.receipt');
 
         Route::middleware('permission:repairs.transfer|repairs.assign|repairs.authorize')
             ->post('/repairs/{repair}/transfer', [RepairsController::class, 'transfer'])

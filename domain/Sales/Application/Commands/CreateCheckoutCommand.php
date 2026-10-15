@@ -10,5 +10,8 @@ final readonly class CreateCheckoutCommand
         public int $shopId,
         public ?int $customerId,
         public int $cashierStaffId,
+        public ?string $walkInName = null,
+        public ?string $walkInPhone = null,
+        public ?string $walkInEmail = null,
     ) {}
 }

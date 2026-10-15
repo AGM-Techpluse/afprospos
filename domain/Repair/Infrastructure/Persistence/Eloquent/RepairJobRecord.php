@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $reopened_from_repair_job_id
  * @property int $shop_id
  * @property int $customer_id
+ * @property string|null $walk_in_name
+ * @property string|null $walk_in_phone
+ * @property string|null $walk_in_email
  * @property string $device_make
  * @property string $device_model
  * @property string|null $reported_issue
@@ -46,6 +49,9 @@ final class RepairJobRecord extends Model
         'diagnosis_case_id',
         'reopened_from_repair_job_id',
         'customer_id',
+        'walk_in_name',
+        'walk_in_phone',
+        'walk_in_email',
         'device_make',
         'device_model',
         'reported_issue',

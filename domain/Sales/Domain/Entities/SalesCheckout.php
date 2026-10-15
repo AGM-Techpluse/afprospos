@@ -40,6 +40,9 @@ final class SalesCheckout
         private readonly ?CheckoutId $id,
         private readonly ShopId $shopId,
         private readonly ?CustomerId $customerId,
+        private readonly ?string $walkInName,
+        private readonly ?string $walkInPhone,
+        private readonly ?string $walkInEmail,
         private readonly StaffId $cashierStaffId,
         private string $status,
         private DateTimeImmutable $reservationExpiresAt,
@@ -53,9 +56,9 @@ final class SalesCheckout
         $this->adjustments = $adjustments;
     }
 
-    public static function open(ShopId $shopId, ?CustomerId $customerId, StaffId $cashierStaffId, DateTimeImmutable $reservationExpiresAt): self
+    public static function open(ShopId $shopId, ?CustomerId $customerId, StaffId $cashierStaffId, DateTimeImmutable $reservationExpiresAt, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null): self
     {
-        return new self(null, $shopId, $customerId, $cashierStaffId, 'open', $reservationExpiresAt, [], [], 0, 0, 0);
+        return new self(null, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $cashierStaffId, 'open', $reservationExpiresAt, [], [], 0, 0, 0);
     }
 
     /**
@@ -74,8 +77,11 @@ final class SalesCheckout
         int $subtotalMinor,
         int $discountMinor,
         int $totalMinor,
+        ?string $walkInName = null,
+        ?string $walkInPhone = null,
+        ?string $walkInEmail = null,
     ): self {
-        return new self($id, $shopId, $customerId, $cashierStaffId, $status, $reservationExpiresAt, $items, $adjustments, $subtotalMinor, $discountMinor, $totalMinor);
+        return new self($id, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $cashierStaffId, $status, $reservationExpiresAt, $items, $adjustments, $subtotalMinor, $discountMinor, $totalMinor);
     }
 
     public function addItem(SalesCheckoutItem $item): void
@@ -199,6 +205,22 @@ final class SalesCheckout
     public function customerId(): ?CustomerId
     {
         return $this->customerId;
+    }
+
+    /** Only meaningful when customerId() is null — a walk-in's contact details, carried to the Sale once this checkout completes. */
+    public function walkInName(): ?string
+    {
+        return $this->walkInName;
+    }
+
+    public function walkInPhone(): ?string
+    {
+        return $this->walkInPhone;
+    }
+
+    public function walkInEmail(): ?string
+    {
+        return $this->walkInEmail;
     }
 
     public function cashierStaffId(): StaffId

@@ -14,6 +14,9 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $shop_id
  * @property int|null $customer_id
+ * @property string|null $walk_in_name
+ * @property string|null $walk_in_phone
+ * @property string|null $walk_in_email
  * @property int $cashier_staff_id
  * @property string $status
  * @property Carbon $reservation_expires_at
@@ -29,7 +32,7 @@ final class SalesCheckoutRecord extends Model
     protected $table = 'sales_checkouts';
 
     protected $fillable = [
-        'shop_id', 'customer_id', 'cashier_staff_id', 'status',
+        'shop_id', 'customer_id', 'walk_in_name', 'walk_in_phone', 'walk_in_email', 'cashier_staff_id', 'status',
         'reservation_expires_at', 'subtotal_minor', 'discount_minor',
         'total_minor', 'payment_transaction_id',
     ];

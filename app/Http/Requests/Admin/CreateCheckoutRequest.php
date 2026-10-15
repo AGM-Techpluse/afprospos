@@ -18,6 +18,9 @@ final class CreateCheckoutRequest extends FormRequest
         return [
             'shop_id' => ['required', 'integer', 'exists:shops,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'walk_in_name' => ['nullable', 'string', 'max:150'],
+            'walk_in_phone' => ['nullable', 'string', 'max:30'],
+            'walk_in_email' => ['nullable', 'string', 'max:150'],
         ];
     }
 }

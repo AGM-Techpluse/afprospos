@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../../Components/Icons/Icon';
+import AdminInput from '../../Components/Admin/Forms/AdminInput';
 
 export type CustomerSearchResult = {
     id: number;
     name: string;
     email: string | null;
     phone: string;
+};
+
+export type WalkInContact = {
+    name: string;
+    phone: string;
+    email: string;
 };
 
 interface CustomerSearchProps {
@@ -15,6 +22,10 @@ interface CustomerSearchProps {
     disabled?: boolean;
     /** Defaults to Sales' own endpoint — Repair intake (and any future caller) passes its own permission-gated search route. */
     searchUrl?: string;
+    /** Only meaningful while no customer is selected. Omit (along with onWalkInChange) to leave this caller unaffected. */
+    walkIn?: WalkInContact;
+    /** Providing this opts the caller into the walk-in contact mini-form shown when nothing is selected. */
+    onWalkInChange?: (walkIn: WalkInContact) => void;
 }
 
 /**
@@ -24,11 +35,12 @@ interface CustomerSearchProps {
  * ID. Originated on Checkout (selecting nobody keeps it a walk-in sale)
  * and reused as-is by Repair intake.
  */
-export default function CustomerSearch({ value, onChange, error, disabled = false, searchUrl = '/admin/sales/customers/search' }: CustomerSearchProps) {
+export default function CustomerSearch({ value, onChange, error, disabled = false, searchUrl = '/admin/sales/customers/search', walkIn, onWalkInChange }: CustomerSearchProps) {
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<CustomerSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
+    const [walkInExpanded, setWalkInExpanded] = useState(false);
     const requestId = useRef(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +153,42 @@ export default function CustomerSearch({ value, onChange, error, disabled = fals
                                 </li>
                             ))}
                         </ul>
+                    )}
+                </div>
+            )}
+
+            {onWalkInChange && (
+                <div className="mt-2">
+                    <button
+                        type="button"
+                        onClick={() => setWalkInExpanded((expanded) => !expanded)}
+                        className="text-xs font-medium text-admin-blue hover:underline"
+                    >
+                        {walkInExpanded ? 'Hide walk-in contact details' : 'Add walk-in contact details (optional)'}
+                    </button>
+
+                    {walkInExpanded && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                            <AdminInput
+                                label="Name"
+                                value={walkIn?.name ?? ''}
+                                disabled={disabled}
+                                onChange={(e) => onWalkInChange({ name: e.target.value, phone: walkIn?.phone ?? '', email: walkIn?.email ?? '' })}
+                            />
+                            <AdminInput
+                                label="Phone"
+                                value={walkIn?.phone ?? ''}
+                                disabled={disabled}
+                                onChange={(e) => onWalkInChange({ name: walkIn?.name ?? '', phone: e.target.value, email: walkIn?.email ?? '' })}
+                            />
+                            <AdminInput
+                                label="Email"
+                                type="email"
+                                value={walkIn?.email ?? ''}
+                                disabled={disabled}
+                                onChange={(e) => onWalkInChange({ name: walkIn?.name ?? '', phone: walkIn?.phone ?? '', email: e.target.value })}
+                            />
+                        </div>
                     )}
                 </div>
             )}

@@ -9,6 +9,10 @@ use Domain\Commission\Infrastructure\Persistence\Eloquent\CommissionLedgerEntryR
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\CommonComponentRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceTypeRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairFixedFaultRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
@@ -222,5 +226,42 @@ class AdminCanViewReportsTest extends TestCase
                 ->where('commission_by_staff.0.staff_id', $technician->id)
                 ->where('commission_by_staff.0.total_minor', 150000)
                 ->where('commission_by_staff.0.entries_count', 1));
+    }
+
+    public function test_repairs_report_breaks_down_fixed_faults_by_origin(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $repair = RepairJobRecord::factory()->create(['shop_id' => $shop->id]);
+
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $screenFault = DeviceProblemTagRecord::query()->create(['device_type_id' => $deviceType->id, 'label' => 'Screen', 'sort_order' => 1]);
+        $battery = CommonComponentRecord::query()->create(['label' => 'Battery', 'sort_order' => 0]);
+
+        RepairFixedFaultRecord::query()->create([
+            'repair_job_id' => $repair->id,
+            'device_problem_tag_id' => $screenFault->id,
+            'label_snapshot' => 'Screen',
+        ]);
+        RepairFixedFaultRecord::query()->create([
+            'repair_job_id' => $repair->id,
+            'common_component_id' => $battery->id,
+            'label_snapshot' => 'Battery',
+        ]);
+        RepairFixedFaultRecord::query()->create([
+            'repair_job_id' => $repair->id,
+            'label_snapshot' => 'Loose connector',
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->get('/admin/reports/repairs?shop_id='.$shop->id);
+        $response->assertOk();
+
+        $faultOrigin = collect($response->viewData('page')['props']['report']['fault_origin'])->keyBy('label');
+        $this->assertSame(1, $faultOrigin['Diagnosed']['value']);
+        $this->assertSame(1, $faultOrigin['Quick check']['value']);
+        $this->assertSame(1, $faultOrigin['Custom']['value']);
     }
 }

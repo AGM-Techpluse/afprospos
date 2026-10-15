@@ -34,6 +34,9 @@ final class EloquentRepairJobRepository implements RepairJobRepository
         $attributes = [
             'shop_id' => $repairJob->shopId()->value,
             'customer_id' => $repairJob->customerId()?->value,
+            'walk_in_name' => $repairJob->walkInName(),
+            'walk_in_phone' => $repairJob->walkInPhone(),
+            'walk_in_email' => $repairJob->walkInEmail(),
             'device_make' => $repairJob->deviceMake(),
             'device_model' => $repairJob->deviceModel(),
             'reported_issue' => $repairJob->reportedIssue(),
@@ -103,6 +106,9 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             $record->resolution_notes,
             $record->failure_service_charge_minor !== null ? new Money($record->failure_service_charge_minor) : null,
             $record->failure_refund_due_minor !== null ? new Money($record->failure_refund_due_minor) : null,
+            $record->walk_in_name,
+            $record->walk_in_phone,
+            $record->walk_in_email,
         );
     }
 }

@@ -117,6 +117,7 @@ final class RepairJobDetailQuery
         $quoteTotalMinor = $job->repair_cost_minor !== null ? $job->repair_cost_minor + ($diagnosisFee['outstanding_minor'] ?? 0) : null;
         $downPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_down_payment');
         $finalPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_final_payment');
+        $finalPaymentMethod = $this->confirmedPaymentMethod($repairJobId, 'repair_final_payment');
         $outstandingBalanceMinor = $quoteTotalMinor !== null ? max(0, $quoteTotalMinor - $downPaymentPaidMinor - $finalPaymentPaidMinor) : null;
         $failureSettlement = $this->failureSettlement($job);
 
@@ -134,7 +135,7 @@ final class RepairJobDetailQuery
         $problemTags = RepairJobProblemTagRecord::query()
             ->where('repair_job_id', $repairJobId)
             ->get()
-            ->map(static fn (RepairJobProblemTagRecord $tag): array => ['id' => $tag->id, 'label' => $tag->label_snapshot])
+            ->map(static fn (RepairJobProblemTagRecord $tag): array => ['id' => $tag->id, 'label' => $tag->label_snapshot, 'common_component_id' => $tag->common_component_id])
             ->all();
 
         $diagnosisCase = $job->diagnosis_case_id !== null ? DiagnosisCaseRecord::query()->find($job->diagnosis_case_id) : null;
@@ -146,6 +147,7 @@ final class RepairJobDetailQuery
                 ->map(static fn (DiagnosisCaseFaultRecord $fault): array => [
                     'id' => $fault->id,
                     'device_problem_tag_id' => $fault->device_problem_tag_id,
+                    'common_component_id' => $fault->common_component_id,
                     'label' => $fault->label_snapshot,
                     'notes' => $fault->notes,
                 ])->all()
@@ -158,6 +160,7 @@ final class RepairJobDetailQuery
                 'id' => $fault->id,
                 'diagnosis_case_fault_id' => $fault->diagnosis_case_fault_id,
                 'device_problem_tag_id' => $fault->device_problem_tag_id,
+                'common_component_id' => $fault->common_component_id,
                 'label' => $fault->label_snapshot,
                 'notes' => $fault->notes,
             ])->all();
@@ -171,6 +174,9 @@ final class RepairJobDetailQuery
             'customer_name' => $customer['name'] ?? null,
             'customer_phone' => $customer['phone'] ?? null,
             'customer_email' => $customer['email'] ?? null,
+            'walk_in_name' => $job->walk_in_name,
+            'walk_in_phone' => $job->walk_in_phone,
+            'walk_in_email' => $job->walk_in_email,
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
             'reported_issue' => $job->reported_issue,
@@ -187,6 +193,7 @@ final class RepairJobDetailQuery
             'down_payment_required_minor' => $job->down_payment_required_minor,
             'down_payment_paid_minor' => $downPaymentPaidMinor,
             'final_payment_paid_minor' => $finalPaymentPaidMinor,
+            'final_payment_method' => $finalPaymentMethod,
             'outstanding_balance_minor' => $outstandingBalanceMinor,
             'down_payment_deadline_at' => $job->down_payment_deadline_at?->toIso8601String(),
             'repair_status' => $job->repair_status,
@@ -265,6 +272,17 @@ final class RepairJobDetailQuery
         }
 
         return $transaction['amount_minor'];
+    }
+
+    private function confirmedPaymentMethod(int $repairJobId, string $purpose): ?string
+    {
+        $transaction = $this->payments->latestTransactionForPurpose('repair_job', $repairJobId, $purpose);
+
+        if ($transaction === null || $transaction['status'] !== 'confirmed') {
+            return null;
+        }
+
+        return $transaction['method'] ?? null;
     }
 
     /** @return array{service_charge_minor: int|null, refund_due_minor: int|null} */

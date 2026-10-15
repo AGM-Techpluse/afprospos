@@ -11,6 +11,7 @@ type DiagnosisCase = {
     id: number;
     shop_id: number;
     customer_name: string | null;
+    walk_in_name: string | null;
     device: string;
     device_imei_serial: string | null;
     reported_issue: string | null;
@@ -35,7 +36,7 @@ export default function RepairCreate({ shops, diagnosisCases, filters }: RepairC
             [
                 diagnosisCase.device,
                 diagnosisCase.device_imei_serial ?? '',
-                diagnosisCase.customer_name ?? '',
+                diagnosisCase.customer_name ?? diagnosisCase.walk_in_name ?? '',
                 diagnosisCase.reported_issue ?? '',
                 diagnosisCase.faults.join(' '),
             ].some((value) => value.toLowerCase().includes(query)),
@@ -111,7 +112,7 @@ export default function RepairCreate({ shops, diagnosisCases, filters }: RepairC
                                 <div className="text-xs text-admin-text3">{diagnosisCase.device_imei_serial ?? 'No IMEI / serial'}</div>
                                 {diagnosisCase.reported_issue && <div className="text-xs text-admin-text2 mt-1 truncate">{diagnosisCase.reported_issue}</div>}
                             </div>
-                            <div className="text-sm text-admin-text">{diagnosisCase.customer_name ?? 'Unknown customer'}</div>
+                            <div className="text-sm text-admin-text">{diagnosisCase.customer_name ?? diagnosisCase.walk_in_name ?? 'Unknown customer'}</div>
                             <div className="flex flex-wrap gap-1">
                                 {diagnosisCase.faults.slice(0, 4).map((fault) => (
                                     <AdminBadge key={fault} status="neutral">{fault}</AdminBadge>

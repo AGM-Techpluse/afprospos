@@ -14,6 +14,7 @@ final class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RolePermissionSeeder::class);
+        $this->call(CommonComponentSeeder::class);
 
         // Bootstrap shop + owner account so `php artisan migrate:fresh
         // --seed` produces an immediately loggable-in environment. Change

@@ -50,6 +50,9 @@ final class CreateRepairJobHandler
                 $command->deviceImeiSerial,
                 $command->deviceLockType,
                 $command->deviceLockValue,
+                $command->walkInName,
+                $command->walkInPhone,
+                $command->walkInEmail,
             );
 
             $id = $this->repairJobs->save($job);

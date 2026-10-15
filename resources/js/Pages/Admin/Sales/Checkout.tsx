@@ -30,6 +30,7 @@ type CheckoutView = {
     shop_id: number;
     customer_id: number | null;
     customer_name: string | null;
+    walk_in_name: string | null;
     status: string;
     reservation_expires_at: string;
     subtotal_minor: number;
@@ -94,6 +95,9 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
     const { data, setData, post, processing, errors } = useForm({
         shop_id: sellableShops[0]?.id.toString() ?? '',
         customer_id: '',
+        walk_in_name: '',
+        walk_in_phone: '',
+        walk_in_email: '',
     });
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
 
@@ -118,6 +122,10 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
                     setData('customer_id', selected ? selected.id.toString() : '');
                 }}
                 error={errors.customer_id}
+                walkIn={{ name: data.walk_in_name, phone: data.walk_in_phone, email: data.walk_in_email }}
+                onWalkInChange={(walkIn) =>
+                    setData({ ...data, walk_in_name: walkIn.name, walk_in_phone: walkIn.phone, walk_in_email: walkIn.email })
+                }
             />
             <AdminButton type="submit" isLoading={processing}>
                 Start checkout
@@ -380,7 +388,7 @@ export default function SalesCheckout({
 
             <AdminPageHead
                 title={`Checkout — ${shop?.name ?? 'Unknown shop'}`}
-                description={checkout.customer_name ?? 'Walk-in customer'}
+                description={checkout.customer_name ?? checkout.walk_in_name ?? 'Walk-in customer'}
                 actions={<CheckoutExpiryTimer expiresAt={checkout.reservation_expires_at} onExpire={() => setIsExpired(true)} />}
             />
 

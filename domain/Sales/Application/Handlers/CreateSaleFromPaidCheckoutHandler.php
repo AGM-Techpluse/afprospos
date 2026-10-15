@@ -110,6 +110,9 @@ final class CreateSaleFromPaidCheckoutHandler
                 $command->paymentMethod,
                 $command->paymentReference,
                 $invoiceNumber,
+                $checkout->walkInName(),
+                $checkout->walkInPhone(),
+                $checkout->walkInEmail(),
             );
 
             $saleId = $this->sales->save($sale);

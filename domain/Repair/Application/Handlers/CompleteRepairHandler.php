@@ -12,6 +12,7 @@ use Domain\Repair\Application\Commands\CompleteRepairCommand;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\CommonComponentRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairFixedFaultRecord;
 use Domain\Shared\Domain\ValueObjects\StaffId;
@@ -50,13 +51,19 @@ final class CompleteRepairHandler
                     'repair_job_id' => $jobId->value,
                     'diagnosis_case_fault_id' => isset($fault['diagnosis_case_fault_id']) ? (int) $fault['diagnosis_case_fault_id'] : null,
                     'device_problem_tag_id' => isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
+                    'common_component_id' => isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
                     'label_snapshot' => $label,
                     'notes' => isset($fault['notes']) && trim((string) $fault['notes']) !== '' ? trim((string) $fault['notes']) : null,
                     'recorded_by_staff_id' => $command->completedByStaffId,
                 ]);
 
-                if ($fault['device_problem_tag_id'] ?? null) {
-                    $this->creditFaultFixCommission($job, $jobId, (int) $fault['device_problem_tag_id']);
+                if (($fault['device_problem_tag_id'] ?? null) || ($fault['common_component_id'] ?? null)) {
+                    $this->creditFaultFixCommission(
+                        $job,
+                        $jobId,
+                        isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
+                        isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
+                    );
                 }
             }
 
@@ -73,11 +80,13 @@ final class CompleteRepairHandler
         });
     }
 
-    /** No technician assigned, or the tag carries no commission amount, simply earns nothing — this is a silent skip, not an error. */
-    private function creditFaultFixCommission(RepairJob $job, RepairJobId $jobId, int $deviceProblemTagId): void
+    /** No technician assigned, or the tag/component carries no commission amount, simply earns nothing — this is a silent skip, not an error. A catalog-diagnosed fault takes priority if a fixed fault somehow carried both ids. */
+    private function creditFaultFixCommission(RepairJob $job, RepairJobId $jobId, ?int $deviceProblemTagId, ?int $commonComponentId): void
     {
         $technicianId = $job->technicianStaffId();
-        $amountMinor = DeviceProblemTagRecord::query()->find($deviceProblemTagId)?->commission_amount_minor;
+        $amountMinor = $deviceProblemTagId !== null
+            ? DeviceProblemTagRecord::query()->find($deviceProblemTagId)?->commission_amount_minor
+            : CommonComponentRecord::query()->find($commonComponentId)?->commission_amount_minor;
 
         if ($technicianId === null || $amountMinor === null || $amountMinor <= 0) {
             return;

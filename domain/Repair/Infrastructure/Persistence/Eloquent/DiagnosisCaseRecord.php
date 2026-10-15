@@ -11,6 +11,9 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $shop_id
  * @property int|null $customer_id
+ * @property string|null $walk_in_name
+ * @property string|null $walk_in_phone
+ * @property string|null $walk_in_email
  * @property int|null $device_model_id
  * @property int|null $diagnosis_technician_staff_id
  * @property int $created_by_staff_id
@@ -35,6 +38,9 @@ final class DiagnosisCaseRecord extends Model
     protected $fillable = [
         'shop_id',
         'customer_id',
+        'walk_in_name',
+        'walk_in_phone',
+        'walk_in_email',
         'device_model_id',
         'diagnosis_technician_staff_id',
         'created_by_staff_id',

@@ -22,5 +22,8 @@ final readonly class CreateRepairJobCommand
         public array $problemTagIds,
         public ?int $labourChargeMinor,
         public int $createdByStaffId,
+        public ?string $walkInName = null,
+        public ?string $walkInPhone = null,
+        public ?string $walkInEmail = null,
     ) {}
 }

@@ -24,6 +24,9 @@ final class Sale
         private readonly CheckoutId $checkoutId,
         private readonly ShopId $shopId,
         private readonly ?CustomerId $customerId,
+        private readonly ?string $walkInName,
+        private readonly ?string $walkInPhone,
+        private readonly ?string $walkInEmail,
         private readonly StaffId $cashierStaffId,
         private readonly Money $total,
         private readonly ?int $paymentTransactionId,
@@ -42,8 +45,11 @@ final class Sale
         string $paymentMethod,
         ?string $paymentReference,
         InvoiceNumber $invoiceNumber,
+        ?string $walkInName = null,
+        ?string $walkInPhone = null,
+        ?string $walkInEmail = null,
     ): self {
-        return new self(null, $checkoutId, $shopId, $customerId, $cashierStaffId, $total, $paymentTransactionId, $paymentMethod, $paymentReference, $invoiceNumber);
+        return new self(null, $checkoutId, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $cashierStaffId, $total, $paymentTransactionId, $paymentMethod, $paymentReference, $invoiceNumber);
     }
 
     public static function reconstitute(
@@ -57,8 +63,11 @@ final class Sale
         string $paymentMethod,
         ?string $paymentReference,
         InvoiceNumber $invoiceNumber,
+        ?string $walkInName = null,
+        ?string $walkInPhone = null,
+        ?string $walkInEmail = null,
     ): self {
-        return new self($id, $checkoutId, $shopId, $customerId, $cashierStaffId, $total, $paymentTransactionId, $paymentMethod, $paymentReference, $invoiceNumber);
+        return new self($id, $checkoutId, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $cashierStaffId, $total, $paymentTransactionId, $paymentMethod, $paymentReference, $invoiceNumber);
     }
 
     public function id(): ?SaleId
@@ -79,6 +88,22 @@ final class Sale
     public function customerId(): ?CustomerId
     {
         return $this->customerId;
+    }
+
+    /** Only meaningful when customerId() is null — copied from the originating checkout at completion time. */
+    public function walkInName(): ?string
+    {
+        return $this->walkInName;
+    }
+
+    public function walkInPhone(): ?string
+    {
+        return $this->walkInPhone;
+    }
+
+    public function walkInEmail(): ?string
+    {
+        return $this->walkInEmail;
     }
 
     public function cashierStaffId(): StaffId

@@ -43,6 +43,7 @@ final class SalesHistoryQuery
                 'shop_id' => $sale->shop_id,
                 'customer_id' => $sale->customer_id,
                 'customer_name' => $sale->customer_id !== null ? ($customers[$sale->customer_id]['name'] ?? null) : null,
+                'walk_in_name' => $sale->walk_in_name,
                 'total_minor' => $sale->total_minor,
                 'payment_method' => $sale->payment_method,
                 'invoice_number' => $sale->invoice_number,

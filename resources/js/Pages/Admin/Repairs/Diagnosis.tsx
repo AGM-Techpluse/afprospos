@@ -65,7 +65,9 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                     </section>
                 </div>
 
+                {/* This page predates the Diagnosis Cases flow (see DiagnosisCases/Create.tsx) and isn't reachable from the live UI anymore — components={[]} keeps it compiling without wiring the catalog into a page nothing links to. */}
                 <CommonComponentsCard
+                    components={[]}
                     submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
                     diagnosedComponents={repair.diagnoses.map((d) => d.component)}
                     disabled={finalized}

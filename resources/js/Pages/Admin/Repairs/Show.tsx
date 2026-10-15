@@ -10,6 +10,7 @@ import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/Devic
 import PatternLockPad from '../../../Features/Repairs/PatternLockPad';
 import RepairPhotoGallery, { RepairPhoto } from '../../../Features/Repairs/RepairPhotoGallery';
 import PartsReservationPicker, { PartReservationRow } from '../../../Features/Repairs/PartsReservationPicker';
+import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
 import { formatNaira } from '../../../lib/money';
 
 type RepairDetail = {
@@ -19,6 +20,9 @@ type RepairDetail = {
     customer_name: string | null;
     customer_phone: string | null;
     customer_email: string | null;
+    walk_in_name: string | null;
+    walk_in_phone: string | null;
+    walk_in_email: string | null;
     device_make: string;
     device_model: string;
     reported_issue: string | null;
@@ -45,8 +49,8 @@ type RepairDetail = {
     diagnosis_case_id: number | null;
     reopened_from_repair_job_id: number | null;
     diagnosis_case: { id: number; status: string; outcome: string | null } | null;
-    revealed_faults: { id: number; device_problem_tag_id: number | null; label: string; notes: string | null }[];
-    fixed_faults: { id: number; diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; label: string; notes: string | null }[];
+    revealed_faults: { id: number; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null }[];
+    fixed_faults: { id: number; diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null }[];
     part_reservations: (PartReservationRow & { unit_price_minor: number | null })[];
     down_payment_required_minor: number | null;
     down_payment_paid_minor: number;
@@ -210,7 +214,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         e.preventDefault();
         setProcessing(true);
 
-        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; label: string; notes: string };
+        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string };
 
         router.post(
             `/admin/repairs/${repair.id}/complete`,
@@ -221,12 +225,14 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                     .map((fault): FixedFaultPayload => ({
                         diagnosis_case_fault_id: fault.id,
                         device_problem_tag_id: fault.device_problem_tag_id,
+                        common_component_id: fault.common_component_id,
                         label: fault.label,
                         notes: '',
                     }))
                     .concat(customFixedFaults.map((label): FixedFaultPayload => ({
                         diagnosis_case_fault_id: null,
                         device_problem_tag_id: null,
+                        common_component_id: null,
                         label,
                         notes: '',
                     }))),
@@ -316,7 +322,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
 
             <AdminPageHead
                 title={`${repair.device_make} ${repair.device_model}`}
-                description={`${repair.customer_name ?? 'Customer'} — ${repair.repair_status.replace(/_/g, ' ')}`}
+                description={`${repair.customer_name ?? repair.walk_in_name ?? 'Customer'} — ${repair.repair_status.replace(/_/g, ' ')}`}
             />
 
             <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -325,6 +331,11 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                     <AdminBadge status={repair.financial_status === 'fully_paid' ? 'success' : 'warning'}>
                         {repair.financial_status === 'fully_paid' ? 'Payment received' : `Payment ${repair.financial_status.replace(/_/g, ' ')}`}
                     </AdminBadge>
+                )}
+                {repair.financial_status === 'fully_paid' && (
+                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${repair.id}/receipt`)}>
+                        View receipt
+                    </AdminButton>
                 )}
             </div>
 
@@ -348,9 +359,11 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
 
                     <div className="mb-4 pb-4 border-b border-admin-border">
                         <div className="text-sm text-admin-text2 mb-1">Customer</div>
-                        <p className="text-sm font-medium text-admin-text">{repair.customer_name ?? 'Unknown customer'}</p>
+                        <p className="text-sm font-medium text-admin-text">{repair.customer_name ?? repair.walk_in_name ?? 'Unknown customer'}</p>
                         {repair.customer_phone && <p className="text-sm text-admin-text2">{repair.customer_phone}</p>}
                         {repair.customer_email && <p className="text-sm text-admin-text2">{repair.customer_email}</p>}
+                        {!repair.customer_name && repair.walk_in_phone && <p className="text-sm text-admin-text2">{repair.walk_in_phone}</p>}
+                        {!repair.customer_name && repair.walk_in_email && <p className="text-sm text-admin-text2">{repair.walk_in_email}</p>}
                     </div>
 
                     <DetailRow label="Device" value={`${repair.device_make} ${repair.device_model}`} />
@@ -482,8 +495,9 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             <div className="text-sm text-admin-text2 mb-2">Diagnosis revealed faults</div>
                             <div className="flex flex-wrap gap-1.5">
                                 {repair.revealed_faults.map((fault) => (
-                                    <span key={fault.id} className="bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
+                                    <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
                                         {fault.label}
+                                        <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
                                     </span>
                                 ))}
                             </div>
@@ -494,8 +508,9 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             <div className="text-sm text-admin-text2 mb-2">Actually fixed faults</div>
                             <div className="flex flex-wrap gap-1.5">
                                 {repair.fixed_faults.map((fault) => (
-                                    <span key={fault.id} className="bg-admin-green-soft text-admin-green-text text-xs font-semibold rounded-admin-badge px-2 py-1">
+                                    <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-green-soft text-admin-green-text text-xs font-semibold rounded-admin-badge px-2 py-1">
                                         {fault.label}
+                                        <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
                                     </span>
                                 ))}
                             </div>
@@ -809,6 +824,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                                         onChange={() => toggleFixedFault(fault.id)}
                                                     />
                                                     <span>{fault.label}</span>
+                                                    <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
                                                 </label>
                                             ))}
                                         </div>

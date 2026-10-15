@@ -16,10 +16,12 @@ type Report = {
     trend: { date: string; received: number; completed: number }[];
     technicians: { staff_id: number; name: string; assigned: number; completed: number; failed: number }[];
     collections: { label: string; value: number }[];
+    fault_origin: { label: string; value: number }[];
 };
 type RepairRow = {
     id: number;
     customer_name: string | null;
+    walk_in_name: string | null;
     device_make: string;
     device_model: string;
     technician_staff_id: number | null;
@@ -48,7 +50,7 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
 
 const repairColumns: DataTableColumn<RepairRow>[] = [
     { key: 'device_model', label: 'Work order', render: (row) => `${row.device_make} ${row.device_model}` },
-    { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? 'Walk-in' },
+    { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? row.walk_in_name ?? 'Walk-in' },
     {
         key: 'repair_status',
         label: 'Status',
@@ -105,6 +107,7 @@ export default function RepairReports({
                 <ReportPanel title="Status breakdown"><DoughnutBreakdown rows={report.status_breakdown} /></ReportPanel>
                 <ReportPanel title="Technician workload"><HorizontalBar rows={report.technicians} labelKey="name" valueKey="assigned" /></ReportPanel>
                 <ReportPanel title="Collection state"><DoughnutBreakdown rows={report.collections} /></ReportPanel>
+                <ReportPanel title="Fixed faults by origin"><DoughnutBreakdown rows={report.fault_origin} /></ReportPanel>
             </div>
 
             <h2 className="text-sm font-semibold text-admin-text mb-2">Repairs in this period</h2>

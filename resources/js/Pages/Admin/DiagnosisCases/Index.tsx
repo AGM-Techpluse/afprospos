@@ -12,6 +12,7 @@ type Shop = { id: number; name: string };
 type DiagnosisCase = {
     id: number;
     customer_name: string | null;
+    walk_in_name: string | null;
     device: string;
     device_imei_serial: string | null;
     status: string;
@@ -72,7 +73,7 @@ export default function DiagnosisCasesIndex({ cases, filters, shops }: Props) {
                 </div>
             ),
         },
-        { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? 'Unknown customer' },
+        { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? row.walk_in_name ?? 'Unknown customer' },
         {
             key: 'status',
             label: 'Status',

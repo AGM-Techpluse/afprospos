@@ -18,6 +18,7 @@ use Domain\Repair\Application\Handlers\AssignDiagnosisTechnicianHandler;
 use Domain\Repair\Application\Handlers\AssignTechnicianHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
 use Domain\Repair\Application\Handlers\SetDiagnosisFeeHandler;
+use Domain\Repair\Application\Queries\CommonComponentCatalogQuery;
 use Domain\Repair\Application\Queries\DeviceCatalogQuery;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
@@ -46,6 +47,7 @@ final class DiagnosisCasesController
         private readonly CustomerDirectoryQuery $customers,
         private readonly StaffDirectoryQuery $staff,
         private readonly DeviceCatalogQuery $deviceCatalog,
+        private readonly CommonComponentCatalogQuery $commonComponents,
         private readonly CreateRepairJobHandler $createRepairJob,
         private readonly AssignTechnicianHandler $assignTechnician,
         private readonly SetDiagnosisFeeHandler $setDiagnosisFee,
@@ -118,6 +120,7 @@ final class DiagnosisCasesController
         return Inertia::render('Admin/DiagnosisCases/Create', [
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'deviceCatalog' => $this->deviceCatalog->structure(),
+            'commonComponents' => $this->commonComponents->list(),
             'technicians' => $shopId !== null ? $this->technicians($shopId) : [],
         ]);
     }
@@ -131,6 +134,9 @@ final class DiagnosisCasesController
         $case = DiagnosisCaseRecord::query()->create([
             'shop_id' => $shopId,
             'customer_id' => $request->integer('customer_id') ?: null,
+            'walk_in_name' => $request->string('walk_in_name')->toString() ?: null,
+            'walk_in_phone' => $request->string('walk_in_phone')->toString() ?: null,
+            'walk_in_email' => $request->string('walk_in_email')->toString() ?: null,
             'device_model_id' => $request->integer('device_model_id') ?: null,
             'diagnosis_technician_staff_id' => $request->integer('diagnosis_technician_staff_id') ?: null,
             'created_by_staff_id' => $actor->staffId->value,
@@ -151,6 +157,7 @@ final class DiagnosisCasesController
             DiagnosisCaseFaultRecord::query()->create([
                 'diagnosis_case_id' => $case->id,
                 'device_problem_tag_id' => isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
+                'common_component_id' => isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
                 'label_snapshot' => $label,
                 'notes' => isset($fault['notes']) && trim((string) $fault['notes']) !== '' ? trim((string) $fault['notes']) : null,
             ]);
@@ -223,6 +230,7 @@ final class DiagnosisCasesController
                 DiagnosisCaseFaultRecord::query()->create([
                     'diagnosis_case_id' => $case->id,
                     'device_problem_tag_id' => isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
+                    'common_component_id' => isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
                     'label_snapshot' => $label,
                     'notes' => isset($fault['notes']) && trim((string) $fault['notes']) !== '' ? trim((string) $fault['notes']) : null,
                 ]);
@@ -269,6 +277,9 @@ final class DiagnosisCasesController
         $repairId = $this->createRepairJob->handle(new CreateRepairJobCommand(
             shopId: $case->shop_id,
             customerId: $case->customer_id,
+            walkInName: $case->walk_in_name,
+            walkInPhone: $case->walk_in_phone,
+            walkInEmail: $case->walk_in_email,
             deviceMake: $case->device_make,
             deviceModel: $case->device_model,
             reportedIssue: $case->reported_issue,
@@ -309,6 +320,7 @@ final class DiagnosisCasesController
                 RepairJobProblemTagRecord::query()->create([
                     'repair_job_id' => $repairId,
                     'device_problem_tag_id' => null,
+                    'common_component_id' => $fault->common_component_id,
                     'label_snapshot' => $fault->label_snapshot,
                 ]);
             }
@@ -350,6 +362,7 @@ final class DiagnosisCasesController
             'id' => $case->id,
             'shop_id' => $case->shop_id,
             'customer_name' => $customer['name'] ?? null,
+            'walk_in_name' => $case->walk_in_name,
             'device' => trim($case->device_make.' '.$case->device_model),
             'device_imei_serial' => $case->device_imei_serial,
             'status' => $case->status,
@@ -376,6 +389,8 @@ final class DiagnosisCasesController
             'customer_id' => $case->customer_id,
             'customer_phone' => $customer['phone'] ?? null,
             'customer_email' => $customer['email'] ?? null,
+            'walk_in_phone' => $case->walk_in_phone,
+            'walk_in_email' => $case->walk_in_email,
             'device_make' => $case->device_make,
             'device_model' => $case->device_model,
             'reported_issue' => $case->reported_issue,
@@ -394,6 +409,7 @@ final class DiagnosisCasesController
                 ->map(static fn (DiagnosisCaseFaultRecord $fault): array => [
                     'id' => $fault->id,
                     'device_problem_tag_id' => $fault->device_problem_tag_id,
+                    'common_component_id' => $fault->common_component_id,
                     'label' => $fault->label_snapshot,
                     'notes' => $fault->notes,
                 ])->all(),

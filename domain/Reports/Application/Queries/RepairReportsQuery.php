@@ -36,6 +36,7 @@ final class RepairReportsQuery
             'trend' => $this->trend($start, $end, $shopId, $restrictToShopIds),
             'technicians' => $this->technicians($start, $end, $shopId, $restrictToShopIds),
             'collections' => $this->collections($start, $end, $shopId, $restrictToShopIds),
+            'fault_origin' => $this->faultOrigin($start, $end, $shopId, $restrictToShopIds),
         ];
     }
 
@@ -150,6 +151,32 @@ final class RepairReportsQuery
             ->select('status as label')
             ->selectRaw('count(*) as value')
             ->groupBy('status')
+            ->orderByDesc('value')
+            ->get()
+            ->map(fn ($row): array => ['label' => (string) $row->label, 'value' => (int) $row->value])
+            ->all();
+    }
+
+    /** Three mutually-exclusive origins, derivable from which (if either) catalog FK a fixed fault carries — see CPNC's fault-provenance note on the 3 fault tables. */
+    private function faultOrigin(Carbon $start, Carbon $end, ?int $shopId, ?array $restrictToShopIds): array
+    {
+        return $this->scopeShop(
+            DB::table('repair_fixed_faults')
+                ->join('repair_jobs', 'repair_jobs.id', '=', 'repair_fixed_faults.repair_job_id'),
+            $shopId,
+            $restrictToShopIds,
+            'repair_jobs.shop_id',
+        )
+            ->whereBetween('repair_jobs.created_at', [$start, $end])
+            ->selectRaw("
+                case
+                    when repair_fixed_faults.device_problem_tag_id is not null then 'Diagnosed'
+                    when repair_fixed_faults.common_component_id is not null then 'Quick check'
+                    else 'Custom'
+                end as label
+            ")
+            ->selectRaw('count(*) as value')
+            ->groupBy('label')
             ->orderByDesc('value')
             ->get()
             ->map(fn ($row): array => ['label' => (string) $row->label, 'value' => (int) $row->value])

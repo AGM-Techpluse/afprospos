@@ -42,6 +42,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
             $record = SalesCheckoutRecord::query()->create([
                 'shop_id' => $checkout->shopId()->value,
                 'customer_id' => $checkout->customerId()?->value,
+                'walk_in_name' => $checkout->walkInName(),
+                'walk_in_phone' => $checkout->walkInPhone(),
+                'walk_in_email' => $checkout->walkInEmail(),
                 'cashier_staff_id' => $checkout->cashierStaffId()->value,
                 'status' => $checkout->status(),
                 'reservation_expires_at' => $checkout->reservationExpiresAt(),
@@ -159,6 +162,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
             $record->subtotal_minor,
             $record->discount_minor,
             $record->total_minor,
+            $record->walk_in_name,
+            $record->walk_in_phone,
+            $record->walk_in_email,
         );
     }
 }

@@ -23,6 +23,7 @@ final class SaveDiagnosisCaseResultRequest extends FormRequest
             'diagnosis_fee_minor' => ['nullable', 'integer', 'min:0'],
             'revealed_faults' => ['nullable', 'array'],
             'revealed_faults.*.device_problem_tag_id' => ['nullable', 'integer', 'exists:device_problem_tags,id'],
+            'revealed_faults.*.common_component_id' => ['nullable', 'integer', 'exists:common_components,id'],
             'revealed_faults.*.label' => ['required', 'string', 'max:100'],
             'revealed_faults.*.notes' => ['nullable', 'string'],
         ];
