@@ -1,5 +1,4 @@
 import React from 'react';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 
 interface IconProps extends React.HTMLAttributes<HTMLElement> {
     name: string; // The bootstrap icon name, e.g., 'house', 'gear'

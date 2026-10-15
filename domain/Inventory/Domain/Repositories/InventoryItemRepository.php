@@ -17,7 +17,7 @@ interface InventoryItemRepository
 
     public function existsWithImei(string $imei): bool;
 
-    public function create(SkuId $skuId, string $imei, ShopId $shopId, string $condition): InventoryItemId;
+    public function create(SkuId $skuId, string $imei, ShopId $shopId, string $condition, ?string $serialNumber = null): InventoryItemId;
 
     public function save(InventoryItem $item): void;
 

@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace Domain\Repair\Application\Queries;
 
+use Domain\Audit\Infrastructure\Persistence\Eloquent\AuditLogRecord;
 use Domain\Collection\Application\Contracts\CollectionCaseLookup;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
+use Domain\Repair\Domain\Repositories\RepairAgreementRepository;
+use Domain\Repair\Domain\Repositories\RepairDiagnosisFeeRepository;
+use Domain\Repair\Domain\ValueObjects\RepairJobId;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisConclusionRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDiagnosisRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDownPaymentApprovalRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairFixedFaultRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobPhotoRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
@@ -21,9 +29,12 @@ use Illuminate\Support\Facades\Storage;
 final class RepairJobDetailQuery
 {
     public function __construct(
+        private readonly RepairAgreementRepository $agreements,
         private readonly CollectionCaseLookup $collectionCases,
         private readonly CustomerDirectoryQuery $customers,
         private readonly InventoryCatalogQuery $catalog,
+        private readonly PaymentTransactionLookup $payments,
+        private readonly RepairDiagnosisFeeRepository $diagnosisFees,
     ) {}
 
     /**
@@ -84,6 +95,7 @@ final class RepairJobDetailQuery
                     'product_name' => $sku['product_name'] ?? null,
                     'quantity' => $reservation->quantity,
                     'status' => $reservation->status,
+                    'unit_price_minor' => $sku['selling_price_minor'] ?? null,
                 ];
             })->all();
 
@@ -100,7 +112,13 @@ final class RepairJobDetailQuery
             ->first();
 
         $collectionCase = $this->collectionCases->findLatestBySource('repair_job', $repairJobId);
-        $customer = $this->customers->find($job->customer_id);
+        $customer = $job->customer_id !== null ? $this->customers->find($job->customer_id) : null;
+        $diagnosisFee = $this->diagnosisFee($repairJobId);
+        $quoteTotalMinor = $job->repair_cost_minor !== null ? $job->repair_cost_minor + ($diagnosisFee['outstanding_minor'] ?? 0) : null;
+        $downPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_down_payment');
+        $finalPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_final_payment');
+        $outstandingBalanceMinor = $quoteTotalMinor !== null ? max(0, $quoteTotalMinor - $downPaymentPaidMinor - $finalPaymentPaidMinor) : null;
+        $failureSettlement = $this->failureSettlement($job);
 
         $photos = RepairJobPhotoRecord::query()
             ->where('repair_job_id', $repairJobId)
@@ -119,8 +137,35 @@ final class RepairJobDetailQuery
             ->map(static fn (RepairJobProblemTagRecord $tag): array => ['id' => $tag->id, 'label' => $tag->label_snapshot])
             ->all();
 
+        $diagnosisCase = $job->diagnosis_case_id !== null ? DiagnosisCaseRecord::query()->find($job->diagnosis_case_id) : null;
+        $revealedFaults = $diagnosisCase !== null
+            ? DiagnosisCaseFaultRecord::query()
+                ->where('diagnosis_case_id', $diagnosisCase->id)
+                ->orderBy('id')
+                ->get()
+                ->map(static fn (DiagnosisCaseFaultRecord $fault): array => [
+                    'id' => $fault->id,
+                    'device_problem_tag_id' => $fault->device_problem_tag_id,
+                    'label' => $fault->label_snapshot,
+                    'notes' => $fault->notes,
+                ])->all()
+            : [];
+        $fixedFaults = RepairFixedFaultRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->orderBy('id')
+            ->get()
+            ->map(static fn (RepairFixedFaultRecord $fault): array => [
+                'id' => $fault->id,
+                'diagnosis_case_fault_id' => $fault->diagnosis_case_fault_id,
+                'device_problem_tag_id' => $fault->device_problem_tag_id,
+                'label' => $fault->label_snapshot,
+                'notes' => $fault->notes,
+            ])->all();
+
         return [
             'id' => $job->id,
+            'diagnosis_case_id' => $job->diagnosis_case_id,
+            'reopened_from_repair_job_id' => $job->reopened_from_repair_job_id,
             'shop_id' => $job->shop_id,
             'customer_id' => $job->customer_id,
             'customer_name' => $customer['name'] ?? null,
@@ -137,16 +182,32 @@ final class RepairJobDetailQuery
             'problem_tags' => $problemTags,
             'technician_staff_id' => $job->technician_staff_id,
             'labour_charge_minor' => $job->labour_charge_minor,
+            'repair_cost_minor' => $job->repair_cost_minor,
+            'quote_total_minor' => $quoteTotalMinor,
             'down_payment_required_minor' => $job->down_payment_required_minor,
+            'down_payment_paid_minor' => $downPaymentPaidMinor,
+            'final_payment_paid_minor' => $finalPaymentPaidMinor,
+            'outstanding_balance_minor' => $outstandingBalanceMinor,
             'down_payment_deadline_at' => $job->down_payment_deadline_at?->toIso8601String(),
             'repair_status' => $job->repair_status,
             'financial_status' => $job->financial_status,
             'estimated_collection_date' => $job->estimated_collection_date?->toDateString(),
             'unrepairable_settlement_state' => $job->unrepairable_settlement_state,
             'resolution_notes' => $job->resolution_notes,
+            'failure_service_charge_minor' => $failureSettlement['service_charge_minor'],
+            'failure_refund_due_minor' => $failureSettlement['refund_due_minor'],
             'created_at' => $job->created_at->toIso8601String(),
             'diagnoses' => $diagnoses,
+            'diagnosis_fee' => $diagnosisFee,
+            'special_agreement_note' => $this->agreements->latestNote($repairJobId),
             'diagnosis_conclusions' => $diagnosisConclusions,
+            'diagnosis_case' => $diagnosisCase !== null ? [
+                'id' => $diagnosisCase->id,
+                'status' => $diagnosisCase->status,
+                'outcome' => $diagnosisCase->outcome,
+            ] : null,
+            'revealed_faults' => $revealedFaults,
+            'fixed_faults' => $fixedFaults,
             'pending_payment_approval' => $pendingPaymentApproval !== null ? [
                 'id' => $pendingPaymentApproval->id,
                 'requested_financial_status' => $pendingPaymentApproval->requested_financial_status,
@@ -163,6 +224,72 @@ final class RepairJobDetailQuery
             'part_reservations' => $partReservations,
             'collection_case' => $collectionCase,
             'photos' => $photos,
+        ];
+    }
+
+    /** The diagnosis fee charged for this job, and whether it has been paid. Kept separate from the repair quote. */
+    /**
+     * The diagnosis fee: what was set, the manager's decision, and whether it has been
+     * paid. An approved, unpaid fee is outstanding and is added to the quote total.
+     *
+     * @return array{amount_minor: int, decision: string, paid: bool, payment_status: ?string, method: ?string, outstanding_minor: int}|null
+     */
+    private function diagnosisFee(int $repairJobId): ?array
+    {
+        $fee = $this->diagnosisFees->find(new RepairJobId($repairJobId));
+
+        if ($fee === null) {
+            return null;
+        }
+
+        $transaction = $this->payments->latestTransactionForPurpose('repair_job', $repairJobId, 'repair_diagnosis_fee');
+        $paid = $transaction !== null && $transaction['status'] === 'confirmed';
+        $outstanding = $fee->decision() === 'approved' && ! $paid;
+
+        return [
+            'amount_minor' => $fee->amountMinor(),
+            'decision' => $fee->decision(),
+            'paid' => $paid,
+            'payment_status' => $transaction['status'] ?? null,
+            'method' => $transaction['method'] ?? null,
+            'outstanding_minor' => $outstanding ? $fee->amountMinor() : 0,
+        ];
+    }
+
+    private function confirmedPaymentMinor(int $repairJobId, string $purpose): int
+    {
+        $transaction = $this->payments->latestTransactionForPurpose('repair_job', $repairJobId, $purpose);
+
+        if ($transaction === null || $transaction['status'] !== 'confirmed') {
+            return 0;
+        }
+
+        return $transaction['amount_minor'];
+    }
+
+    /** @return array{service_charge_minor: int|null, refund_due_minor: int|null} */
+    private function failureSettlement(RepairJobRecord $job): array
+    {
+        if ($job->failure_service_charge_minor !== null || $job->failure_refund_due_minor !== null) {
+            return [
+                'service_charge_minor' => $job->failure_service_charge_minor,
+                'refund_due_minor' => $job->failure_refund_due_minor,
+            ];
+        }
+
+        $audit = AuditLogRecord::query()
+            ->where('module', 'Repair')
+            ->where('event_type', 'RepairFailed')
+            ->where('subject_type', 'repair_job')
+            ->where('subject_id', $job->id)
+            ->latest('id')
+            ->first();
+
+        $afterState = is_array($audit?->after_state) ? $audit->after_state : [];
+
+        return [
+            'service_charge_minor' => isset($afterState['service_charge_minor']) ? (int) $afterState['service_charge_minor'] : null,
+            'refund_due_minor' => isset($afterState['refund_due_minor']) ? (int) $afterState['refund_due_minor'] : null,
         ];
     }
 }

@@ -31,11 +31,12 @@ final class EloquentInventoryItemRepository implements InventoryItemRepository
         return InventoryItemRecord::query()->where('imei', $imei)->exists();
     }
 
-    public function create(SkuId $skuId, string $imei, ShopId $shopId, string $condition): InventoryItemId
+    public function create(SkuId $skuId, string $imei, ShopId $shopId, string $condition, ?string $serialNumber = null): InventoryItemId
     {
         $record = InventoryItemRecord::query()->create([
             'sku_id' => $skuId->value,
             'imei' => $imei,
+            'serial_number' => $serialNumber,
             'current_shop_id' => $shopId->value,
             'condition' => $condition,
             'status' => 'available',
@@ -95,6 +96,7 @@ final class EloquentInventoryItemRepository implements InventoryItemRepository
             new InventoryItemId($record->id),
             new SkuId($record->sku_id),
             $record->imei,
+            $record->serial_number,
             new ShopId($record->current_shop_id),
             $record->condition,
             $record->status,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Inventory\Application\Queries;
 
+use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 
@@ -14,12 +15,25 @@ use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
  */
 final class ProductCatalogQuery
 {
+    public function __construct(private readonly InventoryMasterRepository $masters) {}
+
     /**
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20, ?int $shopId = null): array
+    /**
+     * @param  string|null  $purpose  'parts' = products used in repairs (repair_part or both); 'sale' = products sold (sale or both)
+     */
+    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20, ?int $shopId = null, ?string $purpose = null): array
     {
         $query = SkuRecord::query()->with('product')->orderBy('sku_code');
+
+        if ($purpose === 'parts') {
+            $query->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', ['repair_part', 'both']));
+        }
+
+        if ($purpose === 'sale') {
+            $query->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', ['sale', 'both']));
+        }
 
         if ($search !== null && $search !== '') {
             $query->where(function ($inner) use ($search): void {
@@ -71,13 +85,10 @@ final class ProductCatalogQuery
     }
 
     /** Backs the Products list's category filter — a dropdown of what actually exists, not free text (the create form stays free text; this is only for filtering by an already-typed value). @return string[] */
+    /** Categories come from the admin's list (Settings → Inventory catalog), not from whatever products happen to exist. */
     public function categories(): array
     {
-        return ProductRecord::query()
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category')
-            ->all();
+        return array_column($this->masters->listByKind('category'), 'name');
     }
 
     /** @return array<string, mixed>|null */
@@ -97,7 +108,7 @@ final class ProductCatalogQuery
         // serialized sibling (a variant is a non-serialized concept only).
         $data['sibling_skus'] = SkuRecord::query()
             ->where('product_id', $sku->product_id)
-            ->where('is_serialized', false)
+            ->where('is_serialized', $sku->is_serialized)
             ->where('id', '!=', $sku->id)
             ->get()
             ->map(static fn (SkuRecord $sibling): array => [
@@ -119,6 +130,8 @@ final class ProductCatalogQuery
             'brand' => $sku->product->brand,
             'model' => $sku->product->model,
             'category' => $sku->product->category,
+            'image_path' => $sku->product->image_path,
+            'image_url' => $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null,
             'attributes' => $sku->attributes,
             'is_serialized' => $sku->is_serialized,
             'cost_price_minor' => $sku->cost_price_minor,
@@ -126,6 +139,8 @@ final class ProductCatalogQuery
             'selling_price_minor' => $sku->selling_price_minor,
             'selling_price_overridden' => $sku->selling_price_overridden,
             'low_stock_threshold' => $sku->low_stock_threshold,
+            'is_commissionable' => (bool) $sku->is_commissionable,
+            'commission_amount_minor' => $sku->commission_amount_minor,
         ];
 
         if ($withStockBreakdown) {
@@ -143,6 +158,7 @@ final class ProductCatalogQuery
             $data['serialized_units'] = $sku->items->map(static fn ($item): array => [
                 'id' => $item->id,
                 'imei' => $item->imei,
+                'serial_number' => $item->serial_number,
                 'shop_id' => $item->current_shop_id,
                 'condition' => $item->condition,
                 'status' => $item->status,

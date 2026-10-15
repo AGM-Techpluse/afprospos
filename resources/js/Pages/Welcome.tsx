@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { Link } from '@inertiajs/react'
+import { paletteVars, WelcomePalette } from '../lib/welcomePalette'
 
-export default function Welcome() {
+export default function Welcome({ palette }: { palette: WelcomePalette }) {
     useEffect(() => {
         // Inject Bootstrap Icons stylesheet
         if (!document.getElementById('bootstrap-icons')) {
@@ -81,14 +82,8 @@ export default function Welcome() {
             <style>{`
                 /* --- Design Tokens (Landing Page) --- */
                 .lp-wrap {
-                    --lp-page-start: #CFE3FF;
-                    --lp-page-mid: #EAF3FF;
-                    --lp-page-end: #FFFFFF;
-                    --lp-text: #1B1F27;
-                    --lp-text2: #636B78;
-                    --lp-blue: #2F6FED;
-                    --lp-shadow-soft: 0 2px 10px rgba(16,20,30,.08);
-                    --lp-shadow-strong: 0 10px 30px rgba(16,20,30,.16);
+                    --lp-shadow-soft: 0 2px 10px color-mix(in srgb, var(--lp-text) 8%, transparent);
+                    --lp-shadow-strong: 0 10px 30px color-mix(in srgb, var(--lp-text) 16%, transparent);
                     --lp-radius-hero: 22px;
                     --lp-radius-pill: 100px;
                     --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
@@ -125,12 +120,12 @@ export default function Welcome() {
                 }
                 .lp-btn-primary {
                     background-color: var(--lp-blue);
-                    color: #FFFFFF;
+                    color: var(--lp-on-accent);
                     box-shadow: var(--lp-shadow-strong);
                 }
                 .lp-btn-primary:hover { transform: translateY(-2px) scale(0.98); }
                 .lp-btn-secondary {
-                    background-color: #FFFFFF;
+                    background-color: var(--lp-surface);
                     color: var(--lp-text);
                     box-shadow: var(--lp-shadow-soft);
                 }
@@ -154,7 +149,7 @@ export default function Welcome() {
                     font-family: var(--font-display);
                     font-weight: 800;
                     font-size: 24px;
-                    color: #FFFFFF;
+                    color: var(--lp-on-accent);
                     display: flex;
                     align-items: center;
                     gap: 8px;
@@ -164,10 +159,10 @@ export default function Welcome() {
                 #main-header nav a {
                     font-weight: 600;
                     font-size: 15px;
-                    color: rgba(255,255,255,0.9);
+                    color: color-mix(in srgb, var(--lp-on-accent) 90%, transparent);
                     transition: color 0.2s;
                 }
-                #main-header nav a:hover { color: #FFFFFF; }
+                #main-header nav a:hover { color: var(--lp-on-accent); }
 
                 /* Scrolled state */
                 #main-header.scrolled {
@@ -176,9 +171,9 @@ export default function Welcome() {
                     padding: 10px 18px;
                     transform: translateX(-50%);
                     border-radius: 999px;
-                    background: rgba(255,255,255,0.9);
+                    background: color-mix(in srgb, var(--lp-surface) 90%, transparent);
                     backdrop-filter: blur(12px);
-                    box-shadow: 0 12px 34px rgba(16,20,30,.14);
+                    box-shadow: 0 12px 34px color-mix(in srgb, var(--lp-text) 14%, transparent);
                 }
                 #main-header.scrolled .lp-logo { font-size: 20px; color: var(--lp-blue); }
                 #main-header.scrolled nav a { font-size: 14px; color: var(--lp-text2); }
@@ -194,7 +189,7 @@ export default function Welcome() {
                     margin-inline: auto;
                     border-radius: var(--hero-radius, 0px);
                     overflow: hidden;
-                    background-color: #000;
+                    background-color: var(--lp-ink);
                     display: flex;
                     align-items: center;
                     transition: width .08s linear, border-radius .08s linear;
@@ -202,7 +197,7 @@ export default function Welcome() {
                 .lp-hero-overlay {
                     position: absolute;
                     inset: 0;
-                    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.7) 100%);
+                    background: linear-gradient(to bottom, color-mix(in srgb, var(--lp-ink) 60%, transparent) 0%, color-mix(in srgb, var(--lp-ink) 30%, transparent) 40%, color-mix(in srgb, var(--lp-ink) 70%, transparent) 100%);
                     z-index: 2;
                 }
                 .lp-hero-slide {
@@ -230,7 +225,7 @@ export default function Welcome() {
                     position: relative;
                     z-index: 4;
                     max-width: 600px;
-                    color: #FFFFFF;
+                    color: var(--lp-on-accent);
                     margin-top: 60px;
                 }
                 .lp-hero-content h1 { font-size: 56px; margin-bottom: 20px; }
@@ -263,13 +258,13 @@ export default function Welcome() {
                     width: 180px; height: 180px;
                     right: -78px; bottom: -92px;
                     border-radius: 50%;
-                    background: rgba(255,255,255,.14);
+                    background: color-mix(in srgb, var(--lp-on-accent) 14%, transparent);
                     pointer-events: none;
                 }
                 .lp-service-card:hover { transform: translateY(-6px) rotate(-1deg); border-radius: 32px 20px 32px 20px; }
                 .lp-service-icon {
                     width: 56px; height: 56px;
-                    background: rgba(255,255,255,.7);
+                    background: color-mix(in srgb, var(--lp-on-accent) 70%, transparent);
                     border-radius: 16px;
                     display: flex; align-items: center; justify-content: center;
                     font-size: 24px;
@@ -288,15 +283,15 @@ export default function Welcome() {
                 }
                 .lp-service-link i { font-size: 17px; transition: transform .2s ease; }
                 .lp-service-card:hover .lp-service-link i { transform: translateX(4px); }
-                .lp-service-card:nth-child(1) { background: #A0ED25; color: #14200A; }
-                .lp-service-card:nth-child(2) { background: #10192E; color: #FFFFFF; }
-                .lp-service-card:nth-child(3) { background: #2F6FED; color: #FFFFFF; }
+                .lp-service-card:nth-child(1) { background: var(--lp-lime); color: var(--lp-on-lime); }
+                .lp-service-card:nth-child(2) { background: var(--lp-navy); color: var(--lp-on-accent); }
+                .lp-service-card:nth-child(3) { background: var(--lp-blue); color: var(--lp-on-accent); }
 
                 /* --- Feature Split --- */
                 .lp-feature-split {
                     display: flex; align-items: center; gap: 64px;
                     padding: 80px 5%;
-                    background: #E8EDF3;
+                    background: var(--lp-panel);
                     margin: 120px 5% 120px;
                     border-radius: var(--lp-radius-hero);
                     box-shadow: var(--lp-shadow-soft);
@@ -305,25 +300,25 @@ export default function Welcome() {
                 .lp-feature-split::before {
                     content: "";
                     position: absolute; inset: 0;
-                    background: linear-gradient(115deg, #2F6FED 0%, #2F6FED 40%, #E8EDF3 60%, #E8EDF3 100%);
+                    background: linear-gradient(115deg, var(--lp-blue) 0%, var(--lp-blue) 40%, var(--lp-panel) 60%, var(--lp-panel) 100%);
                     border-radius: inherit; z-index: -1;
                 }
-                .lp-feature-text { flex: 1; color: #FFFFFF; }
+                .lp-feature-text { flex: 1; color: var(--lp-on-accent); }
                 .lp-feature-text h2 { font-size: 32px; margin-bottom: 24px; }
-                .lp-feature-text p { color: rgba(255,255,255,.84); margin-bottom: 24px; font-size: 16px; }
+                .lp-feature-text p { color: color-mix(in srgb, var(--lp-on-accent) 84%, transparent); margin-bottom: 24px; font-size: 16px; }
                 .lp-feature-list { list-style: none; margin-bottom: 32px; padding: 0; }
                 .lp-feature-list li { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-weight: 500; }
-                .lp-feature-list li i { color: #FFFFFF; font-size: 20px; }
-                .lp-feature-text .lp-btn-secondary { color: var(--lp-text); background: #FFFFFF; }
+                .lp-feature-list li i { color: var(--lp-on-accent); font-size: 20px; }
+                .lp-feature-text .lp-btn-secondary { color: var(--lp-text); background: var(--lp-surface); }
                 .lp-feature-image { flex: 1; display: flex; justify-content: center; align-items: center; }
                 .lp-feature-image img {
                     width: 100%; max-width: 320px;
                     aspect-ratio: 9 / 19.5; object-fit: cover;
-                    border-radius: 36px; border: 10px solid #1B1F27;
+                    border-radius: 36px; border: 10px solid var(--lp-text);
                     box-shadow: var(--lp-shadow-strong);
                     margin-top: -140px; margin-bottom: -140px; margin-right: -40px;
                     transform: rotate(18deg);
-                    filter: drop-shadow(19px 30px 10px rgba(9,11,17,0.28));
+                    filter: drop-shadow(19px 30px 10px color-mix(in srgb, var(--lp-text) 28%, transparent));
                     z-index: 10;
                 }
 
@@ -333,7 +328,7 @@ export default function Welcome() {
                 .lp-bottom-cta p { color: var(--lp-text2); font-size: 18px; margin-bottom: 40px; }
 
                 /* --- Footer --- */
-                .lp-footer { background: #FFFFFF; padding: 80px 5% 40px; border-top: 1px solid #EEF0F3; }
+                .lp-footer { background: var(--lp-surface); padding: 80px 5% 40px; border-top: 1px solid var(--lp-border); }
                 .lp-footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 48px; margin-bottom: 64px; }
                 .lp-footer-brand p { color: var(--lp-text2); margin-top: 16px; max-width: 300px; }
                 .lp-footer-heading { font-family: var(--font-display); font-size: 18px; margin-bottom: 24px; color: var(--lp-text); }
@@ -343,7 +338,7 @@ export default function Welcome() {
                 .lp-footer-links a:hover { color: var(--lp-blue); }
                 .lp-contact-info li { display: flex; gap: 12px; color: var(--lp-text2); margin-bottom: 16px; }
                 .lp-contact-info i { color: var(--lp-blue); font-size: 20px; }
-                .lp-footer-bottom { text-align: center; padding-top: 32px; border-top: 1px solid #EEF0F3; color: var(--lp-text2); font-size: 14px; }
+                .lp-footer-bottom { text-align: center; padding-top: 32px; border-top: 1px solid var(--lp-border); color: var(--lp-text2); font-size: 14px; }
 
                 /* --- Responsive --- */
                 @media (max-width: 900px) {
@@ -353,9 +348,9 @@ export default function Welcome() {
                         margin: 140px 5% 60px;
                         gap: 32px;
                     }
-                    .lp-feature-split::before { background: linear-gradient(180deg, #2F6FED 0%, #2F6FED 40%, #E8EDF3 60%, #E8EDF3 100%); }
+                    .lp-feature-split::before { background: linear-gradient(180deg, var(--lp-blue) 0%, var(--lp-blue) 40%, var(--lp-panel) 60%, var(--lp-panel) 100%); }
                     .lp-feature-text { color: var(--lp-text); }
-                    .lp-feature-text h2 { color: #FFFFFF; }
+                    .lp-feature-text h2 { color: var(--lp-on-accent); }
                     .lp-feature-text p { color: var(--lp-text2); }
                     .lp-feature-list li i { color: var(--lp-blue); }
                     .lp-feature-image img { margin-right: 0; margin-bottom: 0; margin-top: -110px; transform: rotate(12deg); max-width: 220px; }
@@ -373,7 +368,7 @@ export default function Welcome() {
                 }
             `}</style>
 
-            <div className="lp-wrap">
+            <div className="lp-wrap" style={paletteVars(palette)}>
                 {/* Header */}
                 <header id="main-header">
                     <div className="lp-logo">

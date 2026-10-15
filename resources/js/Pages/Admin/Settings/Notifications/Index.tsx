@@ -17,6 +17,7 @@ interface FailedNotification {
 
 interface NotificationSettingsProps {
     resendConfigured: boolean;
+    fallbackConfigured: boolean;
     defaultMailer: string;
     mandatoryCategories: string[];
     maxDeliveryAttempts: number;
@@ -25,6 +26,7 @@ interface NotificationSettingsProps {
 
 export default function NotificationSettingsIndex({
     resendConfigured,
+    fallbackConfigured,
     defaultMailer,
     mandatoryCategories,
     maxDeliveryAttempts,
@@ -52,7 +54,9 @@ export default function NotificationSettingsIndex({
                     </div>
                     <div className="flex items-center justify-between py-2">
                         <span className="text-sm text-admin-text">Fallback mailer ({defaultMailer})</span>
-                        <AdminBadge status="success">Always available</AdminBadge>
+                        <AdminBadge status={fallbackConfigured ? 'success' : 'warning'}>
+                            {fallbackConfigured ? 'Configured' : 'Not configured — nothing is sent'}
+                        </AdminBadge>
                     </div>
                     <p className="text-xs text-admin-text2 mt-3">
                         To set or change the Resend API key, update <code className="bg-admin-hover px-1 rounded">RESEND_API_KEY</code> in

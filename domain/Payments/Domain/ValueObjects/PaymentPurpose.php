@@ -9,7 +9,7 @@ use InvalidArgumentException;
 /** Finer-grained than `PayableType` alone — a `repair_job` payable is either its intake down payment or its completion settlement, and only `purpose` tells them apart. */
 final readonly class PaymentPurpose
 {
-    private const VALID = ['sale_payment', 'repair_down_payment', 'repair_final_payment'];
+    private const VALID = ['sale_payment', 'repair_down_payment', 'repair_final_payment', 'repair_diagnosis_fee'];
 
     public function __construct(public string $value)
     {

@@ -18,12 +18,18 @@ final class EloquentProductRepository implements ProductRepository
         return Product::reconstitute(new ProductId($record->id), $record->brand, $record->model, $record->category);
     }
 
-    public function findOrCreate(string $brand, string $model, string $category): ProductId
+    public function findOrCreate(string $brand, string $model, string $category, string $unit = 'pcs', string $purpose = 'sale', ?int $supplierId = null): ProductId
     {
         $record = ProductRecord::query()->firstOrCreate(
             ['brand' => $brand, 'model' => $model, 'category' => $category],
+            ['unit' => $unit, 'purpose' => $purpose, 'supplier_id' => $supplierId],
         );
 
         return new ProductId($record->id);
+    }
+
+    public function setImagePath(ProductId $id, string $imagePath): void
+    {
+        ProductRecord::query()->whereKey($id->value)->update(['image_path' => $imagePath]);
     }
 }

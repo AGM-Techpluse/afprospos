@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -14,7 +14,7 @@ import { formatNaira } from '../../../lib/money';
 import POSCart, { CheckoutItemView } from '../../../Features/Sales/POSCart';
 import CheckoutExpiryTimer from '../../../Features/Sales/CheckoutExpiryTimer';
 
-type Shop = { id: number; name: string; sku_prefix_code: string };
+type Shop = { id: number; name: string; sku_prefix_code: string; is_warehouse?: boolean };
 
 type CheckoutAdjustment = {
     id: number;
@@ -63,6 +63,8 @@ interface CheckoutPageProps {
     checkout: CheckoutView | null;
     pendingPaymentTransaction: PendingPaymentTransaction | null;
     shops: Shop[];
+    productCategories: string[];
+    productBrands: string[];
     checkoutReservationMinutes: number;
     recentSales: RecentSale[];
     todaysSales: TodaysSales | null;
@@ -76,6 +78,8 @@ const DISCOUNT_TYPES = [
     { value: 'store_credit', label: 'Store credit' },
 ];
 
+const ADJUSTMENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(DISCOUNT_TYPES.map((t) => [t.value, t.label]));
+
 const PAYMENT_METHODS = [
     { value: 'cash', label: 'Cash' },
     { value: 'pos_terminal', label: 'POS terminal' },
@@ -84,8 +88,10 @@ const PAYMENT_METHODS = [
 ];
 
 function NewCheckoutForm({ shops }: { shops: Shop[] }) {
+    // A warehouse holds stock for transfer only — sales happen in a shop, so it never appears here.
+    const sellableShops = shops.filter((shop) => !shop.is_warehouse);
     const { data, setData, post, processing, errors } = useForm({
-        shop_id: shops[0]?.id.toString() ?? '',
+        shop_id: sellableShops[0]?.id.toString() ?? '',
         customer_id: '',
     });
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
@@ -98,7 +104,7 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
     return (
         <form onSubmit={submit}>
             <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)} error={errors.shop_id}>
-                {shops.map((shop) => (
+                {sellableShops.map((shop) => (
                     <option key={shop.id} value={shop.id}>
                         {shop.name}
                     </option>
@@ -159,8 +165,16 @@ export default function SalesCheckout({
     recentSales,
     todaysSales,
     canApproveDiscount,
+    productCategories,
+    productBrands,
 }: CheckoutPageProps) {
     const confirm = useConfirm();
+    // Multiple staff act on the same checkout from different desks (cashier builds
+    // the cart, Shop Owner approves a discount, customer pays by bank transfer) —
+    // poll just these props so every side sees the others' updates without a
+    // manual refresh (which would also trip the "leave this checkout?" guard
+    // below). Inertia pauses this automatically while the tab isn't visible.
+    usePoll(5000, { only: ['checkout', 'pendingPaymentTransaction'] });
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExpired, setIsExpired] = useState(false);
@@ -190,14 +204,17 @@ export default function SalesCheckout({
 
     // In-app navigation away (sidebar link, browser-integrated back/forward Inertia already intercepts) —
     // this page's own actions (add item, apply discount, complete, cancel) are POST/DELETE and are
-    // deliberately left alone; only GET visits are ever "leaving the page."
+    // deliberately left alone; only GET visits are ever "leaving the page." The background usePoll
+    // above is also a GET, but it's a partial reload of this same page (non-empty `only`), not a
+    // real navigation, so it's excluded here the same way Inertia's own router tells them apart
+    // internally — without this, the "leave this checkout?" prompt would fire every 5 seconds.
     useEffect(() => {
         if (itemCount === 0) return;
 
         let allowNextVisit = false;
 
         return router.on('before', (event) => {
-            if (event.detail.visit.method !== 'get' || allowNextVisit) {
+            if (event.detail.visit.method !== 'get' || event.detail.visit.only.length > 0 || allowNextVisit) {
                 allowNextVisit = false;
                 return;
             }
@@ -320,7 +337,7 @@ export default function SalesCheckout({
             source_id: parseInt(formData.source_id || '0', 10),
             amount_minor: Math.round(parseFloat(formData.amount_naira || '0') * 100),
         }));
-        discountForm.post(`/admin/sales/checkout/${checkout.id}/discount`, {
+        discountForm.post(`/admin/sales/checkout/${checkout!.id}/discount`, {
             preserveScroll: true,
             onSuccess: () => setDiscountOpen(false),
         });
@@ -339,12 +356,12 @@ export default function SalesCheckout({
             return;
         }
 
-        router.post(`/admin/sales/checkout/${checkout.id}/cancel`);
+        router.post(`/admin/sales/checkout/${checkout!.id}/cancel`);
     }
 
     function completeSale(e: FormEvent) {
         e.preventDefault();
-        completeForm.post(`/admin/sales/checkout/${checkout.id}/complete`);
+        completeForm.post(`/admin/sales/checkout/${checkout!.id}/complete`);
     }
 
     return (
@@ -370,7 +387,14 @@ export default function SalesCheckout({
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
                 <div className={`bg-admin-surface border border-admin-border rounded-admin-card p-4 h-[520px] ${closed ? 'pointer-events-none opacity-60' : ''}`}>
-                    <ProductSearch shopId={checkout.shop_id} onAdd={addItem} inlineError={inlineError} disabled={locked} />
+                    <ProductSearch
+                        shopId={checkout.shop_id}
+                        categories={productCategories}
+                        brands={productBrands}
+                        onAdd={addItem}
+                        inlineError={inlineError}
+                        disabled={locked}
+                    />
                 </div>
 
                 <div className={`bg-admin-text rounded-admin-card p-4 flex flex-col ${closed ? 'pointer-events-none opacity-60' : ''}`}>
@@ -449,7 +473,9 @@ export default function SalesCheckout({
                                 >
                                     {hasPendingDiscount ? (
                                         <div className="flex items-center justify-between gap-2">
-                                            <span>Discount pending Shop Owner approval</span>
+                                            <span>
+                                                {ADJUSTMENT_TYPE_LABELS[currentAdjustment.type] ?? 'Discount'} pending Shop Owner approval
+                                            </span>
                                             {canApproveDiscount && (
                                                 <button type="button" onClick={approveDiscount} className="font-semibold underline shrink-0">
                                                     Approve
@@ -457,7 +483,7 @@ export default function SalesCheckout({
                                             )}
                                         </div>
                                     ) : (
-                                        <span>Discount approved</span>
+                                        <span>{ADJUSTMENT_TYPE_LABELS[currentAdjustment.type] ?? 'Discount'} approved</span>
                                     )}
                                 </div>
                             )}

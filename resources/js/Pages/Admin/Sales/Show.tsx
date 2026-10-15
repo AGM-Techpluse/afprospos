@@ -8,6 +8,8 @@ type SaleItem = {
     sku_id: number;
     sku_code: string | null;
     product_name: string | null;
+    /** What tells this unit apart from a sibling variant of the same product, e.g. "Black · 128GB". */
+    variant_label: string | null;
     inventory_item_id: number | null;
     quantity: number;
     unit_price_minor: number;
@@ -73,6 +75,7 @@ export default function SalesShow({ sale }: { sale: Sale }) {
                             <tr key={index}>
                                 <td className="py-2 text-admin-text">
                                     {item.product_name ?? `SKU #${item.sku_id}`}
+                                    {item.variant_label && <span className="text-admin-text2 text-xs block">{item.variant_label}</span>}
                                     {item.inventory_item_id && <span className="text-admin-text3 text-xs block">IMEI-tracked unit</span>}
                                 </td>
                                 <td className="py-2 text-right text-admin-text">{item.quantity}</td>

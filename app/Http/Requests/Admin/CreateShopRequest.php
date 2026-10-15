@@ -21,6 +21,7 @@ final class CreateShopRequest extends FormRequest
             'address' => ['required', 'string'],
             'contact_phone' => ['required', 'string', 'max:32'],
             'contact_email' => ['required', 'email'],
+            'is_warehouse' => ['sometimes', 'boolean'],
         ];
     }
 }

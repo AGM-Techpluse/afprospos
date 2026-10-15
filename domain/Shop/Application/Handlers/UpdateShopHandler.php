@@ -36,6 +36,7 @@ final class UpdateShopHandler
                 $command->address,
                 $command->contactPhone,
                 $command->contactEmail,
+                $command->isWarehouse,
             );
 
             $this->audit->record(

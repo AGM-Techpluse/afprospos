@@ -11,5 +11,6 @@ final readonly class UpdateDeviceProblemTagCommand
         public string $label,
         public int $sortOrder,
         public int $updatedByStaffId,
+        public ?int $commissionAmountMinor = null,
     ) {}
 }

@@ -33,15 +33,18 @@ final class AddProductVariantHandler
                 shopCode: $command->shopCode,
                 category: $product->category(),
                 attributes: $command->attributes,
-                isSerialized: false,
+                isSerialized: $command->isSerialized,
                 costPriceMinor: $command->costPriceMinor,
                 markupPercent: $command->markupPercent,
                 sellingPriceMinorOverride: $command->sellingPriceMinorOverride,
                 lowStockThreshold: $command->lowStockThreshold,
                 shopId: $command->shopId,
                 condition: $command->condition,
-                initialQuantity: $command->initialQuantity,
-                initialImeis: null,
+                initialQuantity: $command->isSerialized ? null : $command->initialQuantity,
+                initialImeis: $command->isSerialized ? $command->initialImeis : null,
+                initialSerialNumbers: $command->isSerialized ? $command->initialSerialNumbers : null,
+                isCommissionable: $command->isCommissionable,
+                commissionAmountMinor: $command->commissionAmountMinor,
             );
 
             $this->audit->record(

@@ -22,6 +22,7 @@ final class InventoryItem
         private readonly InventoryItemId $id,
         private readonly SkuId $skuId,
         private readonly string $imei,
+        private readonly ?string $serialNumber,
         private ShopId $currentShopId,
         private readonly string $condition,
         private string $status,
@@ -34,6 +35,7 @@ final class InventoryItem
         InventoryItemId $id,
         SkuId $skuId,
         string $imei,
+        ?string $serialNumber,
         ShopId $currentShopId,
         string $condition,
         string $status,
@@ -41,7 +43,7 @@ final class InventoryItem
         ?int $reservedById,
         int $version,
     ): self {
-        return new self($id, $skuId, $imei, $currentShopId, $condition, $status, $reservedByType, $reservedById, $version);
+        return new self($id, $skuId, $imei, $serialNumber, $currentShopId, $condition, $status, $reservedByType, $reservedById, $version);
     }
 
     /**
@@ -129,6 +131,11 @@ final class InventoryItem
     public function imei(): string
     {
         return $this->imei;
+    }
+
+    public function serialNumber(): ?string
+    {
+        return $this->serialNumber;
     }
 
     public function currentShopId(): ShopId

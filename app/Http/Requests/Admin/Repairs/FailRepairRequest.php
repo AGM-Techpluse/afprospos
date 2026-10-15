@@ -17,6 +17,7 @@ final class FailRepairRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', 'max:500'],
+            'service_charge_minor' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

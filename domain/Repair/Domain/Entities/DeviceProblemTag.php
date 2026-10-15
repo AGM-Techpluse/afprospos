@@ -15,16 +15,17 @@ final class DeviceProblemTag
         private readonly DeviceTypeId $deviceTypeId,
         private string $label,
         private int $sortOrder,
+        private ?int $commissionAmountMinor = null,
     ) {}
 
-    public static function create(DeviceTypeId $deviceTypeId, string $label, int $sortOrder): self
+    public static function create(DeviceTypeId $deviceTypeId, string $label, int $sortOrder, ?int $commissionAmountMinor = null): self
     {
-        return new self(null, $deviceTypeId, $label, $sortOrder);
+        return new self(null, $deviceTypeId, $label, $sortOrder, $commissionAmountMinor);
     }
 
-    public static function reconstitute(DeviceProblemTagId $id, DeviceTypeId $deviceTypeId, string $label, int $sortOrder): self
+    public static function reconstitute(DeviceProblemTagId $id, DeviceTypeId $deviceTypeId, string $label, int $sortOrder, ?int $commissionAmountMinor = null): self
     {
-        return new self($id, $deviceTypeId, $label, $sortOrder);
+        return new self($id, $deviceTypeId, $label, $sortOrder, $commissionAmountMinor);
     }
 
     public function rename(string $label): void
@@ -35,6 +36,12 @@ final class DeviceProblemTag
     public function reorder(int $sortOrder): void
     {
         $this->sortOrder = $sortOrder;
+    }
+
+    /** The flat technician commission earned when a fault tied to this tag is ticked as actually fixed. Null means not commissionable. */
+    public function setCommissionAmount(?int $amountMinor): void
+    {
+        $this->commissionAmountMinor = $amountMinor;
     }
 
     public function id(): ?DeviceProblemTagId
@@ -55,5 +62,10 @@ final class DeviceProblemTag
     public function sortOrder(): int
     {
         return $this->sortOrder;
+    }
+
+    public function commissionAmountMinor(): ?int
+    {
+        return $this->commissionAmountMinor;
     }
 }

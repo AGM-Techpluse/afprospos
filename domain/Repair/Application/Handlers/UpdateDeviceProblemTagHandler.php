@@ -24,10 +24,11 @@ final class UpdateDeviceProblemTagHandler
         $this->atomic->run(function () use ($command): void {
             $id = new DeviceProblemTagId($command->deviceProblemTagId);
             $tag = $this->problemTags->get($id);
-            $before = ['label' => $tag->label()];
+            $before = ['label' => $tag->label(), 'commission_amount_minor' => $tag->commissionAmountMinor()];
 
             $tag->rename($command->label);
             $tag->reorder($command->sortOrder);
+            $tag->setCommissionAmount($command->commissionAmountMinor);
             $this->problemTags->save($tag);
 
             $this->audit->record(
@@ -38,7 +39,7 @@ final class UpdateDeviceProblemTagHandler
                 subjectType: 'device_problem_tag',
                 subjectId: $id->value,
                 beforeState: $before,
-                afterState: ['label' => $command->label],
+                afterState: ['label' => $command->label, 'commission_amount_minor' => $command->commissionAmountMinor],
             );
         });
     }

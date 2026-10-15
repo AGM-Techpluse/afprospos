@@ -19,6 +19,8 @@ type CollectionCaseDetail = {
     id: number;
     source_type: string;
     source_id: number;
+    shop_id: number;
+    originating_shop_id: number;
     context: string;
     status: string;
     collection_deadline_at: string;
@@ -28,8 +30,12 @@ type CollectionCaseDetail = {
     events: CaseEvent[];
 };
 
+type Shop = { id: number; name: string };
+
 interface CollectionShowProps {
     collectionCase: CollectionCaseDetail;
+    shops: Shop[];
+    canTransferCollection: boolean;
 }
 
 const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
@@ -39,12 +45,17 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     resolved: 'success',
 };
 
-export default function CollectionShow({ collectionCase: item }: CollectionShowProps) {
+export default function CollectionShow({ collectionCase: item, shops, canTransferCollection }: CollectionShowProps) {
     const confirm = useConfirm();
     const [processing, setProcessing] = useState(false);
     const [note, setNote] = useState('');
     const [overrideReason, setOverrideReason] = useState('');
+    const [transferShopId, setTransferShopId] = useState('');
+    const [transferReason, setTransferReason] = useState('');
+    const [deadlineAt, setDeadlineAt] = useState(item.collection_deadline_at.slice(0, 16));
+    const [deadlineReason, setDeadlineReason] = useState('');
     const hasOverride = item.events.some((event) => event.event_type === 'administrative_resolution');
+    const transferTargetShops = shops.filter((shop) => shop.id !== item.shop_id);
 
     function post(url: string, data: Record<string, string> = {}) {
         setProcessing(true);
@@ -59,6 +70,17 @@ export default function CollectionShow({ collectionCase: item }: CollectionShowP
     function recordOverride(e: FormEvent) {
         e.preventDefault();
         post(`/admin/collection/${item.id}/override`, { reason: overrideReason });
+    }
+
+    function transferCollection(e: FormEvent) {
+        e.preventDefault();
+        if (!transferShopId) return;
+        post(`/admin/collection/${item.id}/transfer`, { target_shop_id: transferShopId, reason: transferReason });
+    }
+
+    function updateDeadline(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/collection/${item.id}/extend`, { new_deadline_at: deadlineAt, reason: deadlineReason || 'Deadline updated' });
     }
 
     async function release() {
@@ -108,10 +130,68 @@ export default function CollectionShow({ collectionCase: item }: CollectionShowP
                         Deadline: {new Date(item.collection_deadline_at).toLocaleString()}
                         <br />
                         Accrued storage fee: {formatNaira(item.accrued_storage_fee_minor)}
+                        <br />
+                        Pickup shop: {shops.find((shop) => shop.id === item.shop_id)?.name ?? `Shop #${item.shop_id}`}
+                        <br />
+                        Originating shop: {shops.find((shop) => shop.id === item.originating_shop_id)?.name ?? `Shop #${item.originating_shop_id}`}
                     </div>
 
                     {item.status !== 'resolved' && (
                         <>
+                            {canTransferCollection && (
+                                <form onSubmit={transferCollection} className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+                                    <label className="text-xs font-semibold text-admin-text">Transfer pickup</label>
+                                    {transferTargetShops.length === 0 ? (
+                                        <span className="text-xs text-admin-text2">No other active shop is available for pickup transfer.</span>
+                                    ) : (
+                                        <>
+                                            <select
+                                                value={transferShopId}
+                                                onChange={(e) => setTransferShopId(e.target.value)}
+                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                            >
+                                                <option value="">Select pickup shop...</option>
+                                                {transferTargetShops.map((shop) => (
+                                                    <option key={shop.id} value={shop.id}>
+                                                        {shop.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <textarea
+                                                value={transferReason}
+                                                onChange={(e) => setTransferReason(e.target.value)}
+                                                rows={2}
+                                                placeholder="Reason (optional)"
+                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                            />
+                                            <AdminButton type="submit" variant="neutral" isLoading={processing} disabled={!transferShopId}>
+                                                Transfer pickup
+                                            </AdminButton>
+                                        </>
+                                    )}
+                                </form>
+                            )}
+
+                            <form onSubmit={updateDeadline} className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+                                <label className="text-xs font-semibold text-admin-text">Pickup deadline</label>
+                                <input
+                                    type="datetime-local"
+                                    value={deadlineAt}
+                                    onChange={(e) => setDeadlineAt(e.target.value)}
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                />
+                                <textarea
+                                    value={deadlineReason}
+                                    onChange={(e) => setDeadlineReason(e.target.value)}
+                                    rows={2}
+                                    placeholder="Reason (optional)"
+                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                />
+                                <AdminButton type="submit" variant="neutral" isLoading={processing}>
+                                    Update deadline
+                                </AdminButton>
+                            </form>
+
                             <form onSubmit={notify} className="flex flex-col gap-2">
                                 <label className="text-xs font-semibold text-admin-text">Mark customer notified</label>
                                 <textarea

@@ -2,14 +2,15 @@ import { FormEvent, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../../Components/Icons/Icon';
 
-type DeviceBrand = { id: number; name: string };
+type DeviceModel = { id: number; name: string };
+type DeviceBrand = { id: number; name: string; models: DeviceModel[] };
 type DeviceProblemTag = { id: number; label: string };
 export type DeviceType = { id: number; label: string; icon: string; brands: DeviceBrand[]; problem_tags: DeviceProblemTag[] };
 
 interface DeviceTypePickerProps {
     deviceTypes: DeviceType[];
     selectedProblemTagIds: number[];
-    onSelectBrand: (deviceType: string, brand: string) => void;
+    onSelectBrand: (deviceType: string, brand: string, model?: string, modelId?: number) => void;
     onToggleProblemTag: (id: number) => void;
 }
 
@@ -97,6 +98,7 @@ function QuickAddInline({ placeholder, onSubmit }: { placeholder: string; onSubm
  */
 export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, onSelectBrand, onToggleProblemTag }: DeviceTypePickerProps) {
     const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+    const [selectedBrand, setSelectedBrand] = useState<DeviceBrand | null>(null);
     const selectedType = deviceTypes.find((type) => type.id === selectedTypeId) ?? null;
 
     function refresh() {
@@ -132,7 +134,10 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
         <div>
             <button
                 type="button"
-                onClick={() => setSelectedTypeId(null)}
+                onClick={() => {
+                    setSelectedBrand(null);
+                    setSelectedTypeId(null);
+                }}
                 className="flex items-center gap-1 text-xs font-semibold text-admin-blue mb-3"
             >
                 <Icon name="chevron-left" />
@@ -145,7 +150,10 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                     <button
                         key={brand.id}
                         type="button"
-                        onClick={() => onSelectBrand(selectedType.label, brand.name)}
+                        onClick={() => {
+                            setSelectedBrand(brand);
+                            onSelectBrand(selectedType.label, brand.name);
+                        }}
                         className="bg-admin-surface border border-admin-border rounded-admin-card p-3 text-sm font-semibold text-admin-text hover:border-admin-blue hover:bg-admin-blue-soft transition-colors"
                     >
                         {brand.name}
@@ -171,6 +179,38 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                     }
                 />
             </div>
+
+            {selectedBrand !== null && (
+                <div className="mb-5">
+                    <h3 className="text-xs font-semibold text-admin-text2 mb-2">
+                        Models for {selectedBrand.name} (optional)
+                    </h3>
+                    {selectedBrand.models.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                            {selectedBrand.models.map((model) => (
+                                <button
+                                    key={model.id}
+                                    type="button"
+                                    onClick={() => onSelectBrand(selectedType.label, selectedBrand.name, model.name, model.id)}
+                                    className="text-xs font-semibold rounded-admin-badge px-2.5 py-1 border bg-white text-admin-text2 border-admin-border hover:border-admin-blue"
+                                >
+                                    {model.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <QuickAddInline
+                        placeholder="Add a model"
+                        onSubmit={(name) =>
+                            router.post(
+                                '/admin/settings/device-catalog/models',
+                                { device_brand_id: selectedBrand.id, name },
+                                { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: refresh },
+                            )
+                        }
+                    />
+                </div>
+            )}
 
             {selectedType.problem_tags.length > 0 && (
                 <>

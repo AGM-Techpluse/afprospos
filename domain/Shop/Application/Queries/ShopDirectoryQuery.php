@@ -61,7 +61,7 @@ final class ShopDirectoryQuery
         return $shop !== null ? self::toArray($shop) : null;
     }
 
-    /** @return array{id:int, name:string, sku_prefix_code:string, address:string, contact_phone:string, contact_email:string, status:string} */
+    /** @return array{id:int, name:string, sku_prefix_code:string, address:string, contact_phone:string, contact_email:string, status:string, is_warehouse:bool} */
     private static function toArray(ShopRecord $shop): array
     {
         return [
@@ -72,6 +72,7 @@ final class ShopDirectoryQuery
             'contact_phone' => $shop->contact_phone,
             'contact_email' => $shop->contact_email,
             'status' => $shop->status,
+            'is_warehouse' => (bool) $shop->is_warehouse,
         ];
     }
 }

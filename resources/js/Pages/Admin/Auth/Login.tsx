@@ -6,11 +6,14 @@ import AdminAuthShell from '../../../Components/Admin/AdminAuthShell';
 import AlertBanner from '../../../Components/Feedback/AlertBanner';
 
 export default function StaffLogin() {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors: formErrors } = useForm({
         email: '',
         password: '',
         remember: false,
     });
+    // `auth` is a general, non-field-specific failure the server returns
+    // outside the declared form fields (e.g. "these credentials don't match").
+    const errors = formErrors as Record<string, string | undefined>;
     
     const { app_name, app_logo } = usePage().props as any;
 

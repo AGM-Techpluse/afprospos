@@ -347,6 +347,34 @@
   --ui-skeleton-highlight: #FFFFFF;
 }
 
+/* ---------- Hand-written escape hatch for the ui- semantic layer ----------
+   The equivalent Tailwind utilities (bg-ui-surface, text-ui-danger, and so
+   on, normally generated from the color-ui- theme tokens in app.css) proved
+   unreliable to build correctly in this environment: the compiled output
+   sometimes ends up missing rules for these exact classes even though every
+   ui- and color-ui- variable above resolves correctly on its own. These
+   rules reference the same already-correct variables directly and are
+   deliberately left outside any layer block, so they always beat anything
+   (or nothing) the generated utilities layer produces for the same
+   selector, regardless of source order. Add a rule here for any ui- class
+   a component still uses instead of trying to coax Tailwind into
+   generating it. */
+.bg-ui-overlay { background-color: var(--ui-overlay); }
+.bg-ui-surface { background-color: var(--ui-surface); }
+.bg-ui-surface\/80 { background-color: color-mix(in oklab, var(--ui-surface) 80%, transparent); }
+.bg-ui-border { background-color: var(--ui-border); }
+.bg-ui-info-soft { background-color: var(--ui-info-soft); }
+.bg-ui-success-soft { background-color: var(--ui-success-soft); }
+.bg-ui-warning-soft { background-color: var(--ui-warning-soft); }
+.bg-ui-danger-soft { background-color: var(--ui-danger-soft); }
+.text-ui-text { color: var(--ui-text); }
+.text-ui-text-secondary { color: var(--ui-text-secondary); }
+.text-ui-info { color: var(--ui-info); }
+.text-ui-success { color: var(--ui-success); }
+.text-ui-warning-text { color: var(--ui-warning-text); }
+.text-ui-danger { color: var(--ui-danger); }
+.shadow-ui-modal { box-shadow: var(--ui-shadow-modal); }
+
 /* ---------- Mobile typography aliases ---------- */
 @media (max-width: 639px) {
   :root {

@@ -12,7 +12,7 @@ final readonly class CreateRepairJobCommand
      */
     public function __construct(
         public int $shopId,
-        public int $customerId,
+        public ?int $customerId,
         public string $deviceMake,
         public string $deviceModel,
         public ?string $reportedIssue,
@@ -20,7 +20,7 @@ final readonly class CreateRepairJobCommand
         public string $deviceLockType,
         public ?string $deviceLockValue,
         public array $problemTagIds,
-        public int $labourChargeMinor,
+        public ?int $labourChargeMinor,
         public int $createdByStaffId,
     ) {}
 }

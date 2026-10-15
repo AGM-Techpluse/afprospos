@@ -19,5 +19,10 @@ final readonly class CreateProductWithVariantsCommand
         public string $condition,
         public array $variants,
         public int $createdByStaffId,
+        public string $unit = 'pcs',
+        public string $purpose = 'sale',
+        public ?int $supplierId = null,
+        public bool $isSerialized = false,
+        public ?string $imagePath = null,
     ) {}
 }

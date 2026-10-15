@@ -1,0 +1,117 @@
+brand,model,category,condition,cost_price_minor,markup_percent,quantity,imei,low_stock_threshold,unit,purpose,supplier,color,storage,compatibility
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600001,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600002,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600003,2,pcs,sale,,Black,256GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600004,2,pcs,sale,,Blue,128GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600005,2,pcs,sale,,Blue,256GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600006,2,pcs,sale,,Blue,256GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600007,2,pcs,sale,,Pink,128GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600008,2,pcs,sale,,Pink,128GB,
+Apple,"iPhone 15",Phones,new,650000,20,,356938035600009,2,pcs,sale,,Pink,256GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600010,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600011,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600012,2,pcs,sale,,Black,256GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600013,2,pcs,sale,,Purple,128GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600014,2,pcs,sale,,Purple,256GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600015,2,pcs,sale,,Purple,256GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600016,2,pcs,sale,,Midnight,128GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600017,2,pcs,sale,,Midnight,128GB,
+Apple,"iPhone 14",Phones,new,520000,20,,356938035600018,2,pcs,sale,,Midnight,256GB,
+Apple,"iPhone 13",Phones,new,380000,20,,356938035600019,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 13",Phones,new,380000,20,,356938035600020,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 13",Phones,new,380000,20,,356938035600021,2,pcs,sale,,Green,128GB,
+Apple,"iPhone 13",Phones,new,380000,20,,356938035600022,2,pcs,sale,,White,128GB,
+Apple,"iPhone 13",Phones,new,380000,20,,356938035600023,2,pcs,sale,,White,128GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600024,2,pcs,sale,,Black,64GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600025,2,pcs,sale,,Black,64GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600026,2,pcs,sale,,Black,128GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600027,2,pcs,sale,,White,64GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600028,2,pcs,sale,,White,128GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600029,2,pcs,sale,,White,128GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600030,2,pcs,sale,,Blue,64GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600031,2,pcs,sale,,Blue,64GB,
+Apple,"iPhone 12",Phones,new,300000,20,,356938035600032,2,pcs,sale,,Blue,128GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600033,2,pcs,sale,,Black,256GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600034,2,pcs,sale,,Black,256GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600035,2,pcs,sale,,Black,512GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600036,2,pcs,sale,,Green,256GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600037,2,pcs,sale,,Green,512GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600038,2,pcs,sale,,Green,512GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600039,2,pcs,sale,,Cream,256GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600040,2,pcs,sale,,Cream,256GB,
+Samsung,"Galaxy S23 Ultra",Phones,new,600000,20,,356938035600041,2,pcs,sale,,Cream,512GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600042,2,pcs,sale,,"Awesome Black",128GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600043,2,pcs,sale,,"Awesome Black",128GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600044,2,pcs,sale,,"Awesome Black",256GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600045,2,pcs,sale,,"Awesome White",128GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600046,2,pcs,sale,,"Awesome White",256GB,
+Samsung,"Galaxy A54",Phones,new,240000,20,,356938035600047,2,pcs,sale,,"Awesome White",256GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600048,2,pcs,sale,,Black,64GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600049,2,pcs,sale,,Black,64GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600050,2,pcs,sale,,Black,128GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600051,2,pcs,sale,,"Light Green",64GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600052,2,pcs,sale,,"Light Green",128GB,
+Samsung,"Galaxy A14",Phones,new,115000,20,,356938035600053,2,pcs,sale,,"Light Green",128GB,
+Tecno,"Camon 20",Phones,new,120000,20,,356938035600054,2,pcs,sale,,Black,256GB,
+Tecno,"Camon 20",Phones,new,120000,20,,356938035600055,2,pcs,sale,,Black,256GB,
+Tecno,"Camon 20",Phones,new,120000,20,,356938035600056,2,pcs,sale,,Gold,256GB,
+Infinix,"Note 30",Phones,new,135000,20,,356938035600057,2,pcs,sale,,Black,256GB,
+Infinix,"Note 30",Phones,new,135000,20,,356938035600058,2,pcs,sale,,Black,256GB,
+Infinix,"Note 30",Phones,new,135000,20,,356938035600059,2,pcs,sale,,Blue,256GB,
+Xiaomi,"Redmi Note 12",Phones,new,150000,20,,356938035600060,2,pcs,sale,,"Onyx Gray",128GB,
+Xiaomi,"Redmi Note 12",Phones,new,150000,20,,356938035600061,2,pcs,sale,,"Onyx Gray",128GB,
+Xiaomi,"Redmi Note 12",Phones,new,150000,20,,356938035600062,2,pcs,sale,,"Ice Blue",128GB,
+Google,"Pixel 7",Phones,new,360000,20,,356938035600063,2,pcs,sale,,Obsidian,128GB,
+Google,"Pixel 7",Phones,new,360000,20,,356938035600064,2,pcs,sale,,Obsidian,128GB,
+Google,"Pixel 7",Phones,new,360000,20,,356938035600065,2,pcs,sale,,Snow,128GB,
+Nokia,G42,Phones,new,98000,20,,356938035600066,2,pcs,sale,,Purple,128GB,
+Nokia,G42,Phones,new,98000,20,,356938035600067,2,pcs,sale,,Purple,128GB,
+Nokia,G42,Phones,new,98000,20,,356938035600068,2,pcs,sale,,Grey,128GB,
+Apple,"iPhone 13",Phones,used_grade_a,330000,15,,356938035600069,1,pcs,sale,,Black,128GB,
+Apple,"iPhone 13",Phones,used_grade_b,330000,15,,356938035600070,1,pcs,sale,,Black,128GB,
+Apple,"iPhone 13",Phones,used_grade_a,330000,15,,356938035600071,1,pcs,sale,,Black,128GB,
+Samsung,"Galaxy A54",Phones,used_grade_a,200000,15,,356938035600072,1,pcs,sale,,"Awesome Black",128GB,
+Samsung,"Galaxy A54",Phones,used_grade_b,200000,15,,356938035600073,1,pcs,sale,,"Awesome Black",128GB,
+Samsung,"Galaxy A54",Phones,used_grade_a,200000,15,,356938035600074,1,pcs,sale,,"Awesome Black",128GB,
+Tecno,"Camon 20",Phones,used_grade_a,95000,15,,356938035600075,1,pcs,sale,,Gold,256GB,
+Tecno,"Camon 20",Phones,used_grade_b,95000,15,,356938035600076,1,pcs,sale,,Gold,256GB,
+Tecno,"Camon 20",Phones,used_grade_a,95000,15,,356938035600077,1,pcs,sale,,Gold,256GB,
+Apple,"iPad 10th Gen",Tablets,new,420000,18,,356938035600078,1,pcs,sale,,Blue,64GB,
+Apple,"iPad 10th Gen",Tablets,new,420000,18,,356938035600079,1,pcs,sale,,Blue,256GB,
+Apple,"iPad 10th Gen",Tablets,new,420000,18,,356938035600080,1,pcs,sale,,Silver,64GB,
+Apple,"iPad 10th Gen",Tablets,new,420000,18,,356938035600081,1,pcs,sale,,Silver,256GB,
+Samsung,"Galaxy Tab A9",Tablets,new,130000,18,,356938035600082,1,pcs,sale,,Graphite,64GB,
+Samsung,"Galaxy Tab A9",Tablets,new,130000,18,,356938035600083,1,pcs,sale,,Silver,64GB,
+Lenovo,"Tab M10",Tablets,new,110000,18,,356938035600084,1,pcs,sale,,Grey,32GB,
+Anker,"PowerCore 10000",Accessories,new,15000,25,34,,20,pcs,sale,,Black,,
+Anker,"PowerCore 10000",Accessories,new,15000,25,13,,20,pcs,sale,,White,,
+Baseus,"Ultra-Fast Charger 20W",Accessories,new,9000,25,15,,25,pcs,sale,,White,,"iPhone 8 and above"
+Baseus,"Ultra-Fast Charger 20W",Accessories,new,9000,25,32,,25,pcs,sale,,Black,,"iPhone 8 and above"
+Samsung,"USB-C Cable 1m",Accessories,new,2500,25,15,,40,pcs,sale,,White,,"USB-C devices"
+Apple,"Lightning Cable 1m",Accessories,new,4000,25,9,,30,pcs,sale,,White,,"iPhone 5 and above"
+Spigen,"Tough Armor Case",Accessories,new,6000,25,37,,35,pcs,sale,,Black,,"iPhone 15"
+Spigen,"Tough Armor Case",Accessories,new,6000,25,28,,35,pcs,sale,,Navy,,"iPhone 14"
+Generic,"Tempered Glass Screen Protector",Accessories,new,1200,25,29,,60,pcs,sale,,Clear,,"iPhone 13"
+Generic,"Tempered Glass Screen Protector",Accessories,new,1200,25,21,,60,pcs,sale,,Clear,,"Samsung A54"
+JBL,"Go 3 Speaker",Accessories,new,22000,25,37,,20,pcs,sale,,Blue,,
+Sony,"WH-1000XM4 Headphones",Accessories,new,180000,25,24,,15,pcs,sale,,Black,,
+Belkin,"MagSafe Charging Stand",Accessories,new,25000,25,31,,10,pcs,sale,,White,,"iPhone 12 and above"
+Ugreen,"USB-C to HDMI Adapter",Accessories,new,8000,25,16,,20,pcs,sale,,Grey,,"USB-C laptops"
+Xiaomi,"Earbuds 3 Lite",Accessories,new,9500,25,31,,20,pcs,sale,,White,,
+Mi,"Power Bank 20000mAh",Accessories,new,18000,25,26,,15,pcs,sale,,Black,,
+Generic,"Screw Set for Phones",Accessories,new,3000,30,30,,5,pack,sale,,,,
+Generic,"Sticker Kit",Accessories,new,1500,30,21,,5,box,sale,,,,
+Apple,"iPhone 13 OLED Screen",Parts,new,85000,10,7,,3,pcs,both,,,,"iPhone 13"
+Apple,"iPhone 12 Battery",Parts,new,18000,10,5,,3,pcs,repair_part,,,,"iPhone 12"
+Apple,"iPhone 14 Charging Port",Parts,new,12000,10,6,,3,pcs,repair_part,,,,"iPhone 14"
+Apple,"iPhone 15 Back Glass",Parts,new,35000,10,9,,3,pcs,repair_part,,,,"iPhone 15"
+Samsung,"Galaxy A54 Screen",Parts,new,70000,10,8,,3,pcs,both,,,,"Galaxy A54"
+Samsung,"Galaxy A14 Battery",Parts,new,9000,10,13,,3,pcs,repair_part,,,,"Galaxy A14"
+Samsung,"Galaxy S23 Ultra Front Camera",Parts,new,45000,10,4,,3,pcs,repair_part,,,,"Galaxy S23 Ultra"
+Tecno,"Camon 20 Charging Board",Parts,new,7000,10,7,,3,pcs,repair_part,,,,"Camon 20"
+Infinix,"Note 30 Speaker",Parts,new,4500,10,8,,3,pcs,repair_part,,,,"Note 30"
+Xiaomi,"Redmi Note 12 Screen",Parts,new,42000,10,6,,3,pcs,both,,,,"Redmi Note 12"
+Generic,"Universal Phone Adhesive",Parts,new,2500,10,4,,3,pcs,repair_part,,,,Universal
+Generic,"Phone Opening Tool Kit",Parts,new,6000,10,10,,3,pcs,repair_part,,,,Universal
+Generic,"Heat Gun Nozzle",Parts,new,3500,10,13,,3,pcs,repair_part,,,,Universal
+Google,"Pixel 7 Battery",Parts,new,21000,10,15,,3,pcs,repair_part,,,,"Pixel 7"

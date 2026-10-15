@@ -1,174 +1,129 @@
-import { FormEvent, useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
-import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
-import AdminInput from '../../../Components/Admin/Forms/AdminInput';
-import AdminTextarea from '../../../Components/Admin/Forms/AdminTextarea';
-import CustomerSearch, { CustomerSearchResult } from '../../../Features/Sales/CustomerSearch';
-import Icon from '../../../Components/Icons/Icon';
-import DeviceTypePicker, { DeviceType } from '../../../Features/Repairs/DeviceTypePicker';
-import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
+import AdminBadge from '../../../Components/Admin/AdminBadge';
+import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 
-type Shop = { id: number; name: string };
+type Shop = { id: number; name: string; is_warehouse?: boolean };
+type DiagnosisCase = {
+    id: number;
+    shop_id: number;
+    customer_name: string | null;
+    device: string;
+    device_imei_serial: string | null;
+    reported_issue: string | null;
+    faults: string[];
+};
 
 interface RepairCreateProps {
     shops: Shop[];
-    deviceCatalog: DeviceType[];
+    diagnosisCases: DiagnosisCase[];
+    filters: { shop_id: number | null };
 }
 
-export default function RepairCreate({ shops, deviceCatalog }: RepairCreateProps) {
-    const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
-    const { data, setData, post, transform, processing, errors } = useForm({
-        shop_id: shops[0]?.id.toString() ?? '',
-        customer_id: '',
-        device_make: '',
-        device_model: '',
-        reported_issue: '',
-        device_imei_serial: '',
-        device_lock_type: 'none' as DeviceLockType,
-        device_lock_value: '',
-        problem_tag_ids: [] as number[],
-        labour_charge_naira: '',
-    });
+export default function RepairCreate({ shops, diagnosisCases, filters }: RepairCreateProps) {
+    const [term, setTerm] = useState('');
+    const [creatingId, setCreatingId] = useState<number | null>(null);
 
-    const allProblemTags = deviceCatalog.flatMap((type) => type.problem_tags);
-    const selectedProblemTags = data.problem_tag_ids
-        .map((id) => allProblemTags.find((tag) => tag.id === id))
-        .filter((tag): tag is { id: number; label: string } => Boolean(tag));
+    const filteredCases = useMemo(() => {
+        const query = term.trim().toLowerCase();
+        if (query === '') return diagnosisCases;
 
-    function toggleProblemTag(id: number) {
-        setData('problem_tag_ids', data.problem_tag_ids.includes(id) ? data.problem_tag_ids.filter((t) => t !== id) : [...data.problem_tag_ids, id]);
+        return diagnosisCases.filter((diagnosisCase) =>
+            [
+                diagnosisCase.device,
+                diagnosisCase.device_imei_serial ?? '',
+                diagnosisCase.customer_name ?? '',
+                diagnosisCase.reported_issue ?? '',
+                diagnosisCase.faults.join(' '),
+            ].some((value) => value.toLowerCase().includes(query)),
+        );
+    }, [diagnosisCases, term]);
+
+    function setShop(shopId: string) {
+        router.get('/admin/repairs/create', { shop_id: shopId || undefined }, { preserveScroll: true, preserveState: true });
     }
 
-    function submit(e: FormEvent) {
-        e.preventDefault();
-        transform((formData) => ({
-            shop_id: formData.shop_id,
-            customer_id: formData.customer_id,
-            device_make: formData.device_make,
-            device_model: formData.device_model,
-            reported_issue: formData.reported_issue,
-            device_imei_serial: formData.device_imei_serial,
-            device_lock_type: formData.device_lock_type,
-            device_lock_value: formData.device_lock_value,
-            problem_tag_ids: formData.problem_tag_ids,
-            labour_charge_minor: Math.round(parseFloat(formData.labour_charge_naira || '0') * 100),
-        }));
-        post('/admin/repairs');
+    function createRepair(diagnosisCaseId: number) {
+        setCreatingId(diagnosisCaseId);
+        router.post(
+            `/admin/repairs/diagnosis-cases/${diagnosisCaseId}/repairs`,
+            {},
+            { onFinish: () => setCreatingId(null) },
+        );
     }
 
     return (
         <AdminShell>
             <Head title="New repair" />
 
-            <AdminPageHead title="New repair" description="Intake a device for diagnosis and repair." />
+            <AdminPageHead
+                title="New repair"
+                description="Select a saved repairable diagnosis and call it up as a repair work order."
+                actions={<AdminButton onClick={() => router.visit('/admin/repairs/diagnosis-cases/create')}>New diagnosis</AdminButton>}
+            />
 
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] items-start max-w-[942px] mx-auto">
-                <form onSubmit={submit}>
-                    <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)} error={errors.shop_id}>
-                        {shops.map((shop) => (
-                            <option key={shop.id} value={shop.id}>
-                                {shop.name}
-                            </option>
-                        ))}
-                    </AdminSelect>
+            <div className="mb-4 grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)] max-w-5xl">
+                <select
+                    value={filters.shop_id ?? ''}
+                    onChange={(event) => setShop(event.target.value)}
+                    className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white"
+                >
+                    <option value="">All shops</option>
+                    {shops.filter((shop) => !shop.is_warehouse).map((shop) => (
+                        <option key={shop.id} value={shop.id}>
+                            {shop.name}
+                        </option>
+                    ))}
+                </select>
+                <input
+                    value={term}
+                    onChange={(event) => setTerm(event.target.value)}
+                    placeholder="Search by device, IMEI, customer, issue, or fault..."
+                    className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                />
+            </div>
 
-                    <CustomerSearch
-                        value={customer}
-                        onChange={(selected) => {
-                            setCustomer(selected);
-                            setData('customer_id', selected ? selected.id.toString() : '');
-                        }}
-                        searchUrl="/admin/repairs/customers/search"
-                        error={errors.customer_id}
-                    />
-
-                    <AdminInput
-                        label="Device make"
-                        value={data.device_make}
-                        onChange={(e) => setData('device_make', e.target.value)}
-                        error={errors.device_make}
-                        placeholder="e.g. Apple, Samsung"
-                    />
-
-                    <AdminInput
-                        label="Device model"
-                        value={data.device_model}
-                        onChange={(e) => setData('device_model', e.target.value)}
-                        error={errors.device_model}
-                        placeholder="e.g. iPhone 12"
-                    />
-
-                    <AdminInput
-                        label="IMEI / serial number (optional)"
-                        value={data.device_imei_serial}
-                        onChange={(e) => setData('device_imei_serial', e.target.value)}
-                        error={errors.device_imei_serial}
-                        placeholder="e.g. 356938035601001"
-                    />
-
-                    <AdminTextarea
-                        label="Reported issue"
-                        value={data.reported_issue}
-                        onChange={(e) => setData('reported_issue', e.target.value)}
-                        error={errors.reported_issue}
-                        placeholder="What did the customer say is wrong with the device?"
-                        rows={3}
-                    />
-
-                    <DeviceLockInput
-                        lockType={data.device_lock_type}
-                        lockValue={data.device_lock_value}
-                        onChange={(type, value) => {
-                            setData('device_lock_type', type);
-                            setData('device_lock_value', value);
-                        }}
-                        error={errors.device_lock_value}
-                    />
-
-                    {selectedProblemTags.length > 0 && (
-                        <div className="-mt-3 mb-5">
-                            <div className="text-xs text-admin-text2 mb-1.5">Selected problems</div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {selectedProblemTags.map((tag) => (
-                                    <span key={tag.id} className="inline-flex items-center gap-1 bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
-                                        {tag.label}
-                                        <button type="button" onClick={() => toggleProblemTag(tag.id)} aria-label={`Remove ${tag.label}`}>
-                                            <Icon name="x" />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <AdminInput
-                        label="Labour charge (₦)"
-                        type="number"
-                        step="0.01"
-                        value={data.labour_charge_naira}
-                        onChange={(e) => setData('labour_charge_naira', e.target.value)}
-                        error={errors.labour_charge_minor}
-                    />
-
-                    <AdminButton type="submit" isLoading={processing}>
-                        Create repair job
-                    </AdminButton>
-                </form>
-
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4">
-                    <DeviceTypePicker
-                        deviceTypes={deviceCatalog}
-                        selectedProblemTagIds={data.problem_tag_ids}
-                        onToggleProblemTag={toggleProblemTag}
-                        onSelectBrand={(deviceType, brand) => {
-                            setData('device_make', brand || deviceType);
-                            setData('problem_tag_ids', []);
-                        }}
-                    />
+            <div className="bg-admin-surface border border-admin-border rounded-admin-card overflow-hidden max-w-5xl">
+                <div className="hidden md:grid grid-cols-[1.1fr_1fr_1.2fr_130px] gap-3 px-4 py-3 text-xs font-semibold text-admin-text2 border-b border-admin-border">
+                    <span>Device</span>
+                    <span>Customer</span>
+                    <span>Revealed faults</span>
+                    <span></span>
                 </div>
+
+                {filteredCases.length === 0 ? (
+                    <AdminEmptyState
+                        icon="tools"
+                        title="No repairable diagnoses found"
+                        description="Create and save a diagnosis first, then call it up here for repair."
+                    />
+                ) : (
+                    filteredCases.map((diagnosisCase) => (
+                        <div
+                            key={diagnosisCase.id}
+                            className="grid gap-3 md:grid-cols-[1.1fr_1fr_1.2fr_130px] md:items-center px-4 py-3 border-b border-admin-border last:border-b-0"
+                        >
+                            <div className="min-w-0">
+                                <div className="text-sm font-semibold text-admin-text truncate">{diagnosisCase.device}</div>
+                                <div className="text-xs text-admin-text3">{diagnosisCase.device_imei_serial ?? 'No IMEI / serial'}</div>
+                                {diagnosisCase.reported_issue && <div className="text-xs text-admin-text2 mt-1 truncate">{diagnosisCase.reported_issue}</div>}
+                            </div>
+                            <div className="text-sm text-admin-text">{diagnosisCase.customer_name ?? 'Unknown customer'}</div>
+                            <div className="flex flex-wrap gap-1">
+                                {diagnosisCase.faults.slice(0, 4).map((fault) => (
+                                    <AdminBadge key={fault} status="neutral">{fault}</AdminBadge>
+                                ))}
+                                {diagnosisCase.faults.length > 4 && <span className="text-xs text-admin-text3">+{diagnosisCase.faults.length - 4}</span>}
+                            </div>
+                            <AdminButton onClick={() => createRepair(diagnosisCase.id)} isLoading={creatingId === diagnosisCase.id}>
+                                Create repair
+                            </AdminButton>
+                        </div>
+                    ))
+                )}
             </div>
         </AdminShell>
     );

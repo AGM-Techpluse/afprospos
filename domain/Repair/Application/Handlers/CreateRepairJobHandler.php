@@ -10,10 +10,12 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Events\RepairCreated;
+use Domain\Repair\Domain\Exceptions\WarehouseCannotTakeRepairs;
 use Domain\Repair\Domain\Repositories\DeviceProblemTagRepository;
 use Domain\Repair\Domain\Repositories\RepairJobProblemTagRepository;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\DeviceProblemTagId;
+use Domain\Shared\Domain\Contracts\ShopClassification;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\ShopId;
@@ -26,19 +28,24 @@ final class CreateRepairJobHandler
         private readonly RepairJobRepository $repairJobs,
         private readonly DeviceProblemTagRepository $problemTags,
         private readonly RepairJobProblemTagRepository $jobProblemTags,
+        private readonly ShopClassification $shops,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
 
     public function handle(CreateRepairJobCommand $command): int
     {
+        if ($this->shops->isWarehouse(new ShopId($command->shopId))) {
+            throw WarehouseCannotTakeRepairs::forShop($command->shopId);
+        }
+
         return $this->atomic->run(function () use ($command): int {
             $job = RepairJob::intake(
                 new ShopId($command->shopId),
-                new CustomerId($command->customerId),
+                $command->customerId !== null ? new CustomerId($command->customerId) : null,
                 $command->deviceMake,
                 $command->deviceModel,
-                new Money($command->labourChargeMinor),
+                $command->labourChargeMinor !== null ? new Money($command->labourChargeMinor) : null,
                 $command->reportedIssue,
                 $command->deviceImeiSerial,
                 $command->deviceLockType,

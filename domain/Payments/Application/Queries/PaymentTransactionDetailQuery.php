@@ -55,7 +55,9 @@ final class PaymentTransactionDetailQuery
     {
         if ($payableType === 'repair_job') {
             $job = $this->repairJobs->find($payableId);
-            $customerName = $job !== null ? ($this->customers->find($job['customer_id'])['name'] ?? null) : null;
+            $customerName = $job !== null && $job['customer_id'] !== null
+                ? $this->customers->find($job['customer_id'])['name'] ?? null
+                : null;
 
             $label = $job !== null
                 ? "Repair #{$payableId} — {$job['device_make']} {$job['device_model']}".($customerName !== null ? " ({$customerName})" : '')

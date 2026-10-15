@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\AttachSuggestedPartRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceBrandRequest;
+use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceModelRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceProblemTagRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceTypeRequest;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
@@ -33,6 +34,7 @@ use Domain\Repair\Application\Handlers\UpdateDeviceBrandHandler;
 use Domain\Repair\Application\Handlers\UpdateDeviceProblemTagHandler;
 use Domain\Repair\Application\Handlers\UpdateDeviceTypeHandler;
 use Domain\Repair\Application\Queries\DeviceCatalogQuery;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceModelRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -157,6 +159,43 @@ final class DeviceCatalogController
         return redirect()->back();
     }
 
+    public function storeModel(SaveDeviceModelRequest $request): RedirectResponse
+    {
+        DeviceModelRecord::query()->firstOrCreate(
+            [
+                'device_brand_id' => $request->integer('device_brand_id'),
+                'name' => $request->string('name')->toString(),
+            ],
+            ['sort_order' => $request->integer('sort_order', 0)],
+        );
+
+        $this->flashSuccess('Device model created');
+
+        return redirect()->back();
+    }
+
+    public function updateModel(SaveDeviceModelRequest $request, int $model): RedirectResponse
+    {
+        DeviceModelRecord::query()->findOrFail($model)->update([
+            'device_brand_id' => $request->integer('device_brand_id'),
+            'name' => $request->string('name')->toString(),
+            'sort_order' => $request->integer('sort_order', 0),
+        ]);
+
+        $this->flashSuccess('Device model updated');
+
+        return redirect()->back();
+    }
+
+    public function destroyModel(int $model): RedirectResponse
+    {
+        DeviceModelRecord::query()->findOrFail($model)->delete();
+
+        $this->flashSuccess('Device model deleted');
+
+        return redirect()->back();
+    }
+
     public function storeProblemTag(SaveDeviceProblemTagRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
@@ -166,6 +205,7 @@ final class DeviceCatalogController
             label: $request->string('label')->toString(),
             sortOrder: $request->integer('sort_order', 0),
             createdByStaffId: $actor->staffId->value,
+            commissionAmountMinor: $request->filled('commission_amount_minor') ? $request->integer('commission_amount_minor') : null,
         ));
 
         $this->flashSuccess('Problem tag created');
@@ -182,6 +222,7 @@ final class DeviceCatalogController
             label: $request->string('label')->toString(),
             sortOrder: $request->integer('sort_order', 0),
             updatedByStaffId: $actor->staffId->value,
+            commissionAmountMinor: $request->filled('commission_amount_minor') ? $request->integer('commission_amount_minor') : null,
         ));
 
         $this->flashSuccess('Problem tag updated');

@@ -8,19 +8,24 @@ use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Collection\ExtendDeadlineRequest;
 use App\Http\Requests\Admin\Collection\RecordNotifiedRequest;
 use App\Http\Requests\Admin\Collection\RecordOverrideRequest;
+use App\Http\Requests\Admin\Collection\TransferCollectionCaseRequest;
 use Carbon\CarbonImmutable;
 use Domain\Collection\Application\Commands\ExtendCollectionDeadlineCommand;
 use Domain\Collection\Application\Commands\RecordCollectionNotifiedCommand;
 use Domain\Collection\Application\Commands\RecordCollectionOverrideCommand;
 use Domain\Collection\Application\Commands\ReleaseRepairDeviceCommand;
+use Domain\Collection\Application\Commands\TransferCollectionCaseCommand;
 use Domain\Collection\Application\Handlers\ExtendCollectionDeadlineHandler;
 use Domain\Collection\Application\Handlers\RecordCollectionNotifiedHandler;
 use Domain\Collection\Application\Handlers\RecordCollectionOverrideHandler;
 use Domain\Collection\Application\Handlers\ReleaseRepairDeviceHandler;
+use Domain\Collection\Application\Handlers\TransferCollectionCaseHandler;
 use Domain\Collection\Application\Queries\CollectionCaseDetailQuery;
 use Domain\Collection\Application\Queries\CollectionQueueQuery;
 use Domain\Collection\Domain\Exceptions\ReleaseBlockedByOutstandingBalance;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shared\Domain\Exceptions\DomainException;
+use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -34,10 +39,12 @@ final class CollectionController
     public function __construct(
         private readonly CollectionQueueQuery $queue,
         private readonly CollectionCaseDetailQuery $detail,
+        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly RecordCollectionNotifiedHandler $recordNotified,
         private readonly ExtendCollectionDeadlineHandler $extendDeadline,
         private readonly RecordCollectionOverrideHandler $recordOverride,
         private readonly ReleaseRepairDeviceHandler $releaseDevice,
+        private readonly TransferCollectionCaseHandler $transferCollectionCase,
     ) {}
 
     public function index(Request $request): Response
@@ -68,7 +75,11 @@ final class CollectionController
         abort_if($data === null, 404);
         abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
 
-        return Inertia::render('Admin/Collection/Show', ['collectionCase' => $data]);
+        return Inertia::render('Admin/Collection/Show', [
+            'collectionCase' => $data,
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
+            'canTransferCollection' => $actor->isOwner || $actor->hasPermission('collection.transfer') || $actor->hasPermission('collection.process') || $actor->hasPermission('collection.override'),
+        ]);
     }
 
     public function notify(RecordNotifiedRequest $request, int $collectionCase): RedirectResponse
@@ -133,6 +144,29 @@ final class CollectionController
         }
 
         $this->flashSuccess('Device released');
+
+        return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
+    }
+
+    public function transfer(TransferCollectionCaseRequest $request, int $collectionCase): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertCollectionCaseShopAccess($actor, $collectionCase);
+        $targetShopId = $request->integer('target_shop_id');
+        abort_unless($actor->canAccessShop($targetShopId), 403);
+
+        try {
+            $this->transferCollectionCase->handle(new TransferCollectionCaseCommand(
+                collectionCaseId: $collectionCase,
+                targetShopId: $targetShopId,
+                transferredByStaffId: $actor->staffId->value,
+                reason: $request->string('reason')->toString() ?: null,
+            ));
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages(['target_shop_id' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Collection pickup transferred');
 
         return redirect()->route('admin.collection.show', ['collectionCase' => $collectionCase]);
     }

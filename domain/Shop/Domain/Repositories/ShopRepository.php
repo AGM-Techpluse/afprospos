@@ -25,6 +25,7 @@ interface ShopRepository
         string $contactPhone,
         string $contactEmail,
         array $offlinePolicy,
+        bool $isWarehouse = false,
     ): ShopId;
 
     public function update(
@@ -34,5 +35,6 @@ interface ShopRepository
         string $address,
         string $contactPhone,
         string $contactEmail,
+        bool $isWarehouse = false,
     ): void;
 }

@@ -8,7 +8,7 @@ import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
-type SerializedUnit = { id: number; imei: string; shop_id: number; condition: string; status: string };
+type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
 type SiblingSku = { id: number; sku_code: string; attributes: Record<string, unknown>; selling_price_minor: number };
 
 type Sku = {
@@ -18,6 +18,7 @@ type Sku = {
     brand: string;
     model: string;
     category: string;
+    image_url: string | null;
     attributes: Record<string, unknown>;
     is_serialized: boolean;
     cost_price_minor: number;
@@ -25,6 +26,8 @@ type Sku = {
     selling_price_minor: number;
     selling_price_overridden: boolean;
     low_stock_threshold: number | null;
+    is_commissionable: boolean;
+    commission_amount_minor: number | null;
     stock_by_shop: StockByShop[];
     serialized_units: SerializedUnit[];
     sibling_skus: SiblingSku[];
@@ -34,7 +37,7 @@ type Sku = {
 };
 
 function variantLabel(attributes: Record<string, unknown>): string {
-    const parts = ['brand', 'color', 'material', 'compatibility']
+    const parts = ['brand', 'color', 'storage', 'material', 'compatibility']
         .map((key) => attributes[key])
         .filter((value): value is string => typeof value === 'string' && value !== '');
 
@@ -55,12 +58,37 @@ const UNIT_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
 export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] }) {
-    const { data, setData, post, transform, processing, errors, reset } = useForm({
+    const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
         condition: 'new',
         quantity: '',
         imei: '',
+        serial_number: '',
     });
+    // The server validates plural field names (`imeis`, `serial_numbers`) that
+    // don't match this form's singular-bound field names.
+    const errors = formErrors as Record<string, string | undefined>;
+
+    const commissionForm = useForm({
+        is_commissionable: sku.is_commissionable,
+        commission_amount_naira: sku.commission_amount_minor !== null ? String(sku.commission_amount_minor / 100) : '',
+    });
+    // The server validates the minor-unit field (`commission_amount_minor`) that
+    // doesn't match this form's naira-bound field name.
+    const commissionErrors = commissionForm.errors as Record<string, string | undefined>;
+
+    function submitCommission(e: FormEvent) {
+        e.preventDefault();
+
+        commissionForm.transform((formData) => ({
+            is_commissionable: formData.is_commissionable,
+            commission_amount_minor: formData.is_commissionable && formData.commission_amount_naira
+                ? Math.round(parseFloat(formData.commission_amount_naira) * 100)
+                : null,
+        }));
+
+        commissionForm.put(`/admin/inventory/products/${sku.id}/commission`);
+    }
 
     function submitReceive(e: FormEvent) {
         e.preventDefault();
@@ -70,10 +98,11 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
             condition: formData.condition,
             quantity: sku.is_serialized ? null : formData.quantity ? parseInt(formData.quantity, 10) : null,
             imeis: sku.is_serialized && formData.imei.trim() ? [formData.imei.trim()] : null,
+            serial_numbers: sku.is_serialized && formData.serial_number.trim() ? [formData.serial_number.trim()] : null,
         }));
 
         post(`/admin/inventory/products/${sku.id}/receive`, {
-            onSuccess: () => reset('quantity', 'imei'),
+            onSuccess: () => reset('quantity', 'imei', 'serial_number'),
         });
     }
 
@@ -87,6 +116,16 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                 backHref="/admin/inventory/products"
                 backLabel="Back to products"
             />
+
+            {sku.image_url && (
+                <div className="mb-6">
+                    <img
+                        src={sku.image_url}
+                        alt={`${sku.brand} ${sku.model}`}
+                        className="h-40 w-full max-w-sm object-cover rounded-admin-card border border-admin-border"
+                    />
+                </div>
+            )}
 
             {/* UI/UX §14C.8's headline stat row — the total across every shop, so "how many of this do we have" has one clear answer regardless of serialized vs. bulk. Per-shop detail is still below, for the breakdown. */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -130,6 +169,14 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                             <dt className="text-admin-text2">Low stock threshold</dt>
                             <dd className="text-admin-text">{sku.low_stock_threshold ?? '—'}</dd>
                         </div>
+                        <div className="flex justify-between py-2.5">
+                            <dt className="text-admin-text2">Commission</dt>
+                            <dd className="text-admin-text">
+                                {sku.is_commissionable && sku.commission_amount_minor !== null
+                                    ? `${formatNaira(sku.commission_amount_minor)} per sale`
+                                    : 'Not commissionable'}
+                            </dd>
+                        </div>
                     </dl>
                 </AdminInfoCard>
 
@@ -142,6 +189,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                 <thead>
                                     <tr className="text-left text-admin-text2 text-xs">
                                         <th className="pb-2">IMEI</th>
+                                        <th className="pb-2">Serial</th>
                                         <th className="pb-2">Shop</th>
                                         <th className="pb-2">Condition</th>
                                         <th className="pb-2 text-right">Status</th>
@@ -151,6 +199,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                     {sku.serialized_units.map((unit) => (
                                         <tr key={unit.id}>
                                             <td className="py-2 text-admin-text font-mono text-xs">{unit.imei}</td>
+                                            <td className="py-2 text-admin-text font-mono text-xs">{unit.serial_number ?? '-'}</td>
                                             <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
                                             <td className="py-2 text-admin-text capitalize">{unit.condition}</td>
                                             <td className="py-2 text-right">
@@ -188,7 +237,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                 </AdminInfoCard>
             </div>
 
-            {!sku.is_serialized && (
+            {(
                 <div className="mt-8">
                     <AdminInfoCard title="Variants" icon="grid-3x3-gap" iconColor="blue">
                         <div className="mb-3">
@@ -215,7 +264,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                         <AdminButton
                             type="button"
                             variant="neutral"
-                            onClick={() => router.visit(`/admin/inventory/products/${sku.product_id}/variants/create`)}
+                            onClick={() => router.visit(`/admin/inventory/products/${sku.product_id}/variants/create?serialized=${sku.is_serialized ? '1' : '0'}`)}
                         >
                             Add variant
                         </AdminButton>
@@ -243,16 +292,29 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                     </div>
 
                     {sku.is_serialized ? (
-                        <div className="mb-4">
-                            <label className="block text-xs font-semibold text-admin-text mb-1.5">IMEI</label>
-                            <input
-                                type="text"
-                                value={data.imei}
-                                onChange={(e) => setData('imei', e.target.value)}
-                                placeholder="15-digit IMEI"
-                                className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                            />
-                            {errors.imeis && <p className="text-xs text-admin-red mt-1">{errors.imeis}</p>}
+                        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label className="block text-xs font-semibold text-admin-text mb-1.5">IMEI</label>
+                                <input
+                                    type="text"
+                                    value={data.imei}
+                                    onChange={(e) => setData('imei', e.target.value)}
+                                    placeholder="15-digit IMEI"
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                />
+                                {errors.imeis && <p className="text-xs text-admin-red mt-1">{errors.imeis}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-admin-text mb-1.5">Serial number (optional)</label>
+                                <input
+                                    type="text"
+                                    value={data.serial_number}
+                                    onChange={(e) => setData('serial_number', e.target.value)}
+                                    placeholder="Serial number"
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                />
+                                {errors.serial_numbers && <p className="text-xs text-admin-red mt-1">{errors.serial_numbers}</p>}
+                            </div>
                         </div>
                     ) : (
                         <div className="mb-4">
@@ -268,6 +330,39 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
 
                     <AdminButton type="submit" isLoading={processing}>
                         Receive stock
+                    </AdminButton>
+                </form>
+            </div>
+
+            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
+            <div className="mt-8 max-w-lg">
+                <h2 className="text-admin-md font-semibold text-admin-text mb-4">Commission</h2>
+                <form onSubmit={submitCommission}>
+                    <label className="flex items-center gap-2 text-sm text-admin-text mb-4">
+                        <input
+                            type="checkbox"
+                            checked={commissionForm.data.is_commissionable}
+                            onChange={(e) => commissionForm.setData('is_commissionable', e.target.checked)}
+                        />
+                        Commissionable (staff earns a flat commission when this sells)
+                    </label>
+                    {commissionForm.data.is_commissionable && (
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-admin-text mb-1.5">Commission amount (₦)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={commissionForm.data.commission_amount_naira}
+                                onChange={(e) => commissionForm.setData('commission_amount_naira', e.target.value)}
+                                className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                            />
+                            {commissionErrors.commission_amount_minor && (
+                                <p className="text-xs text-admin-red mt-1">{commissionErrors.commission_amount_minor}</p>
+                            )}
+                        </div>
+                    )}
+                    <AdminButton type="submit" isLoading={commissionForm.processing}>
+                        Save commission settings
                     </AdminButton>
                 </form>
             </div>

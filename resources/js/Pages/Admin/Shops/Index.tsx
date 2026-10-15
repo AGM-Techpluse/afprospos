@@ -16,6 +16,7 @@ type ShopRow = {
     contact_phone: string;
     contact_email: string;
     status: 'active' | 'inactive';
+    is_warehouse: boolean;
 };
 
 type Paginated<T> = {
@@ -35,6 +36,16 @@ const COLUMNS: DataTableColumn<ShopRow>[] = [
     { key: 'name', label: 'Name' },
     { key: 'sku_prefix_code', label: 'SKU prefix' },
     { key: 'address', label: 'Address' },
+    {
+        key: 'is_warehouse',
+        label: 'Type',
+        render: (row) =>
+            row.is_warehouse ? (
+                <AdminBadge status="neutral">Warehouse</AdminBadge>
+            ) : (
+                <span className="text-admin-text3">Shop</span>
+            ),
+    },
     {
         key: 'status',
         label: 'Status',

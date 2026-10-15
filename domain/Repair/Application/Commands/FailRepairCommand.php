@@ -10,5 +10,6 @@ final readonly class FailRepairCommand
         public int $repairJobId,
         public string $reason,
         public int $failedByStaffId,
+        public int $serviceChargeMinor = 0,
     ) {}
 }

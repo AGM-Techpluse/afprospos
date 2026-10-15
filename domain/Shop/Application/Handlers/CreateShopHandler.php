@@ -34,6 +34,7 @@ final class CreateShopHandler
                 $command->contactPhone,
                 $command->contactEmail,
                 $command->offlinePolicy,
+                $command->isWarehouse,
             );
 
             $this->audit->record(

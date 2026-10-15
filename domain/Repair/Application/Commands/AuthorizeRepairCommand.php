@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Domain\Repair\Application\Commands;
 
-/**
- * `downPaymentRequiredMinor = 0` grants authorization immediately; a
- * positive amount only records the requirement — frontdesk then requests
- * (`RequestRepairDownPaymentApprovalCommand`) once the customer has
- * actually paid, and Manager approval is what creates the real payable.
- */
+/** Manager authorization records the quote terms and starts the repair. */
 final readonly class AuthorizeRepairCommand
 {
     public function __construct(
         public int $repairJobId,
         public int $downPaymentRequiredMinor,
         public int $authorizedByStaffId,
+        /** The quote the customer agreed to pay, entered by the manager in the same action. */
+        public int $repairCostMinor = 0,
+        /** Manager may adjust the diagnosis fee while setting the quote. */
+        public ?int $diagnosisFeeMinor = null,
+        public ?string $specialAgreementNote = null,
+        /** @var 'cash'|'pos_terminal'|'bank_transfer'|null */
+        public ?string $downPaymentMethod = null,
     ) {}
 }

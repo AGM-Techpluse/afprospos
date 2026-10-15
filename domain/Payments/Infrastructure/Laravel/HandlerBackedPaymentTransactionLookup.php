@@ -31,6 +31,28 @@ final class HandlerBackedPaymentTransactionLookup implements PaymentTransactionL
 
         $latest = $pending[0];
 
+        return $this->toArray($latest);
+    }
+
+    public function latestTransactionForPurpose(string $payableType, int $payableId, string $purpose): ?array
+    {
+        $matching = array_values(array_filter(
+            $this->transactions->findByPayable(new PayableType($payableType), $payableId),
+            static fn (PaymentTransaction $transaction): bool => $transaction->purpose()->value === $purpose,
+        ));
+
+        if ($matching === []) {
+            return null;
+        }
+
+        usort($matching, static fn (PaymentTransaction $a, PaymentTransaction $b): int => ($b->id()?->value ?? 0) <=> ($a->id()?->value ?? 0));
+
+        return $this->toArray($matching[0]);
+    }
+
+    /** @return array{id: int, status: string, method: string, amount_minor: int, provider_reference: ?string} */
+    private function toArray(PaymentTransaction $latest): array
+    {
         return [
             'id' => $latest->id()?->value ?? 0,
             'status' => $latest->status(),

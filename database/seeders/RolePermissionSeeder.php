@@ -49,6 +49,12 @@ final class RolePermissionSeeder extends Seeder
                 continue;
             }
 
+            // Roles are admin-editable at runtime: a re-run must never revert an admin's changes, so starting
+            // grants apply only when the role is first created. New permissions reach existing roles through a migration.
+            if (! $role->wasRecentlyCreated) {
+                continue;
+            }
+
             $grantedPermissionNames = [];
 
             foreach ($moduleGrants as $module => $grant) {

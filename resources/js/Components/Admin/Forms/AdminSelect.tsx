@@ -5,7 +5,8 @@ import FormSuccessMessage from '../../Forms/FormSuccessMessage';
 import Icon from '../../Icons/Icon';
 
 interface AdminSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-    label: string;
+    /** Omit for a compact inline filter that only needs an `aria-label`, not a visible label row. */
+    label?: string;
     error?: string;
     success?: string;
 }

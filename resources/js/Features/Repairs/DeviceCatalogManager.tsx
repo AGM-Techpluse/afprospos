@@ -6,8 +6,9 @@ import AdminButton from '../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../Components/Admin/AdminEmptyState';
 
 export type SuggestedPart = { id: number; sku_id: number; sku_code: string | null; product_name: string | null };
-export type DeviceBrand = { id: number; name: string; sort_order: number };
-export type DeviceProblemTag = { id: number; label: string; sort_order: number; suggested_parts: SuggestedPart[] };
+export type DeviceModel = { id: number; name: string; sort_order: number };
+export type DeviceBrand = { id: number; name: string; sort_order: number; models: DeviceModel[] };
+export type DeviceProblemTag = { id: number; label: string; sort_order: number; commission_amount_minor: number | null; suggested_parts: SuggestedPart[] };
 export type DeviceType = {
     id: number;
     label: string;
@@ -124,12 +125,49 @@ function SuggestedPartsEditor({ problemTag }: { problemTag: DeviceProblemTag }) 
     );
 }
 
+/** The flat technician commission paid when a fault tied to this tag is ticked as actually fixed at repair completion. */
+function ProblemTagCommissionInput({ problemTag }: { problemTag: DeviceProblemTag }) {
+    const [naira, setNaira] = useState(problemTag.commission_amount_minor !== null ? String(problemTag.commission_amount_minor / 100) : '');
+    const [saving, setSaving] = useState(false);
+
+    function save() {
+        setSaving(true);
+        router.put(
+            `/admin/settings/device-catalog/problem-tags/${problemTag.id}`,
+            {
+                label: problemTag.label,
+                sort_order: problemTag.sort_order,
+                commission_amount_minor: naira.trim() !== '' ? Math.round(parseFloat(naira) * 100) : '',
+            },
+            { preserveScroll: true, showProgress: false, onFinish: () => setSaving(false) },
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-1.5 mt-1 pl-5">
+            <span className="text-xs text-admin-text3">Commission ₦</span>
+            <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={naira}
+                onChange={(e) => setNaira(e.target.value)}
+                onBlur={save}
+                placeholder="0.00"
+                disabled={saving}
+                className={`${inputClass} w-24`}
+            />
+        </div>
+    );
+}
+
 function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
     const confirm = useConfirm();
     const [editing, setEditing] = useState(false);
     const [label, setLabel] = useState(deviceType.label);
     const [icon, setIcon] = useState(deviceType.icon);
     const [newBrand, setNewBrand] = useState('');
+    const [newModelByBrand, setNewModelByBrand] = useState<Record<number, string>>({});
     const [newProblem, setNewProblem] = useState('');
     const [expandedTagId, setExpandedTagId] = useState<number | null>(null);
 
@@ -168,6 +206,25 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
         router.delete(`/admin/settings/device-catalog/brands/${id}`, { preserveScroll: true, showProgress: false });
     }
 
+    function addModel(e: FormEvent, brand: DeviceBrand) {
+        e.preventDefault();
+        const name = (newModelByBrand[brand.id] ?? '').trim();
+        if (!name) return;
+        router.post(
+            '/admin/settings/device-catalog/models',
+            { device_brand_id: brand.id, name, sort_order: brand.models.length },
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onSuccess: () => setNewModelByBrand((values) => ({ ...values, [brand.id]: '' })),
+            },
+        );
+    }
+
+    function removeModel(id: number) {
+        router.delete(`/admin/settings/device-catalog/models/${id}`, { preserveScroll: true, showProgress: false });
+    }
+
     function addProblem(e: FormEvent) {
         e.preventDefault();
         if (!newProblem.trim()) return;
@@ -186,11 +243,18 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
         <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
             <div className="flex items-start justify-between gap-2 mb-4">
                 {editing ? (
-                    <form onSubmit={saveType} className="flex items-center gap-2 flex-1">
-                        <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="bootstrap-icon-name" className={`${inputClass} w-28`} />
-                        <input value={label} onChange={(e) => setLabel(e.target.value)} className={`${inputClass} flex-1`} />
-                        <AdminButton type="submit" variant="neutral">Save</AdminButton>
-                        <AdminButton type="button" variant="neutral" onClick={() => setEditing(false)}>Cancel</AdminButton>
+                    <form onSubmit={saveType} className="flex flex-col gap-2 sm:flex-row sm:items-center flex-1 min-w-0">
+                        <input
+                            value={icon}
+                            onChange={(e) => setIcon(e.target.value)}
+                            placeholder="bootstrap-icon-name"
+                            className={`${inputClass} w-full sm:w-28`}
+                        />
+                        <input value={label} onChange={(e) => setLabel(e.target.value)} className={`${inputClass} min-w-0 sm:flex-1`} />
+                        <div className="flex items-center gap-2">
+                            <AdminButton type="submit" variant="neutral">Save</AdminButton>
+                            <AdminButton type="button" variant="neutral" onClick={() => setEditing(false)}>Cancel</AdminButton>
+                        </div>
                     </form>
                 ) : (
                     <div className="flex items-center gap-2.5">
@@ -215,13 +279,40 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
             <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                     <div className="text-xs font-semibold text-admin-text2 mb-1.5">Brands</div>
-                    <ChipList
-                        items={deviceType.brands.map((b) => ({ id: b.id, label: b.name }))}
-                        onRemove={removeBrand}
-                        emptyLabel="No brands yet."
-                    />
+                    {deviceType.brands.length === 0 ? (
+                        <p className="text-xs text-admin-text3">No brands yet.</p>
+                    ) : (
+                        <ul className="flex flex-col gap-3">
+                            {deviceType.brands.map((brand) => (
+                                <li key={brand.id} className="border border-admin-border rounded-admin-card p-2.5">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-semibold text-admin-text">{brand.name}</span>
+                                        <button type="button" onClick={() => removeBrand(brand.id)} className="text-admin-text3 hover:text-admin-red" aria-label={`Remove ${brand.name}`}>
+                                            <Icon name="x" />
+                                        </button>
+                                    </div>
+                                    <div className="mt-2">
+                                        <ChipList
+                                            items={brand.models.map((model) => ({ id: model.id, label: model.name }))}
+                                            onRemove={removeModel}
+                                            emptyLabel="No models yet."
+                                        />
+                                    </div>
+                                    <form onSubmit={(e) => addModel(e, brand)} className="flex items-center gap-1.5 mt-2">
+                                        <input
+                                            value={newModelByBrand[brand.id] ?? ''}
+                                            onChange={(e) => setNewModelByBrand((values) => ({ ...values, [brand.id]: e.target.value }))}
+                                            placeholder="Add a model..."
+                                            className={`${inputClass} min-w-0 flex-1`}
+                                        />
+                                        <AdminButton type="submit" variant="neutral">Add</AdminButton>
+                                    </form>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                     <form onSubmit={addBrand} className="flex items-center gap-1.5 mt-2">
-                        <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="Add a brand…" className={`${inputClass} flex-1`} />
+                        <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="Add a brand…" className={`${inputClass} min-w-0 flex-1`} />
                         <AdminButton type="submit" variant="neutral">Add</AdminButton>
                     </form>
                 </div>
@@ -248,13 +339,14 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
                                             <Icon name="x" />
                                         </button>
                                     </div>
+                                    <ProblemTagCommissionInput problemTag={tag} />
                                     {expandedTagId === tag.id && <SuggestedPartsEditor problemTag={tag} />}
                                 </li>
                             ))}
                         </ul>
                     )}
                     <form onSubmit={addProblem} className="flex items-center gap-1.5 mt-2">
-                        <input value={newProblem} onChange={(e) => setNewProblem(e.target.value)} placeholder="Add a problem tag…" className={`${inputClass} flex-1`} />
+                        <input value={newProblem} onChange={(e) => setNewProblem(e.target.value)} placeholder="Add a problem tag…" className={`${inputClass} min-w-0 flex-1`} />
                         <AdminButton type="submit" variant="neutral">Add</AdminButton>
                     </form>
                 </div>
@@ -302,17 +394,27 @@ export default function DeviceCatalogManager({ deviceTypes }: DeviceCatalogManag
             ))}
 
             {newTypeOpen ? (
-                <form onSubmit={addType} className="bg-admin-surface border border-admin-border rounded-admin-card p-5 flex items-center gap-2">
-                    <input value={newIcon} onChange={(e) => setNewIcon(e.target.value)} placeholder="bootstrap-icon-name" className={`${inputClass} w-32`} />
+                <form
+                    onSubmit={addType}
+                    className="bg-admin-surface border border-admin-border rounded-admin-card p-5 flex flex-col gap-2 sm:flex-row sm:items-center"
+                >
+                    <input
+                        value={newIcon}
+                        onChange={(e) => setNewIcon(e.target.value)}
+                        placeholder="bootstrap-icon-name"
+                        className={`${inputClass} w-full sm:w-32`}
+                    />
                     <input
                         value={newLabel}
                         onChange={(e) => setNewLabel(e.target.value)}
                         placeholder="e.g. Drones"
                         autoFocus
-                        className={`${inputClass} flex-1`}
+                        className={`${inputClass} min-w-0 sm:flex-1`}
                     />
-                    <AdminButton type="submit">Add device type</AdminButton>
-                    <AdminButton type="button" variant="neutral" onClick={() => setNewTypeOpen(false)}>Cancel</AdminButton>
+                    <div className="flex items-center gap-2">
+                        <AdminButton type="submit">Add device type</AdminButton>
+                        <AdminButton type="button" variant="neutral" onClick={() => setNewTypeOpen(false)}>Cancel</AdminButton>
+                    </div>
                 </form>
             ) : (
                 <AdminButton type="button" variant="neutral" onClick={() => setNewTypeOpen(true)}>

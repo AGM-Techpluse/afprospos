@@ -22,9 +22,28 @@ interface InventoryCatalogQuery
      *     is_serialized: bool,
      *     selling_price_minor: int,
      *     available: int,
+     *     variant_label: string,
+     *     is_commissionable: bool,
+     *     commission_amount_minor: int|null,
      * }>
      */
-    public function search(string $term, int $shopId, int $limit = 20): array;
+    public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null): array;
+
+    /**
+     * Brands of products that can be sold at the till — the checkout's brand filter.
+     *
+     * @return string[]
+     */
+    public function sellableBrands(): array;
+
+    /**
+     * Models of sellable products, optionally narrowed to a category and/or brand already
+     * picked — the checkout's model (variant) filter, so a model with several colours or
+     * storage sizes can be narrowed to before picking the exact unit.
+     *
+     * @return string[]
+     */
+    public function sellableModels(?string $category, ?string $brand): array;
 
     /**
      * Single-SKU lookup — used at checkout-item-add time to snapshot
@@ -38,6 +57,9 @@ interface InventoryCatalogQuery
      *     is_serialized: bool,
      *     selling_price_minor: int,
      *     available: int,
+     *     variant_label: string,
+     *     is_commissionable: bool,
+     *     commission_amount_minor: int|null,
      * }|null
      */
     public function find(int $skuId, int $shopId): ?array;

@@ -7,7 +7,10 @@ namespace Domain\Notifications\Infrastructure\Laravel;
 use Domain\Notifications\Application\Contracts\InAppChannel;
 use Domain\Notifications\Application\Contracts\SmsChannel;
 use Domain\Notifications\Application\Contracts\WhatsAppChannel;
+use Domain\Notifications\Application\Services\NotificationEngine;
 use Domain\Notifications\Domain\Repositories\NotificationEventRepository;
+use Domain\Notifications\Infrastructure\Channels\Email\Resend\ResendMailer;
+use Domain\Notifications\Infrastructure\Channels\Email\Smtp\SmtpMailer;
 use Domain\Notifications\Infrastructure\Channels\InApp\AlwaysDeliveredInAppChannel;
 use Domain\Notifications\Infrastructure\Channels\Sms\UnconfiguredSmsChannel;
 use Domain\Notifications\Infrastructure\Channels\WhatsApp\UnconfiguredWhatsAppChannel;
@@ -30,6 +33,10 @@ final class NotificationsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(NotificationEventRepository::class, EloquentNotificationEventRepository::class);
+        // NOTIF-BR-08: Resend first, then the app's own mailer. Business modules never see these — only the engine.
+        $this->app->when(NotificationEngine::class)
+            ->needs('$emailChannels')
+            ->give(fn ($app): array => [$app->make(ResendMailer::class), $app->make(SmtpMailer::class)]);
         $this->app->bind(InAppChannel::class, AlwaysDeliveredInAppChannel::class);
         $this->app->bind(WhatsAppChannel::class, UnconfiguredWhatsAppChannel::class);
         $this->app->bind(SmsChannel::class, UnconfiguredSmsChannel::class);

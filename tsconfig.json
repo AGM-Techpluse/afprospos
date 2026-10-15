@@ -14,8 +14,7 @@
         "types": ["vite/client"],
         "paths": {
             "@/*": ["./resources/js/*"]
-        },
-        "baseUrl": "."
+        }
     },
     "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx"],
     "exclude": ["node_modules"]

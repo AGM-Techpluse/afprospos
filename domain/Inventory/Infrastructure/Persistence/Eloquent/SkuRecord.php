@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $selling_price_minor
  * @property bool $selling_price_overridden
  * @property int|null $low_stock_threshold
+ * @property bool $is_commissionable
+ * @property int|null $commission_amount_minor
  */
 final class SkuRecord extends Model
 {
@@ -32,12 +34,15 @@ final class SkuRecord extends Model
         'product_id',
         'sku_code',
         'attributes',
+        'attributes_signature',
         'is_serialized',
         'cost_price_minor',
         'markup_percent',
         'selling_price_minor',
         'selling_price_overridden',
         'low_stock_threshold',
+        'is_commissionable',
+        'commission_amount_minor',
     ];
 
     protected $casts = [
@@ -45,6 +50,7 @@ final class SkuRecord extends Model
         'is_serialized' => 'boolean',
         'selling_price_overridden' => 'boolean',
         'markup_percent' => 'float',
+        'is_commissionable' => 'boolean',
     ];
 
     public function product(): BelongsTo

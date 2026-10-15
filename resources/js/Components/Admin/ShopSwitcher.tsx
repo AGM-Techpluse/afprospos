@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 
-type Shop = { id: number; name: string; sku_prefix_code: string };
+type Shop = { id: number; name: string; sku_prefix_code: string; is_warehouse?: boolean };
 
 interface ShopSwitcherProps {
     accessible: Shop[];
@@ -53,6 +53,11 @@ export default function ShopSwitcher({ accessible = [], active = null }: ShopSwi
             <div className="flex items-center gap-1.5 text-sm font-medium text-admin-text2">
                 <Icon name="shop" />
                 <span className="truncate max-w-[160px]">{accessible[0].name}</span>
+                {accessible[0].is_warehouse && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-admin-text3 border border-admin-border rounded-admin-badge px-1.5 py-0.5">
+                        Warehouse
+                    </span>
+                )}
             </div>
         );
     }
@@ -69,6 +74,11 @@ export default function ShopSwitcher({ accessible = [], active = null }: ShopSwi
             >
                 <Icon name="shop" />
                 <span className="truncate max-w-[160px]">{active ? active.name : 'Select a shop'}</span>
+                {active?.is_warehouse && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-admin-text3 border border-admin-border rounded-admin-badge px-1.5 py-0.5">
+                        Warehouse
+                    </span>
+                )}
                 <Icon name="chevron-down" className="text-xs" />
             </button>
 
@@ -89,7 +99,14 @@ export default function ShopSwitcher({ accessible = [], active = null }: ShopSwi
                                 active?.id === shop.id ? 'text-admin-blue font-semibold' : 'text-admin-text'
                             }`}
                         >
-                            <span className="truncate">{shop.name}</span>
+                            <span className="truncate flex items-center gap-1.5">
+                                {shop.name}
+                                {shop.is_warehouse && (
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-admin-text3 border border-admin-border rounded-admin-badge px-1.5 py-0.5 shrink-0">
+                                        Warehouse
+                                    </span>
+                                )}
+                            </span>
                             {active?.id === shop.id && <Icon name="check-lg" />}
                         </button>
                     ))}

@@ -37,7 +37,7 @@ class RepairDiagnosisWorkflowTest extends TestCase
         $this->assertDatabaseHas('repair_diagnoses', ['repair_job_id' => $job->id, 'component' => 'screen', 'condition' => 'faulty']);
     }
 
-    public function test_recording_a_diagnosis_conclusion_moves_the_job_to_awaiting_authorization(): void
+    public function test_a_saved_repairable_conclusion_is_sent_to_quote_and_authorization_by_staff(): void
     {
         $this->seed(RolePermissionSeeder::class);
 
@@ -53,6 +53,10 @@ class RepairDiagnosisWorkflowTest extends TestCase
         ]);
 
         $response->assertRedirect();
+        // Saving the outcome does not move the job on; staff send it to quote as a separate step.
+        $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_status' => 'diagnosing']);
+
+        $this->actingAs($manager, 'staff')->post("/admin/repairs/{$job->id}/send-to-quote")->assertRedirect();
         $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_status' => 'awaiting_authorization']);
         $this->assertDatabaseHas('repair_diagnosis_conclusions', [
             'repair_job_id' => $job->id,

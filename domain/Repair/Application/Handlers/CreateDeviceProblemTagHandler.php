@@ -23,7 +23,7 @@ final class CreateDeviceProblemTagHandler
     public function handle(CreateDeviceProblemTagCommand $command): int
     {
         return $this->atomic->run(function () use ($command): int {
-            $tag = DeviceProblemTag::create(new DeviceTypeId($command->deviceTypeId), $command->label, $command->sortOrder);
+            $tag = DeviceProblemTag::create(new DeviceTypeId($command->deviceTypeId), $command->label, $command->sortOrder, $command->commissionAmountMinor);
             $id = $this->problemTags->save($tag);
 
             $this->audit->record(
@@ -34,7 +34,7 @@ final class CreateDeviceProblemTagHandler
                 subjectType: 'device_problem_tag',
                 subjectId: $id->value,
                 beforeState: null,
-                afterState: ['device_type_id' => $command->deviceTypeId, 'label' => $command->label],
+                afterState: ['device_type_id' => $command->deviceTypeId, 'label' => $command->label, 'commission_amount_minor' => $command->commissionAmountMinor],
             );
 
             return $id->value;

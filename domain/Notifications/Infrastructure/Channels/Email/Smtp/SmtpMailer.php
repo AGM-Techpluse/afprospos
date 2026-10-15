@@ -12,32 +12,39 @@ use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * The NOTIF-BR-08 failover target when Resend isn't configured or fails —
- * sends through the app's own `MAIL_MAILER`-configured mailer (`smtp` in
- * production, `log` in local dev by Laravel's own default), so a
- * notification is always attempted through *some* real transport rather
- * than requiring SMTP specifically to be set up before anything works.
- * Always "configured" for that reason — the log driver never errors.
+ * The NOTIF-BR-08 failover target — sends through the app's `MAIL_MAILER`
+ * transport (smtp, ses, postmark, …). The `log` and `array` drivers do not
+ * deliver anything, so they count as "not configured": reporting them as
+ * delivered would show staff a success for an email that never left the server.
  */
 final class SmtpMailer implements EmailChannel
 {
+    /** Mailers that write to a log or memory instead of a real transport. */
+    private const NON_DELIVERING_MAILERS = ['log', 'array'];
+
     public function isConfigured(): bool
     {
-        return true;
+        return ! in_array((string) config('mail.default'), self::NON_DELIVERING_MAILERS, true);
     }
 
     public function send(NotificationMessage $message): DeliveryResult
     {
+        $mailer = (string) config('mail.default');
+
         if ($message->recipientEmail === '') {
-            return DeliveryResult::failedPermanent('smtp', 'Recipient has no email address on file.');
+            return DeliveryResult::failedPermanent($mailer, 'Recipient has no email address on file.');
+        }
+
+        if (! $this->isConfigured()) {
+            return DeliveryResult::failedPermanent($mailer, "MAIL_MAILER is [{$mailer}], which does not deliver mail. Nothing was sent.");
         }
 
         try {
             Mail::to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body, $message->actionUrl));
 
-            return DeliveryResult::delivered(config('mail.default', 'smtp'));
+            return DeliveryResult::delivered($mailer);
         } catch (Throwable $exception) {
-            return DeliveryResult::failedTransient(config('mail.default', 'smtp'), $exception->getMessage());
+            return DeliveryResult::failedTransient($mailer, $exception->getMessage());
         }
     }
 }

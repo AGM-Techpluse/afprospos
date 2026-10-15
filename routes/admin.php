@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\CollectionController;
+use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DeviceCatalogController;
+use App\Http\Controllers\Admin\DiagnosisCasesController;
 use App\Http\Controllers\Admin\InventoryImportController;
+use App\Http\Controllers\Admin\InventoryMasterController;
 use App\Http\Controllers\Admin\InventorySerializedUnitsController;
 use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
@@ -14,10 +17,13 @@ use App\Http\Controllers\Admin\NotificationSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RepairsController;
+use App\Http\Controllers\Admin\RepairWorkflowSettingsController;
+use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\ReturnRequestController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShopController;
+use App\Http\Controllers\Admin\SiteAppearanceController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\TradeInAssessmentController;
 use App\Http\Controllers\Admin\WarrantyClaimController;
@@ -57,6 +63,20 @@ Route::prefix('admin')
     ->name('admin.')
     ->group(function (): void {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+        Route::middleware('permission:reports.view')
+            ->controller(ReportsController::class)
+            ->group(function (): void {
+                Route::get('/reports', 'index')->name('reports.index');
+                Route::get('/reports/repairs', 'repairs')->name('reports.repairs');
+                Route::get('/reports/sales', 'sales')->name('reports.sales');
+                Route::get('/reports/inventory', 'inventory')->name('reports.inventory');
+                Route::get('/reports/staff', 'staff')->name('reports.staff');
+            });
+
+        Route::middleware('permission:commission.view')
+            ->get('/commission', [CommissionController::class, 'index'])
+            ->name('commission.index');
 
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
             ->whereNumber('notification')
@@ -189,6 +209,11 @@ Route::prefix('admin')
             ->whereNumber('product')
             ->name('inventory.products.show');
 
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/products/{product}/image', [ProductController::class, 'image'])
+            ->whereNumber('product')
+            ->name('inventory.products.image');
+
         Route::middleware('permission:inventory.create')
             ->get('/inventory/products/{product}/variants/create', [ProductController::class, 'addVariantForm'])
             ->whereNumber('product')
@@ -198,6 +223,11 @@ Route::prefix('admin')
             ->post('/inventory/products/{product}/variants', [ProductController::class, 'storeVariant'])
             ->whereNumber('product')
             ->name('inventory.products.variants.store');
+
+        Route::middleware('permission:inventory.edit')
+            ->put('/inventory/products/{sku}/commission', [ProductController::class, 'updateCommission'])
+            ->whereNumber('sku')
+            ->name('inventory.products.commission.update');
 
         Route::middleware('permission:inventory.create')
             ->post('/inventory/products/{sku}/receive', [InventoryStockController::class, 'receive'])
@@ -211,6 +241,10 @@ Route::prefix('admin')
         Route::middleware('permission:inventory.view')
             ->get('/inventory/stock/low', [InventoryStockController::class, 'lowStock'])
             ->name('inventory.stock.low');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/inventory/stock/out-of-stock', [InventoryStockController::class, 'outOfStock'])
+            ->name('inventory.stock.out-of-stock');
 
         Route::middleware('permission:inventory.view')
             ->get('/inventory/serialized-units', [InventorySerializedUnitsController::class, 'index'])
@@ -300,6 +334,10 @@ Route::prefix('admin')
             ->name('sales.search');
 
         Route::middleware('permission:sales.create')
+            ->get('/sales/models', [SalesController::class, 'models'])
+            ->name('sales.models');
+
+        Route::middleware('permission:sales.create')
             ->get('/sales/customers/search', [SalesController::class, 'searchCustomers'])
             ->name('sales.customers.search');
 
@@ -385,6 +423,49 @@ Route::prefix('admin')
         | Repair intake device catalog (Settings)
         |----------------------------------------------------------------
         */
+        /*
+        |----------------------------------------------------------------
+        | Inventory catalog: categories, base units, suppliers (Settings)
+        |----------------------------------------------------------------
+        */
+        Route::middleware('permission:repairs.manage')
+            ->get('/settings/repair-workflow', [RepairWorkflowSettingsController::class, 'index'])
+            ->name('settings.repair-workflow.index');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/repair-workflow', [RepairWorkflowSettingsController::class, 'update'])
+            ->name('settings.repair-workflow.update');
+
+        Route::middleware('permission:settings.view')
+            ->get('/settings/appearance', [SiteAppearanceController::class, 'index'])
+            ->name('settings.appearance.index');
+
+        Route::middleware('permission:settings.edit')
+            ->put('/settings/appearance', [SiteAppearanceController::class, 'update'])
+            ->name('settings.appearance.update');
+
+        Route::middleware('permission:settings.edit')
+            ->delete('/settings/appearance', [SiteAppearanceController::class, 'reset'])
+            ->name('settings.appearance.reset');
+
+        Route::middleware('permission:inventory.view')
+            ->get('/settings/inventory-catalog', [InventoryMasterController::class, 'index'])
+            ->name('settings.inventory-catalog.index');
+
+        Route::middleware('permission:inventory.create')
+            ->post('/inventory/masters', [InventoryMasterController::class, 'store'])
+            ->name('inventory.masters.store');
+
+        Route::middleware('permission:inventory.edit')
+            ->put('/inventory/masters/{entry}', [InventoryMasterController::class, 'update'])
+            ->whereNumber('entry')
+            ->name('inventory.masters.update');
+
+        Route::middleware('permission:inventory.edit')
+            ->delete('/inventory/masters/{entry}', [InventoryMasterController::class, 'destroy'])
+            ->whereNumber('entry')
+            ->name('inventory.masters.destroy');
+
         Route::middleware('permission:repairs.manage')
             ->get('/settings/device-catalog', [DeviceCatalogController::class, 'index'])
             ->name('settings.device-catalog.index');
@@ -422,6 +503,20 @@ Route::prefix('admin')
             ->name('settings.device-catalog.brands.destroy');
 
         Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/models', [DeviceCatalogController::class, 'storeModel'])
+            ->name('settings.device-catalog.models.store');
+
+        Route::middleware('permission:repairs.manage')
+            ->put('/settings/device-catalog/models/{model}', [DeviceCatalogController::class, 'updateModel'])
+            ->whereNumber('model')
+            ->name('settings.device-catalog.models.update');
+
+        Route::middleware('permission:repairs.manage')
+            ->delete('/settings/device-catalog/models/{model}', [DeviceCatalogController::class, 'destroyModel'])
+            ->whereNumber('model')
+            ->name('settings.device-catalog.models.destroy');
+
+        Route::middleware('permission:repairs.manage')
             ->post('/settings/device-catalog/problem-tags', [DeviceCatalogController::class, 'storeProblemTag'])
             ->name('settings.device-catalog.problem-tags.store');
 
@@ -454,6 +549,43 @@ Route::prefix('admin')
             ->name('repairs.index');
 
         Route::middleware('permission:repairs.view')
+            ->get('/repairs/diagnosis-cases', [DiagnosisCasesController::class, 'index'])
+            ->name('diagnosis-cases.index');
+
+        Route::middleware('permission:repairs.create')
+            ->get('/repairs/diagnosis-cases/create', [DiagnosisCasesController::class, 'create'])
+            ->name('diagnosis-cases.create');
+
+        Route::middleware('permission:repairs.create')
+            ->post('/repairs/diagnosis-cases', [DiagnosisCasesController::class, 'store'])
+            ->name('diagnosis-cases.store');
+
+        Route::middleware('permission:repairs.view')
+            ->get('/repairs/diagnosis-cases/{diagnosisCase}', [DiagnosisCasesController::class, 'show'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.show');
+
+        Route::middleware('permission:repairs.view')
+            ->get('/repairs/diagnosis-cases/{diagnosisCase}/docket', [DiagnosisCasesController::class, 'docket'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.docket');
+
+        Route::middleware('permission:repairs.assign')
+            ->post('/repairs/diagnosis-cases/{diagnosisCase}/assign-technician', [DiagnosisCasesController::class, 'assignTechnician'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.assign-technician');
+
+        Route::middleware('permission:repairs.progress')
+            ->post('/repairs/diagnosis-cases/{diagnosisCase}/result', [DiagnosisCasesController::class, 'saveResult'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.result.store');
+
+        Route::middleware('permission:repairs.create')
+            ->post('/repairs/diagnosis-cases/{diagnosisCase}/repairs', [DiagnosisCasesController::class, 'createRepair'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.repairs.store');
+
+        Route::middleware('permission:repairs.view')
             ->get('/repairs/export', [RepairsController::class, 'export'])
             ->name('repairs.export');
 
@@ -474,6 +606,11 @@ Route::prefix('admin')
             ->whereNumber('repair')
             ->name('repairs.show');
 
+        Route::middleware('permission:repairs.transfer|repairs.assign|repairs.authorize')
+            ->post('/repairs/{repair}/transfer', [RepairsController::class, 'transfer'])
+            ->whereNumber('repair')
+            ->name('repairs.transfer');
+
         Route::middleware('permission:repairs.view')
             ->get('/repairs/{repair}/diagnosis', [RepairsController::class, 'diagnosis'])
             ->whereNumber('repair')
@@ -489,10 +626,15 @@ Route::prefix('admin')
             ->whereNumber('repair')
             ->name('repairs.diagnosis-conclusion.store');
 
-        Route::middleware('permission:repairs.progress')
+        Route::middleware('permission:repairs.authorize')
             ->post('/repairs/{repair}/authorize', [RepairsController::class, 'authorize'])
             ->whereNumber('repair')
             ->name('repairs.authorize');
+
+        Route::middleware('permission:repairs.authorize')
+            ->post('/repairs/{repair}/repair-cost', [RepairsController::class, 'setRepairCost'])
+            ->whereNumber('repair')
+            ->name('repairs.repair-cost.store');
 
         Route::middleware('permission:repairs.edit')
             ->post('/repairs/{repair}/down-payment-approval', [RepairsController::class, 'requestDownPaymentApproval'])
@@ -560,6 +702,41 @@ Route::prefix('admin')
             ->whereNumber('repair')
             ->name('repairs.complete');
 
+        Route::middleware('permission:repairs.progress')
+            ->post('/repairs/{repair}/send-to-quote', [RepairsController::class, 'sendToQuote'])
+            ->whereNumber('repair')
+            ->name('repairs.send-to-quote');
+
+        Route::middleware('permission:repairs.progress')
+            ->post('/repairs/{repair}/quality-check', [RepairsController::class, 'recordQualityCheck'])
+            ->whereNumber('repair')
+            ->name('repairs.quality-check.store');
+
+        Route::middleware('permission:repairs.progress')
+            ->post('/repairs/{repair}/cancel', [RepairsController::class, 'cancel'])
+            ->whereNumber('repair')
+            ->name('repairs.cancel');
+
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/diagnosis-fee', [RepairsController::class, 'setDiagnosisFee'])
+            ->whereNumber('repair')
+            ->name('repairs.diagnosis-fee.store');
+
+        Route::middleware('permission:repairs.approve-payment')
+            ->post('/repairs/{repair}/diagnosis-fee/decide', [RepairsController::class, 'decideDiagnosisFee'])
+            ->whereNumber('repair')
+            ->name('repairs.diagnosis-fee.decide');
+
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/diagnosis-fee/collect', [RepairsController::class, 'requestDiagnosisFee'])
+            ->whereNumber('repair')
+            ->name('repairs.diagnosis-fee.collect');
+
+        Route::middleware('permission:repairs.authorize')
+            ->post('/repairs/{repair}/quote/decline', [RepairsController::class, 'declineQuote'])
+            ->whereNumber('repair')
+            ->name('repairs.quote.decline');
+
         Route::middleware('permission:repairs.edit')
             ->post('/repairs/{repair}/payment-approval', [RepairsController::class, 'requestPaymentApproval'])
             ->whereNumber('repair')
@@ -613,6 +790,11 @@ Route::prefix('admin')
             ->post('/collection/{collectionCase}/release', [CollectionController::class, 'release'])
             ->whereNumber('collectionCase')
             ->name('collection.release');
+
+        Route::middleware('permission:collection.transfer|collection.process|collection.override')
+            ->post('/collection/{collectionCase}/transfer', [CollectionController::class, 'transfer'])
+            ->whereNumber('collectionCase')
+            ->name('collection.transfer');
 
         Route::middleware('permission:warranty.manage')
             ->get('/warranty/policies', [WarrantyPolicyController::class, 'index'])

@@ -77,6 +77,35 @@ return [
     | MAIL_*) stay in .env per ADD §21A — never referenced here.
     |
     */
+    /*
+    |--------------------------------------------------------------------
+    | Site appearance defaults
+    |--------------------------------------------------------------------
+    |
+    | The landing page's colour tokens and their original design values.
+    | An admin's saved palette (Settings → Site appearance) overrides these.
+    | Must match the tokens in resources/js/lib/welcomePalette.ts.
+    |
+    */
+    'appearance' => [
+        'welcome_palette' => [
+            'page_start' => '#CFE3FF',
+            'page_mid' => '#EAF3FF',
+            'page_end' => '#FFFFFF',
+            'text' => '#1B1F27',
+            'text_muted' => '#636B78',
+            'accent' => '#2F6FED',
+            'surface' => '#FFFFFF',
+            'on_accent' => '#FFFFFF',
+            'panel' => '#E8EDF3',
+            'border' => '#EEF0F3',
+            'navy' => '#10192E',
+            'lime' => '#A0ED25',
+            'on_lime' => '#14200A',
+            'ink' => '#000000',
+        ],
+    ],
+
     'notifications' => [
         'max_delivery_attempts' => 3,
         'retry_backoff_seconds' => [60, 300, 900],
@@ -136,7 +165,7 @@ return [
     'permissions' => [
         'staff' => ['view', 'create', 'edit', 'deactivate', 'assign'],
         'shops' => ['view', 'create', 'edit'],
-        'repairs' => ['view', 'create', 'edit', 'progress', 'assign', 'manage', 'approve-payment'],
+        'repairs' => ['view', 'create', 'edit', 'progress', 'assign', 'manage', 'approve-payment', 'authorize', 'transfer'],
         'sales' => ['view', 'create', 'cancel', 'approve-discount'],
         'commission' => ['view', 'manage'],
         'inventory' => ['view', 'create', 'edit', 'delete'],
@@ -145,10 +174,10 @@ return [
         'expenses' => ['view', 'create', 'manage'],
         'reports' => ['view'],
         'payments' => ['view', 'confirm', 'reject', 'dispute', 'refund'],
-        'collection' => ['view', 'process', 'override'],
+        'collection' => ['view', 'process', 'override', 'transfer'],
         'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'process-exchange', 'manage'],
         'audit' => ['view'],
-        'settings' => ['view'],
+        'settings' => ['view', 'edit'],
     ],
 
     /*
@@ -174,7 +203,8 @@ return [
         // 'repairs.create'/'sales.create' — intake and cash handling stay
         // with frontdesk, so a Manager approves rather than self-serves.
         'Manager' => [
-            'repairs' => ['view', 'progress', 'approve-payment'],
+            'repairs' => ['view', 'progress', 'approve-payment', 'authorize', 'transfer'],
+            'collection' => ['view', 'transfer'],
             'sales' => ['view', 'approve-discount'],
         ],
         'Accountant' => [
@@ -213,7 +243,10 @@ return [
             // the *request* actions) but a Manager/Shop Owner
             // ('repairs.approve-payment') always has to confirm both
             // before the repair proceeds or the money counts as settled.
-            'repairs' => ['view', 'create', 'edit', 'assign'],
+            // Everything in the repair flow except what needs an approval (authorization,
+            // quote approval, payment decisions) — those stay with the Manager.
+            'repairs' => ['view', 'create', 'edit', 'progress', 'assign', 'transfer'],
+            'collection' => ['view', 'process', 'transfer'],
             'inventory' => ['view'],
             'referrals' => ['view'],
             'reports' => ['view'],

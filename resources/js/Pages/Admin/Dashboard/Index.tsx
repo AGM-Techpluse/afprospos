@@ -65,6 +65,9 @@ const REPAIR_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     expired_cancelled: 'danger',
     awaiting_parts: 'info',
     in_progress: 'info',
+    qc_pending: 'info',
+    handover: 'info',
+    cancelled: 'neutral',
     completed: 'success',
     unrepairable: 'danger',
     failed_requires_resolution: 'danger',
@@ -111,13 +114,22 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
                                 <div className="text-xs text-white/70">Out of stock</div>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => router.visit('/admin/inventory/stock/low')}
-                            className="text-xs font-semibold text-admin-blue mt-3"
-                        >
-                            View low-stock items →
-                        </button>
+                        <div className="flex flex-col items-start gap-1.5 mt-3">
+                            <button
+                                type="button"
+                                onClick={() => router.visit('/admin/inventory/stock/low')}
+                                className="text-xs font-semibold text-admin-blue"
+                            >
+                                View low-stock items →
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => router.visit('/admin/inventory/stock/out-of-stock')}
+                                className="text-xs font-semibold text-admin-red"
+                            >
+                                View out-of-stock items →
+                            </button>
+                        </div>
                     </div>
                 )}
 

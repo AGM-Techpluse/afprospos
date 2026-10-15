@@ -21,7 +21,7 @@ final class OnRepairCompleted
     {
         $repairJob = $this->repairJobs->find($event->repairJobId);
 
-        if ($repairJob === null) {
+        if ($repairJob === null || $repairJob['customer_id'] === null) {
             return;
         }
 

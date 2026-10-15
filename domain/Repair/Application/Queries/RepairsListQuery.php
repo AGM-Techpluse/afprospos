@@ -38,7 +38,7 @@ final class RepairsListQuery
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
         $jobs = $paginator->getCollection();
-        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->filter()->unique()->all());
 
         return [
             'data' => $jobs->map(fn (RepairJobRecord $job): array => $this->toArray($job, $customers))->all(),
@@ -72,7 +72,7 @@ final class RepairsListQuery
         }
 
         $jobs = $query->orderByDesc('created_at')->limit($limit)->get();
-        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->filter()->unique()->all());
 
         return $jobs->map(fn (RepairJobRecord $job): array => $this->toArray($job, $customers))->all();
     }
@@ -110,7 +110,7 @@ final class RepairsListQuery
         }
 
         $jobs = $query->orderByDesc('created_at')->get();
-        $customers = $this->customers->findMany($jobs->pluck('customer_id')->unique()->all());
+        $customers = $this->customers->findMany($jobs->pluck('customer_id')->filter()->unique()->all());
         $technicianNames = StaffRecord::query()
             ->whereIn('id', $jobs->pluck('technician_staff_id')->filter()->unique()->all())
             ->pluck('name', 'id');
@@ -136,6 +136,7 @@ final class RepairsListQuery
             'device_model' => $job->device_model,
             'technician_staff_id' => $job->technician_staff_id,
             'labour_charge_minor' => $job->labour_charge_minor,
+            'repair_cost_minor' => $job->repair_cost_minor,
             'repair_status' => $job->repair_status,
             'financial_status' => $job->financial_status,
             'created_at' => $job->created_at->toIso8601String(),

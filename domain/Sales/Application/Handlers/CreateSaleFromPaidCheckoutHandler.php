@@ -7,7 +7,10 @@ namespace Domain\Sales\Application\Handlers;
 use App\Support\Transactions\Atomic;
 use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
+use Domain\Commission\Application\Commands\RecordCommissionEarnedCommand;
+use Domain\Commission\Application\Contracts\CommissionRecordingService;
 use Domain\Inventory\Application\Commands\ConsumeInventoryCommand;
+use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
 use Domain\Payments\Application\Commands\ConfirmPaymentCommand;
 use Domain\Payments\Application\Commands\InitiatePaymentCommand;
@@ -15,6 +18,7 @@ use Domain\Payments\Application\Contracts\PaymentConfirmationService;
 use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
 use Domain\Sales\Domain\Entities\Sale;
+use Domain\Sales\Domain\Entities\SalesCheckoutItem;
 use Domain\Sales\Domain\Events\SaleCompleted;
 use Domain\Sales\Domain\Repositories\SaleRepository;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
@@ -40,8 +44,10 @@ final class CreateSaleFromPaidCheckoutHandler
         private readonly SalesCheckoutRepository $checkouts,
         private readonly SaleRepository $sales,
         private readonly InventoryReservationService $reservations,
+        private readonly InventoryCatalogQuery $catalog,
         private readonly PaymentInitiationService $payments,
         private readonly PaymentConfirmationService $confirmations,
+        private readonly CommissionRecordingService $commission,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -108,6 +114,10 @@ final class CreateSaleFromPaidCheckoutHandler
 
             $saleId = $this->sales->save($sale);
 
+            foreach ($checkout->items() as $item) {
+                $this->creditDeviceSaleCommission($item, $checkout->shopId()->value, $command->confirmedByStaffId, $saleId->value);
+            }
+
             $this->audit->record(
                 module: 'Sales',
                 eventType: 'SaleCompleted',
@@ -129,5 +139,23 @@ final class CreateSaleFromPaidCheckoutHandler
 
             return $saleId->value;
         });
+    }
+
+    /** A non-commissionable SKU, or one that no longer resolves in the catalog, simply earns nothing — this is a silent skip, not an error. */
+    private function creditDeviceSaleCommission(SalesCheckoutItem $item, int $shopId, int $cashierStaffId, int $saleId): void
+    {
+        $sku = $this->catalog->find($item->skuId(), $shopId);
+
+        if ($sku === null || ! $sku['is_commissionable'] || ($sku['commission_amount_minor'] ?? 0) <= 0) {
+            return;
+        }
+
+        $this->commission->recordEarned(new RecordCommissionEarnedCommand(
+            staffId: $cashierStaffId,
+            sourceType: 'sale',
+            sourceId: $saleId,
+            amountMinor: $sku['commission_amount_minor'] * $item->quantity(),
+            shopId: $shopId,
+        ));
     }
 }

@@ -26,13 +26,15 @@ const STATUS_LABEL: Record<string, string> = {
     expired_cancelled: 'Expired / cancelled',
     awaiting_parts: 'Awaiting parts',
     in_progress: 'In progress',
+    qc_pending: 'Quality check',
+    cancelled: 'Cancelled',
     completed: 'Completed',
     unrepairable: 'Unrepairable',
     failed_requires_resolution: 'Failed — requires resolution',
 };
 
 export default function RepairParts({ repair, suggestedParts }: RepairPartsProps) {
-    const reservable = repair.repair_status === 'awaiting_parts' || repair.repair_status === 'in_progress';
+    const reservable = ['diagnosing', 'awaiting_authorization', 'awaiting_parts', 'in_progress'].includes(repair.repair_status);
 
     return (
         <AdminShell>
@@ -51,9 +53,8 @@ export default function RepairParts({ repair, suggestedParts }: RepairPartsProps
             {!reservable && (
                 <div className="mb-6">
                     <AlertBanner kind="danger">
-                        This repair is currently <strong>{STATUS_LABEL[repair.repair_status] ?? repair.repair_status}</strong> — parts search
-                        and reservation unlock once the repair is authorized and reaches Awaiting parts or In progress. Nothing here is broken;
-                        finish diagnosis and authorization on the repair page first.
+                        This repair is <strong>{STATUS_LABEL[repair.repair_status] ?? repair.repair_status}</strong>, so parts cannot be reserved
+                        here. Reserve parts from the repair page while it is being diagnosed or quoted.
                     </AlertBanner>
                 </div>
             )}

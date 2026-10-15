@@ -11,6 +11,8 @@ export type CheckoutItemView = {
     inventory_item_id: number | null;
     quantity: number;
     unit_price_minor: number;
+    /** What tells this unit apart from a sibling variant of the same product, e.g. "Black · 128GB". */
+    variant_label?: string | null;
 };
 
 interface POSCartProps {
@@ -58,6 +60,7 @@ export default function POSCart({ items, subtotalMinor, discountMinor, totalMino
                             <li key={item.id} className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
                                 <div className="min-w-0">
                                     <div className="text-sm text-white truncate">{item.product_name ?? item.sku_code ?? `SKU #${item.sku_id}`}</div>
+                                    {item.variant_label && <div className="text-xs text-white/70 truncate">{item.variant_label}</div>}
                                     <div className="text-xs text-white/50 flex items-center gap-1.5 mt-0.5">
                                         {isSerialized ? (
                                             <>

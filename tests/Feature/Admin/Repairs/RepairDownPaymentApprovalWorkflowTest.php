@@ -51,7 +51,7 @@ class RepairDownPaymentApprovalWorkflowTest extends TestCase
         ]);
         $decideResponse->assertRedirect();
         $this->assertDatabaseHas('repair_down_payment_approvals', ['id' => $approval->id, 'status' => 'approved']);
-        $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_status' => 'awaiting_parts']);
+        $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_status' => 'in_progress']);
         $this->assertDatabaseHas('payments_transactions', [
             'payable_type' => 'repair_job',
             'payable_id' => $job->id,

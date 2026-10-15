@@ -33,7 +33,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
     {
         $attributes = [
             'shop_id' => $repairJob->shopId()->value,
-            'customer_id' => $repairJob->customerId()->value,
+            'customer_id' => $repairJob->customerId()?->value,
             'device_make' => $repairJob->deviceMake(),
             'device_model' => $repairJob->deviceModel(),
             'reported_issue' => $repairJob->reportedIssue(),
@@ -41,7 +41,8 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             'device_lock_type' => $repairJob->deviceLockType(),
             'device_lock_value' => $repairJob->deviceLockValue(),
             'technician_staff_id' => $repairJob->technicianStaffId()?->value,
-            'labour_charge_minor' => $repairJob->labourCharge()->minor,
+            'labour_charge_minor' => $repairJob->labourCharge()?->minor,
+            'repair_cost_minor' => $repairJob->repairCost()?->minor,
             'down_payment_required_minor' => $repairJob->downPaymentRequired()?->minor,
             'down_payment_deadline_at' => $repairJob->downPaymentDeadlineAt(),
             'repair_status' => $repairJob->status(),
@@ -49,6 +50,8 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             'estimated_collection_date' => $repairJob->estimatedCollectionDate(),
             'unrepairable_settlement_state' => $repairJob->unrepairableSettlementState(),
             'resolution_notes' => $repairJob->resolutionNotes(),
+            'failure_service_charge_minor' => $repairJob->failureServiceCharge()?->minor,
+            'failure_refund_due_minor' => $repairJob->failureRefundDue()?->minor,
         ];
 
         if ($repairJob->id() === null) {
@@ -81,7 +84,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
         return RepairJob::reconstitute(
             new RepairJobId($record->id),
             new ShopId($record->shop_id),
-            new CustomerId($record->customer_id),
+            $record->customer_id !== null ? new CustomerId($record->customer_id) : null,
             $record->device_make,
             $record->device_model,
             $record->reported_issue,
@@ -89,7 +92,8 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             $record->device_lock_type,
             $record->device_lock_value,
             $record->technician_staff_id !== null ? new StaffId($record->technician_staff_id) : null,
-            new Money($record->labour_charge_minor),
+            $record->labour_charge_minor !== null ? new Money($record->labour_charge_minor) : null,
+            $record->repair_cost_minor !== null ? new Money($record->repair_cost_minor) : null,
             $record->down_payment_required_minor !== null ? new Money($record->down_payment_required_minor) : null,
             $record->down_payment_deadline_at?->toDateTimeImmutable(),
             $record->repair_status,
@@ -97,6 +101,8 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             $record->estimated_collection_date?->toDateTimeImmutable(),
             $record->unrepairable_settlement_state,
             $record->resolution_notes,
+            $record->failure_service_charge_minor !== null ? new Money($record->failure_service_charge_minor) : null,
+            $record->failure_refund_due_minor !== null ? new Money($record->failure_refund_due_minor) : null,
         );
     }
 }

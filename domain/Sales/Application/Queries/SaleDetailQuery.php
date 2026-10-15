@@ -58,6 +58,7 @@ final class SaleDetailQuery
                     'sku_id' => $item->sku_id,
                     'sku_code' => $sku['sku_code'] ?? null,
                     'product_name' => $sku['product_name'] ?? null,
+                    'variant_label' => $sku['variant_label'] ?? null,
                     'inventory_item_id' => $item->inventory_item_id,
                     'quantity' => $item->quantity,
                     'unit_price_minor' => $item->unit_price_minor,

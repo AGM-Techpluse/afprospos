@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Collection\Domain\Entities;
 
 use DateTimeImmutable;
+use Domain\Collection\Domain\Exceptions\CollectionTransferNotAllowed;
 use Domain\Collection\Domain\Exceptions\InvalidCollectionTransition;
 use Domain\Collection\Domain\Policies\CollectionTransitionPolicy;
 use Domain\Collection\Domain\ValueObjects\CollectionCaseId;
@@ -16,7 +17,7 @@ final class CollectionCase
         private readonly ?CollectionCaseId $id,
         private readonly string $sourceType,
         private readonly int $sourceId,
-        private readonly int $shopId,
+        private int $shopId,
         private readonly int $originatingShopId,
         private readonly string $context,
         private string $status,
@@ -92,6 +93,19 @@ final class CollectionCase
     {
         $this->assertMutable();
         $this->shopOverrideReason = $reason;
+    }
+
+    public function transferToShop(int $targetShopId): void
+    {
+        if ($this->status === 'resolved') {
+            throw CollectionTransferNotAllowed::resolved($this->id?->value ?? 0);
+        }
+
+        if ($this->shopId === $targetShopId) {
+            throw CollectionTransferNotAllowed::sameShop($targetShopId);
+        }
+
+        $this->shopId = $targetShopId;
     }
 
     private function assertMutable(): void

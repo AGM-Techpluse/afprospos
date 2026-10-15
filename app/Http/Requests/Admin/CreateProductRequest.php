@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class CreateProductRequest extends FormRequest
 {
@@ -18,24 +19,33 @@ final class CreateProductRequest extends FormRequest
         return [
             'brand' => ['required', 'string', 'max:255'],
             'model' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string', 'max:255', Rule::exists('inventory_master_entries', 'name')->where('kind', 'category')],
+            'unit' => ['nullable', 'string', 'max:120', Rule::exists('inventory_master_entries', 'name')->where('kind', 'unit')],
+            'purpose' => ['nullable', 'string', 'in:sale,repair_part,both'],
+            'supplier_id' => ['nullable', 'integer', Rule::exists('inventory_master_entries', 'id')->where('kind', 'supplier')],
+            'product_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'condition' => ['required', 'string', 'in:new,used_grade_a,used_grade_b,used_grade_c,refurbished'],
             'is_serialized' => ['required', 'boolean'],
             'cost_price_minor' => ['required', 'integer', 'min:0'],
-            'markup_percent' => ['required', 'numeric', 'min:0'],
+            'markup_percent' => ['nullable', 'numeric', 'min:0'],
             'selling_price_minor_override' => ['nullable', 'integer', 'min:0'],
             'low_stock_threshold' => ['nullable', 'integer', 'min:0'],
             'shop_id' => ['required', 'integer'],
             'initial_quantity' => ['nullable', 'integer', 'min:0'],
             'initial_imeis' => ['nullable', 'array'],
             'initial_imeis.*' => ['string', 'max:20'],
+            'initial_serial_numbers' => ['nullable', 'array'],
+            'initial_serial_numbers.*' => ['nullable', 'string', 'max:80'],
             'attributes' => ['nullable', 'array'],
             'attributes.brand' => ['nullable', 'string', 'max:100'],
             'attributes.color' => ['nullable', 'string', 'max:100'],
+            'attributes.storage' => ['nullable', 'string', 'max:100'],
             'attributes.material' => ['nullable', 'string', 'max:100'],
             'attributes.compatibility' => ['nullable', 'string', 'max:255'],
             'attributes.custom' => ['nullable', 'array'],
             'attributes.custom.*' => ['nullable', 'string', 'max:255'],
+            'is_commissionable' => ['nullable', 'boolean'],
+            'commission_amount_minor' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

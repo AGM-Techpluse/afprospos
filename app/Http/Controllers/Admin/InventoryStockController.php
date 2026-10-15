@@ -75,6 +75,19 @@ final class InventoryStockController
         ]);
     }
 
+    public function outOfStock(Request $request): Response
+    {
+        $actor = app(ActorContext::class);
+        $shopId = $request->integer('shop_id') ?: null;
+        abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
+
+        return Inertia::render('Admin/Inventory/Stock/OutOfStock', [
+            'items' => $this->lowStock->outOfStock($shopId),
+            'filters' => ['shop_id' => $shopId],
+            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
+        ]);
+    }
+
     public function receive(ReceiveStockRequest $request, int $sku): RedirectResponse
     {
         $actor = app(ActorContext::class);
@@ -88,6 +101,7 @@ final class InventoryStockController
                 condition: $request->string('condition')->toString(),
                 quantity: $request->integer('quantity') ?: null,
                 imeis: $request->array('imeis') ?: null,
+                serialNumbers: $request->array('serial_numbers') ?: null,
                 receivedByStaffId: $actor->staffId->value,
             ));
         } catch (ImeiAlreadyExists $exception) {

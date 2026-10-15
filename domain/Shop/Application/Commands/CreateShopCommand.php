@@ -15,5 +15,6 @@ final readonly class CreateShopCommand
         public string $contactEmail,
         public array $offlinePolicy,
         public int $createdByStaffId,
+        public bool $isWarehouse = false,
     ) {}
 }

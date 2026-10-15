@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\CreateCheckoutRequest;
 use App\Http\Requests\Admin\UpdateCheckoutItemQuantityRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotReservable;
 use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
@@ -39,6 +40,7 @@ use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
 use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
 use Domain\Sales\Domain\Exceptions\NoAdjustmentToApprove;
 use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
+use Domain\Sales\Domain\Exceptions\WarehouseCannotSell;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
@@ -58,6 +60,7 @@ final class SalesController
         private readonly SaleDetailQuery $saleDetail,
         private readonly CheckoutDetailQuery $checkoutDetail,
         private readonly InventoryCatalogQuery $catalog,
+        private readonly InventoryMasterListQuery $masterLists,
         private readonly CustomerDirectoryQuery $customerDirectory,
         private readonly ShopDirectoryQuery $shops,
         private readonly AccessibleShopsQuery $accessibleShops,
@@ -139,6 +142,8 @@ final class SalesController
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
+            'productCategories' => array_column($this->masterLists->all()['categories'], 'name'),
+            'productBrands' => $this->catalog->sellableBrands(),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),
             'canApproveDiscount' => $actor->hasPermission('sales.approve-discount'),
         ]);
@@ -148,11 +153,28 @@ final class SalesController
     {
         $actor = app(ActorContext::class);
         $term = $request->string('q')->toString();
+        $category = $request->string('category')->toString() ?: null;
+        $brand = $request->string('brand')->toString() ?: null;
+        $model = $request->string('model')->toString() ?: null;
         $shopId = $request->integer('shop_id');
         abort_unless($actor->canAccessShop($shopId), 403);
 
+        // Any one of the four filters (text, category, brand, model) is enough to search; with none, nothing is shown.
+        $hasFilter = $term !== '' || $category !== null || $brand !== null || $model !== null;
+
         return response()->json([
-            'results' => $term !== '' ? $this->catalog->search($term, $shopId) : [],
+            'results' => $hasFilter ? $this->catalog->search($term, $shopId, 20, $category, $brand, $model) : [],
+        ]);
+    }
+
+    /** Models for the checkout's variant filter, narrowed to whichever category/brand is already picked. */
+    public function models(Request $request): JsonResponse
+    {
+        return response()->json([
+            'results' => $this->catalog->sellableModels(
+                $request->string('category')->toString() ?: null,
+                $request->string('brand')->toString() ?: null,
+            ),
         ]);
     }
 
@@ -171,11 +193,15 @@ final class SalesController
         $shopId = $request->integer('shop_id');
         abort_unless($actor->canAccessShop($shopId), 403);
 
-        $id = $this->createCheckout->handle(new CreateCheckoutCommand(
-            shopId: $shopId,
-            customerId: $request->integer('customer_id') ?: null,
-            cashierStaffId: $actor->staffId->value,
-        ));
+        try {
+            $id = $this->createCheckout->handle(new CreateCheckoutCommand(
+                shopId: $shopId,
+                customerId: $request->integer('customer_id') ?: null,
+                cashierStaffId: $actor->staffId->value,
+            ));
+        } catch (WarehouseCannotSell $exception) {
+            throw ValidationException::withMessages(['shop_id' => $exception->getMessage()]);
+        }
 
         return redirect()->route('admin.sales.checkout', ['checkout' => $id->value]);
     }

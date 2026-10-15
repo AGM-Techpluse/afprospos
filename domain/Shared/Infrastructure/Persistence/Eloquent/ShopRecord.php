@@ -41,10 +41,12 @@ final class ShopRecord extends Model
         'contact_email',
         'offline_policy',
         'status',
+        'is_warehouse',
     ];
 
     protected $casts = [
         'offline_policy' => 'array',
+        'is_warehouse' => 'boolean',
     ];
 
     protected static function newFactory()

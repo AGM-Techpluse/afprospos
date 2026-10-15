@@ -9,32 +9,30 @@ use Domain\Collection\Application\Handlers\ReleaseRepairDeviceHandler;
 use Domain\Collection\Infrastructure\Persistence\Eloquent\CollectionCaseRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
-use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Application\Commands\CompleteRepairCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
-use Domain\Repair\Application\Commands\DecideRepairDownPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\DecideRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\InstallRepairPartCommand;
 use Domain\Repair\Application\Commands\RecordDiagnosisCommand;
 use Domain\Repair\Application\Commands\RecordDiagnosisConclusionCommand;
-use Domain\Repair\Application\Commands\RequestRepairDownPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\RecordQualityCheckCommand;
 use Domain\Repair\Application\Commands\RequestRepairPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
-use Domain\Repair\Application\Commands\StartRepairCommand;
+use Domain\Repair\Application\Commands\SendToQuoteCommand;
+use Domain\Repair\Application\Commands\SetRepairCostCommand;
 use Domain\Repair\Application\Handlers\AuthorizeRepairHandler;
 use Domain\Repair\Application\Handlers\CompleteRepairHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
-use Domain\Repair\Application\Handlers\DecideRepairDownPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\DecideRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\InstallRepairPartHandler;
 use Domain\Repair\Application\Handlers\RecordDiagnosisConclusionHandler;
 use Domain\Repair\Application\Handlers\RecordDiagnosisHandler;
-use Domain\Repair\Application\Handlers\RequestRepairDownPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\RecordQualityCheckHandler;
 use Domain\Repair\Application\Handlers\RequestRepairPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
-use Domain\Repair\Application\Handlers\StartRepairHandler;
-use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairDownPaymentApprovalRecord;
+use Domain\Repair\Application\Handlers\SendToQuoteHandler;
+use Domain\Repair\Application\Handlers\SetRepairCostHandler;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPartReservationRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPaymentApprovalRecord;
@@ -86,35 +84,29 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
             diagnosedByStaffId: $staff->id,
         ));
 
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'diagnosing']);
+
+        app(SendToQuoteHandler::class)->handle(new SendToQuoteCommand($jobId, $staff->id));
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_authorization']);
         $this->assertSame('code', RepairJobRecord::query()->findOrFail($jobId)->device_lock_type);
         $this->assertSame('1234', RepairJobRecord::query()->findOrFail($jobId)->device_lock_value); // decrypted transparently via the model's `encrypted` cast
+
+        // Quote & authorization: the cashier enters the amount, then the manager authorizes it.
+        app(SetRepairCostHandler::class)->handle(new SetRepairCostCommand($jobId, 500000, $staff->id));
 
         app(AuthorizeRepairHandler::class)->handle(new AuthorizeRepairCommand(
             repairJobId: $jobId,
             downPaymentRequiredMinor: 200000,
             authorizedByStaffId: $staff->id,
+            repairCostMinor: 500000,
         ));
 
-        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_authorization']);
+        $this->assertDatabaseHas('repair_jobs', [
+            'id' => $jobId,
+            'repair_status' => 'in_progress',
+            'down_payment_required_minor' => 200000,
+        ]);
         $this->assertDatabaseMissing('payments_transactions', ['payable_type' => 'repair_job', 'payable_id' => $jobId]);
-
-        app(RequestRepairDownPaymentApprovalHandler::class)->handle(new RequestRepairDownPaymentApprovalCommand(
-            repairJobId: $jobId,
-            amountMinor: 200000,
-            method: 'cash',
-            requestedByStaffId: $staff->id,
-        ));
-        $downPaymentApproval = RepairDownPaymentApprovalRecord::query()->where('repair_job_id', $jobId)->latest('id')->firstOrFail();
-        app(DecideRepairDownPaymentApprovalHandler::class)->handle(new DecideRepairDownPaymentApprovalCommand($downPaymentApproval->id, true, $staff->id));
-
-        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'awaiting_parts']);
-        $transaction = PaymentTransactionRecord::query()
-            ->where('payable_type', 'repair_job')
-            ->where('payable_id', $jobId)
-            ->firstOrFail();
-        $this->assertSame('repair_down_payment', $transaction->purpose);
-        $this->assertSame('confirmed', $transaction->status);
 
         app(ReserveRepairPartsHandler::class)->handle(new ReserveRepairPartsCommand(
             repairJobId: $jobId,
@@ -134,11 +126,19 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         $this->assertDatabaseHas('repair_parts_reservations', ['id' => $reservationId, 'status' => 'installed']);
         $this->assertDatabaseHas('inventory_stock_levels', ['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 4, 'reserved' => 0]);
 
-        app(StartRepairHandler::class)->handle(new StartRepairCommand($jobId, $staff->id));
+        // Authorization already moved the job to in progress; there is no separate Start step any more.
         $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'in_progress']);
 
-        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand($jobId, 'Replaced screen assembly', $staff->id));
-        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed', 'financial_status' => 'unpaid']);
+        app(CompleteRepairHandler::class)->handle(new CompleteRepairCommand(
+            repairJobId: $jobId,
+            resolutionNotes: 'Replaced screen assembly',
+            fixedFaults: [],
+            completedByStaffId: $staff->id,
+        ));
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'qc_pending', 'financial_status' => 'unpaid']);
+
+        app(RecordQualityCheckHandler::class)->handle(new RecordQualityCheckCommand($jobId, 'passed', null, $staff->id));
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'handover', 'financial_status' => 'unpaid']);
 
         app(RequestRepairPaymentApprovalHandler::class)->handle(new RequestRepairPaymentApprovalCommand(
             repairJobId: $jobId,
@@ -150,7 +150,7 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         $approval = RepairPaymentApprovalRecord::query()->where('repair_job_id', $jobId)->latest('id')->firstOrFail();
         app(DecideRepairPaymentApprovalHandler::class)->handle(new DecideRepairPaymentApprovalCommand($approval->id, true, $staff->id));
 
-        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed', 'financial_status' => 'fully_paid']);
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'handover', 'financial_status' => 'fully_paid']);
         $this->assertDatabaseHas('payments_transactions', [
             'payable_type' => 'repair_job',
             'payable_id' => $jobId,
@@ -166,6 +166,8 @@ class RepairIntakeToCollectionHappyPathTest extends TestCase
         app(ReleaseRepairDeviceHandler::class)->handle(new ReleaseRepairDeviceCommand($case->id, $staff->id));
 
         $this->assertDatabaseHas('collection_cases', ['id' => $case->id, 'status' => 'resolved']);
+        // Only releasing the device from collection makes the repair Completed.
+        $this->assertDatabaseHas('repair_jobs', ['id' => $jobId, 'repair_status' => 'completed']);
         $this->assertSame(1, RepairJobRecord::query()->count());
 
         $releasedJob = RepairJobRecord::query()->findOrFail($jobId);

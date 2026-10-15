@@ -24,7 +24,8 @@ final class CreateRepairJobRequest extends FormRequest
     {
         return [
             'shop_id' => ['required', 'integer', 'exists:shops,id'],
-            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'device_model_id' => ['nullable', 'integer', 'exists:device_models,id'],
             'device_make' => ['required', 'string', 'max:100'],
             'device_model' => ['required', 'string', 'max:150'],
             'reported_issue' => ['nullable', 'string'],
@@ -33,7 +34,7 @@ final class CreateRepairJobRequest extends FormRequest
             'device_lock_value' => ['nullable', 'required_unless:device_lock_type,none', 'string', 'max:100'],
             'problem_tag_ids' => ['nullable', 'array'],
             'problem_tag_ids.*' => ['integer', 'exists:device_problem_tags,id'],
-            'labour_charge_minor' => ['required', 'integer', 'min:0'],
+            'labour_charge_minor' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

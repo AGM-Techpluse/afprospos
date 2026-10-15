@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 
 interface NotificationRow {
@@ -13,7 +13,7 @@ interface NotificationRow {
 }
 
 const TITLES: Record<string, string> = {
-    CheckoutDiscountApplied: 'Discount awaiting your approval',
+    CheckoutDiscountApplied: 'Checkout adjustment awaiting your approval',
     RepairPaymentApprovalRequested: 'Repair payment awaiting your approval',
     RepairDownPaymentApprovalRequested: 'Repair down payment awaiting your approval',
 };
@@ -26,7 +26,7 @@ const LINKS: Record<string, (notification: NotificationRow) => string> = {
 
 function bodyFor(notification: NotificationRow): string {
     if (notification.event_type === 'CheckoutDiscountApplied') {
-        return 'A discount needs your approval before the checkout can be paid.';
+        return 'A discount or trade-in credit needs your approval before the checkout can be paid.';
     }
 
     if (notification.event_type === 'RepairPaymentApprovalRequested') {
@@ -68,8 +68,28 @@ export default function NotificationDropdown() {
         };
     }, [open]);
 
-    function markRead(id: number) {
-        router.post(`/admin/notifications/${id}/read`, {}, { preserveScroll: true, preserveState: true });
+    /**
+     * Marking as read and navigating to the notification's target were
+     * previously two independent Inertia visits fired from the same click
+     * (a `<Link href>` plus a `router.post` in `onClick`) — whichever one
+     * resolved last "won" and became the displayed page, so mark-read's
+     * `back()` redirect could clobber the real navigation and strand the
+     * viewer on whatever page they'd started from instead of the intended
+     * target. Sequencing them removes the race: navigate only once
+     * mark-read has actually finished.
+     */
+    function openNotification(notification: NotificationRow) {
+        const url = (LINKS[notification.event_type] ?? (() => '/admin/dashboard'))(notification);
+
+        if (notification.read_at === null) {
+            router.post(
+                `/admin/notifications/${notification.id}/read`,
+                {},
+                { preserveScroll: true, preserveState: true, onFinish: () => router.visit(url) },
+            );
+        } else {
+            router.visit(url);
+        }
     }
 
     return (
@@ -106,18 +126,18 @@ export default function NotificationDropdown() {
                     ) : (
                         <div className="flex flex-col gap-1">
                             {data.map((notification) => (
-                                <Link
+                                <button
                                     key={notification.id}
-                                    href={(LINKS[notification.event_type] ?? (() => '/admin/dashboard'))(notification)}
-                                    onClick={() => notification.read_at === null && markRead(notification.id)}
-                                    className={`block rounded-admin-button px-2 py-2 text-left ${notification.read_at === null ? 'bg-admin-blue/10' : 'hover:bg-admin-hover'}`}
+                                    type="button"
+                                    onClick={() => openNotification(notification)}
+                                    className={`block w-full rounded-admin-button px-2 py-2 text-left cursor-pointer ${notification.read_at === null ? 'bg-admin-blue/10' : 'hover:bg-admin-hover'}`}
                                 >
                                     <p className="text-xs font-semibold text-admin-text">
                                         {TITLES[notification.event_type] ?? notification.event_type}
                                     </p>
                                     <p className="text-xs text-admin-text2">{bodyFor(notification)}</p>
                                     <p className="text-[10px] text-admin-text3 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
-                                </Link>
+                                </button>
                             ))}
                         </div>
                     )}

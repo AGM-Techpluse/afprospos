@@ -1,7 +1,8 @@
 import React, { ReactNode, useId } from 'react';
 
 interface FormFieldProps {
-    label: string;
+    /** Omit for a control that only needs an accessible name (e.g. `aria-label`) and no visible label row — a compact inline filter. */
+    label?: string;
     labelClassName: string;
     containerClassName?: string;
     htmlFor?: string;
@@ -25,9 +26,11 @@ export default function FormField({
 
     return (
         <div className={containerClassName}>
-            <label htmlFor={id} className={labelClassName}>
-                {label}
-            </label>
+            {label !== undefined && (
+                <label htmlFor={id} className={labelClassName}>
+                    {label}
+                </label>
+            )}
             {children(id)}
         </div>
     );

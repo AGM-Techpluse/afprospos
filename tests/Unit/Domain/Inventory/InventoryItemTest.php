@@ -20,6 +20,7 @@ class InventoryItemTest extends TestCase
             new InventoryItemId(1),
             new SkuId(1),
             '123456789012345',
+            null,
             new ShopId(1),
             'new',
             $status,

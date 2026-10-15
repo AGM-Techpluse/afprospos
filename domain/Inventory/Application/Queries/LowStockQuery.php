@@ -38,10 +38,16 @@ final class LowStockQuery
     /** Every out-of-stock (sku, shop) pair, serialized or not, regardless of whether a low_stock_threshold is even configured -- mirrors the non-serialized branch's original "on_hand <= reserved" rule with no threshold requirement. */
     public function outOfStockCount(?int $shopId): int
     {
+        return count($this->outOfStock($shopId));
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function outOfStock(?int $shopId): array
+    {
         $nonSerialized = $this->nonSerializedSummaries($shopId)->filter(fn (array $row): bool => $row['available'] <= 0);
         $serialized = $this->serializedSummaries($shopId)->filter(fn (array $row): bool => $row['available'] <= 0);
 
-        return $nonSerialized->count() + $serialized->count();
+        return $nonSerialized->concat($serialized)->values()->all();
     }
 
     /**

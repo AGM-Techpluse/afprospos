@@ -11,6 +11,7 @@ type RepairDetail = {
     device_make: string;
     device_model: string;
     repair_status: string;
+    repair_cost_minor: number | null;
     diagnoses: DiagnosisRow[];
     diagnosis_conclusions: DiagnosisConclusionRow[];
 };
@@ -36,15 +37,32 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                 }
             />
 
-            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 items-start mb-6">
-                <div className="max-w-2xl bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <h3 className="text-sm font-semibold text-admin-text mb-1">1. Test common components</h3>
-                    <p className="text-xs text-admin-text3 mb-4">Record what is and isn't working before diagnosing the fault.</p>
-                    <DiagnosisChecklist
-                        submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
-                        diagnoses={repair.diagnoses}
-                        disabled={finalized}
-                    />
+            <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4 items-start mb-6">
+                <div className="flex flex-col gap-4 min-w-0">
+                    <section className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                        <h3 className="text-sm font-semibold text-admin-text mb-1">1. Test common components</h3>
+                        <p className="text-xs text-admin-text3 mb-4">Record what is faulty before diagnosing the fault.</p>
+                        <DiagnosisChecklist
+                            submitUrl={`/admin/repairs/${repair.id}/diagnosis`}
+                            diagnoses={repair.diagnoses}
+                            disabled={finalized}
+                        />
+                    </section>
+
+                    <section className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                        <h3 className="text-sm font-semibold text-admin-text mb-1">2. Diagnosis</h3>
+                        <DiagnosisConclusionForm
+                            submitUrl={`/admin/repairs/${repair.id}/diagnosis-conclusion`}
+                            conclusions={repair.diagnosis_conclusions}
+                            disabled={finalized}
+                            bare
+                        />
+                        {finalized && (
+                            <p className="text-xs text-admin-text3 mt-4">
+                                Diagnosis is finalized for this repair — no further observations can be added.
+                            </p>
+                        )}
+                    </section>
                 </div>
 
                 <CommonComponentsCard
@@ -54,19 +72,6 @@ export default function RepairDiagnosis({ repair }: RepairDiagnosisProps) {
                 />
             </div>
 
-            <div className="max-w-2xl">
-                <h3 className="text-sm font-semibold text-admin-text mb-1">2. Diagnosis</h3>
-                <DiagnosisConclusionForm
-                    submitUrl={`/admin/repairs/${repair.id}/diagnosis-conclusion`}
-                    conclusions={repair.diagnosis_conclusions}
-                    disabled={finalized}
-                />
-                {finalized && (
-                    <p className="text-xs text-admin-text3 mt-4">
-                        Diagnosis is finalized for this repair — no further observations can be added.
-                    </p>
-                )}
-            </div>
         </AdminShell>
     );
 }

@@ -71,7 +71,7 @@ final class ReleaseRepairDeviceHandler
                 afterState: ['financial_status_at_release' => $financialStatus, 'via_override' => $hasOverride],
             );
 
-            Event::dispatch(new CollectionCaseResolved($id->value, CarbonImmutable::now()));
+            Event::dispatch(new CollectionCaseResolved($id->value, CarbonImmutable::now(), $case->sourceType(), $case->sourceId()));
         });
     }
 }

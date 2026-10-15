@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Domain\Repair\Infrastructure\Laravel;
 
+use Domain\Collection\Domain\Events\CollectionCaseResolved;
 use Domain\Repair\Application\Contracts\DeviceLockClearer;
 use Domain\Repair\Application\Contracts\RepairFinancialStatusQuery;
 use Domain\Repair\Application\Contracts\RepairJobLookup;
+use Domain\Repair\Application\Contracts\ShopRepairReader;
 use Domain\Repair\Domain\Repositories\DeviceBrandRepository;
 use Domain\Repair\Domain\Repositories\DeviceProblemSuggestedPartRepository;
 use Domain\Repair\Domain\Repositories\DeviceProblemTagRepository;
 use Domain\Repair\Domain\Repositories\DeviceTypeRepository;
 use Domain\Repair\Domain\Repositories\DiagnosisConclusionRepository;
+use Domain\Repair\Domain\Repositories\RepairAgreementRepository;
+use Domain\Repair\Domain\Repositories\RepairDiagnosisFeeRepository;
 use Domain\Repair\Domain\Repositories\RepairDiagnosisRepository;
 use Domain\Repair\Domain\Repositories\RepairDownPaymentApprovalRepository;
 use Domain\Repair\Domain\Repositories\RepairJobProblemTagRepository;
@@ -19,11 +23,15 @@ use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\Repositories\RepairPartReservationRepository;
 use Domain\Repair\Domain\Repositories\RepairPaymentApprovalRepository;
 use Domain\Repair\Domain\Repositories\RepairPhotoRepository;
+use Domain\Repair\Domain\Repositories\RepairQcCheckRepository;
+use Domain\Repair\Infrastructure\Laravel\Listeners\OnCollectionCaseResolved;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDeviceBrandRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDeviceProblemSuggestedPartRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDeviceProblemTagRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDeviceTypeRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDiagnosisConclusionRepository;
+use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairAgreementRepository;
+use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairDiagnosisFeeRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairDiagnosisRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairDownPaymentApprovalRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairJobProblemTagRepository;
@@ -31,13 +39,18 @@ use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairJobRepos
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPartReservationRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPaymentApprovalRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPhotoRepository;
+use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairQcCheckRepository;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 final class RepairServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(ShopRepairReader::class, EloquentShopRepairReader::class);
         $this->app->bind(RepairJobRepository::class, EloquentRepairJobRepository::class);
+        $this->app->bind(RepairQcCheckRepository::class, EloquentRepairQcCheckRepository::class);
+        $this->app->bind(RepairDiagnosisFeeRepository::class, EloquentRepairDiagnosisFeeRepository::class);
         $this->app->bind(RepairDiagnosisRepository::class, EloquentRepairDiagnosisRepository::class);
         $this->app->bind(DiagnosisConclusionRepository::class, EloquentDiagnosisConclusionRepository::class);
         $this->app->bind(RepairPartReservationRepository::class, EloquentRepairPartReservationRepository::class);
@@ -52,5 +65,15 @@ final class RepairServiceProvider extends ServiceProvider
         $this->app->bind(DeviceLockClearer::class, EloquentDeviceLockClearer::class);
         $this->app->bind(RepairJobLookup::class, EloquentRepairJobLookup::class);
         $this->app->bind(RepairPhotoRepository::class, EloquentRepairPhotoRepository::class);
+        $this->app->bind(RepairAgreementRepository::class, EloquentRepairAgreementRepository::class);
+    }
+
+    /** A repair becomes Completed only when its device is released from collection. */
+    public function boot(): void
+    {
+        Event::listen(
+            CollectionCaseResolved::class,
+            OnCollectionCaseResolved::class,
+        );
     }
 }

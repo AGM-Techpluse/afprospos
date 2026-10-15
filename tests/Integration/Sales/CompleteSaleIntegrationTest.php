@@ -106,4 +106,58 @@ class CompleteSaleIntegrationTest extends TestCase
             shopCode: 'LGS',
         ));
     }
+
+    public function test_completing_a_sale_of_a_commissionable_sku_credits_the_cashier(): void
+    {
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'LGS']);
+        $staff = StaffRecord::factory()->create();
+        $sku = SkuRecord::factory()->nonSerialized()->create([
+            'selling_price_minor' => 20000,
+            'is_commissionable' => true,
+            'commission_amount_minor' => 1500,
+        ]);
+        InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 10, 'reserved' => 0]);
+
+        $checkoutId = app(CreateCheckoutHandler::class)->handle(new CreateCheckoutCommand($shop->id, null, $staff->id));
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 3));
+
+        $saleId = app(CreateSaleFromPaidCheckoutHandler::class)->handle(new CreateSaleFromPaidCheckoutCommand(
+            checkoutId: $checkoutId->value,
+            paymentMethod: 'cash',
+            paymentReference: null,
+            confirmedByStaffId: $staff->id,
+            shopCode: 'LGS',
+        ));
+
+        $this->assertDatabaseHas('commission_ledger_entries', [
+            'staff_id' => $staff->id,
+            'source_type' => 'sale',
+            'source_id' => $saleId,
+            'commissionable_amount_minor' => 4500,
+            'entry_type' => 'earned',
+            'status' => 'earned',
+            'shop_id' => $shop->id,
+        ]);
+    }
+
+    public function test_completing_a_sale_of_a_non_commissionable_sku_credits_nothing(): void
+    {
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'LGS']);
+        $staff = StaffRecord::factory()->create();
+        $sku = SkuRecord::factory()->nonSerialized()->create(['selling_price_minor' => 20000]);
+        InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 10, 'reserved' => 0]);
+
+        $checkoutId = app(CreateCheckoutHandler::class)->handle(new CreateCheckoutCommand($shop->id, null, $staff->id));
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 1));
+
+        app(CreateSaleFromPaidCheckoutHandler::class)->handle(new CreateSaleFromPaidCheckoutCommand(
+            checkoutId: $checkoutId->value,
+            paymentMethod: 'cash',
+            paymentReference: null,
+            confirmedByStaffId: $staff->id,
+            shopCode: 'LGS',
+        ));
+
+        $this->assertDatabaseCount('commission_ledger_entries', 0);
+    }
 }

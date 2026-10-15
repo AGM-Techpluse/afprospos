@@ -7,6 +7,7 @@ namespace Domain\Notifications\Application\Services;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Identity\Application\Contracts\StaffLookup;
 use Domain\Notifications\Application\Commands\RecordDeliveryAttemptCommand;
+use Domain\Notifications\Application\Contracts\EmailChannel;
 use Domain\Notifications\Application\Contracts\InAppChannel;
 use Domain\Notifications\Application\DTOs\DeliveryResult;
 use Domain\Notifications\Application\DTOs\NotificationMessage;
@@ -14,8 +15,6 @@ use Domain\Notifications\Application\Handlers\RecordDeliveryAttemptHandler;
 use Domain\Notifications\Domain\Entities\NotificationEvent;
 use Domain\Notifications\Domain\Repositories\NotificationEventRepository;
 use Domain\Notifications\Domain\ValueObjects\NotificationEventId;
-use Domain\Notifications\Infrastructure\Channels\Email\Resend\ResendMailer;
-use Domain\Notifications\Infrastructure\Channels\Email\Smtp\SmtpMailer;
 
 /**
  * ADD §21A's "Notification Engine": given a queued NotificationEvent, resolves
@@ -61,12 +60,12 @@ final class NotificationEngine
         'RepairDownPaymentApprovalRequested' => '/admin/repairs/%d',
     ];
 
+    /** @param  EmailChannel[]  $emailChannels  in priority order (NOTIF-BR-08); bound by NotificationsServiceProvider */
     public function __construct(
         private readonly NotificationEventRepository $notificationEvents,
         private readonly CustomerDirectoryQuery $customers,
         private readonly StaffLookup $staff,
-        private readonly ResendMailer $resend,
-        private readonly SmtpMailer $smtp,
+        private readonly array $emailChannels,
         private readonly InAppChannel $inApp,
         private readonly RecordDeliveryAttemptHandler $recordDeliveryAttempt,
     ) {}
@@ -127,19 +126,28 @@ final class NotificationEngine
         $this->record($notificationEventId, 'in_app', 'in_app', $attemptNumber, $this->inApp->send($message));
     }
 
+    /**
+     * Tries each configured email channel in order. Only the final outcome is
+     * recorded: a non-delivered earlier attempt must not mark the event
+     * failed before the next channel gets its chance.
+     */
     private function sendEmail(int $notificationEventId, int $attemptNumber, NotificationMessage $message): void
     {
-        if ($this->resend->isConfigured()) {
-            $result = $this->resend->send($message);
+        $result = DeliveryResult::failedPermanent('none', 'No email channel is configured.');
+
+        foreach ($this->emailChannels as $channel) {
+            if (! $channel->isConfigured()) {
+                continue;
+            }
+
+            $result = $channel->send($message);
 
             if ($result->isDelivered()) {
-                $this->record($notificationEventId, 'email', 'resend', $attemptNumber, $result);
-
-                return;
+                break;
             }
         }
 
-        $this->record($notificationEventId, 'email', 'smtp', $attemptNumber, $this->smtp->send($message));
+        $this->record($notificationEventId, 'email', $result->provider, $attemptNumber, $result);
     }
 
     private function record(int $notificationEventId, string $channel, string $provider, int $attemptNumber, DeliveryResult $result): void

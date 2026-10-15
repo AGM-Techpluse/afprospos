@@ -50,7 +50,8 @@ const NAV_GROUPS: NavGroup[] = [
         name: 'Business',
         items: [
             { key: 'shops', label: 'Multi-shop', icon: 'shop', href: '/admin/shops' },
-            { key: 'reports', label: 'Reports', icon: 'bar-chart-line', soon: true },
+            { key: 'reports', label: 'Reports', icon: 'bar-chart-line', href: '/admin/reports', activeMatch: '/admin/reports' },
+            { key: 'commission', label: 'Commission', icon: 'cash-coin', href: '/admin/commission', activeMatch: '/admin/commission' },
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
             { key: 'settings', label: 'Settings', icon: 'gear', href: '/admin/settings/device-catalog', activeMatch: '/admin/settings' },

@@ -12,5 +12,8 @@ interface ProductRepository
     public function get(ProductId $id): Product;
 
     /** BLD §9.1: the SKU belongs to the catalog, so re-adding the same brand/model/category reuses the existing Product. */
-    public function findOrCreate(string $brand, string $model, string $category): ProductId;
+    /** Unit, purpose and supplier are set when the product is first created; an existing product keeps its own. */
+    public function findOrCreate(string $brand, string $model, string $category, string $unit = 'pcs', string $purpose = 'sale', ?int $supplierId = null): ProductId;
+
+    public function setImagePath(ProductId $id, string $imagePath): void;
 }

@@ -14,5 +14,6 @@ final readonly class UpdateShopCommand
         public string $contactPhone,
         public string $contactEmail,
         public int $updatedByStaffId,
+        public bool $isWarehouse = false,
     ) {}
 }

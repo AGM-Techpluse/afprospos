@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Inventory;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminCanCreateProductTest extends TestCase
@@ -71,6 +74,35 @@ class AdminCanCreateProductTest extends TestCase
             'current_shop_id' => $shop->id,
             'status' => 'available',
         ]);
+    }
+
+    public function test_admin_can_attach_an_image_when_creating_a_single_product(): void
+    {
+        Storage::fake('public');
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+
+        $response = $this->actingAs($owner, 'staff')->post('/admin/inventory/products', [
+            'brand' => 'Apple',
+            'model' => 'iPhone 15 Pro',
+            'category' => 'Phones',
+            'condition' => 'new',
+            'is_serialized' => true,
+            'cost_price_minor' => 500_000_00,
+            'markup_percent' => 15,
+            'shop_id' => $shop->id,
+            'initial_imeis' => ['123456789012346'],
+            'product_image' => UploadedFile::fake()->image('iphone.webp'),
+        ]);
+
+        $response->assertRedirect();
+        $product = ProductRecord::query()->firstOrFail();
+
+        $this->assertNotNull($product->image_path);
+        Storage::disk('public')->assertExists($product->image_path);
     }
 
     public function test_re_adding_the_same_non_serialized_product_restocks_the_existing_sku_instead_of_duplicating_it(): void

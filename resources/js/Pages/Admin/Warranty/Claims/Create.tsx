@@ -21,11 +21,14 @@ type OriginType = 'sale' | 'repair';
 export default function WarrantyClaimCreate({ policies }: WarrantyClaimCreateProps) {
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
     const [originType, setOriginType] = useState<OriginType>('sale');
-    const { data, setData, post, transform, processing, errors } = useForm({
+    const { data, setData, post, transform, processing, errors: formErrors } = useForm({
         warranty_policy_id: policies[0]?.id.toString() ?? '',
         customer_id: '',
         origin_id: '',
     });
+    // The server validates `originating_sale_id`/`originating_repair_job_id`,
+    // not the single `origin_id` field this form binds its input to.
+    const errors = formErrors as Record<string, string | undefined>;
 
     function submit(e: FormEvent) {
         e.preventDefault();

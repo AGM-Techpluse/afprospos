@@ -18,7 +18,14 @@ final readonly class AddProductVariantCommand
         public string $shopCode,
         public int $shopId,
         public string $condition,
+        public bool $isSerialized,
         public ?int $initialQuantity,
+        /** @var string[]|null */
+        public ?array $initialImeis,
+        /** @var string[]|null */
+        public ?array $initialSerialNumbers,
         public int $createdByStaffId,
+        public bool $isCommissionable = false,
+        public ?int $commissionAmountMinor = null,
     ) {}
 }

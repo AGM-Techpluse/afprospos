@@ -48,15 +48,19 @@ final class SkuVariantWriter
         string $condition,
         ?int $initialQuantity,
         ?array $initialImeis,
+        ?array $initialSerialNumbers = null,
+        bool $isCommissionable = false,
+        ?int $commissionAmountMinor = null,
     ): array {
-        if (! $isSerialized) {
-            $existingSku = $this->skus->findNonSerializedByProduct($productId, $attributes);
+        // The same product configuration is always one SKU, serialized or not: a
+        // new IMEI (or more stock) for an existing configuration is received
+        // under that SKU, never minted as a sibling SKU (INV-BR-08/18).
+        $existingSku = $this->skus->findByProductAndAttributes($productId, $attributes, $isSerialized);
 
-            if ($existingSku !== null) {
-                $this->receiveInitialStock($existingSku->id(), $isSerialized, $shopId, $condition, $initialQuantity, $initialImeis);
+        if ($existingSku !== null) {
+            $this->receiveInitialStock($existingSku->id(), $isSerialized, $shopId, $condition, $initialQuantity, $initialImeis, $initialSerialNumbers);
 
-                return ['skuId' => $existingSku->id(), 'wasExisting' => true];
-            }
+            return ['skuId' => $existingSku->id(), 'wasExisting' => true];
         }
 
         $sequence = $this->skus->nextSequence($shopCode, $category);
@@ -82,25 +86,28 @@ final class SkuVariantWriter
             sellingPrice: $sellingPrice,
             sellingPriceOverridden: $sellingPriceOverridden,
             lowStockThreshold: $lowStockThreshold,
+            isCommissionable: $isCommissionable,
+            commissionAmount: $commissionAmountMinor !== null ? new Money($commissionAmountMinor) : null,
         );
 
-        $this->receiveInitialStock($skuId, $isSerialized, $shopId, $condition, $initialQuantity, $initialImeis);
+        $this->receiveInitialStock($skuId, $isSerialized, $shopId, $condition, $initialQuantity, $initialImeis, $initialSerialNumbers);
 
         return ['skuId' => $skuId, 'wasExisting' => false];
     }
 
     /** @param  string[]|null  $initialImeis */
-    private function receiveInitialStock(SkuId $skuId, bool $isSerialized, int $shopId, string $condition, ?int $initialQuantity, ?array $initialImeis): void
+    private function receiveInitialStock(SkuId $skuId, bool $isSerialized, int $shopId, string $condition, ?int $initialQuantity, ?array $initialImeis, ?array $initialSerialNumbers): void
     {
         $shop = new ShopId($shopId);
 
         if ($isSerialized) {
-            foreach ($initialImeis ?? [] as $imei) {
+            foreach ($initialImeis ?? [] as $index => $imei) {
                 if ($this->items->existsWithImei($imei)) {
                     throw ImeiAlreadyExists::forImei($imei);
                 }
 
-                $this->items->create($skuId, $imei, $shop, $condition);
+                $serialNumber = trim((string) ($initialSerialNumbers[$index] ?? '')) ?: null;
+                $this->items->create($skuId, $imei, $shop, $condition, $serialNumber);
             }
 
             return;

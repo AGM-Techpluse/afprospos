@@ -11,5 +11,6 @@ final readonly class CreateDeviceProblemTagCommand
         public string $label,
         public int $sortOrder,
         public int $createdByStaffId,
+        public ?int $commissionAmountMinor = null,
     ) {}
 }

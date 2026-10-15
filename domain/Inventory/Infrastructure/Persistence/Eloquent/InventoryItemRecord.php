@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $sku_id
  * @property string $imei
+ * @property string|null $serial_number
  * @property int $current_shop_id
  * @property string $condition
  * @property string $status
@@ -29,6 +30,7 @@ final class InventoryItemRecord extends Model
     protected $fillable = [
         'sku_id',
         'imei',
+        'serial_number',
         'current_shop_id',
         'condition',
         'status',

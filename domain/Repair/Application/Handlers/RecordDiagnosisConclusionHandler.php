@@ -37,7 +37,11 @@ final class RecordDiagnosisConclusionHandler
             $job = $this->repairJobs->lockForUpdate($jobId);
             $actor = new StaffId($command->diagnosedByStaffId);
 
-            $job->recordDiagnosisOutcome($command->outcome);
+            // A repairable outcome is only saved here; the job moves on when staff send it to quote & authorization.
+            if ($command->outcome !== 'repairable') {
+                $job->recordDiagnosisOutcome($command->outcome);
+            }
+
             $this->repairJobs->save($job);
 
             $conclusion = DiagnosisConclusion::record($jobId, $command->rootCause, $command->outcome, $actor);

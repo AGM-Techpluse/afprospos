@@ -8,6 +8,8 @@ type SaleItem = {
     sku_id: number;
     sku_code: string | null;
     product_name: string | null;
+    /** What tells this unit apart from a sibling variant of the same product, e.g. "Black · 128GB". */
+    variant_label: string | null;
     quantity: number;
     unit_price_minor: number;
 };
@@ -92,6 +94,7 @@ export default function SalesReceipt({ sale }: { sale: Sale }) {
                                 <span className="truncate">{item.product_name ?? item.sku_code ?? `SKU #${item.sku_id}`}</span>
                                 <span className="shrink-0">{formatNaira(item.unit_price_minor * item.quantity)}</span>
                             </div>
+                            {item.variant_label && <div className="text-xs text-admin-text2">{item.variant_label}</div>}
                             <div className="text-xs text-admin-text3">
                                 {item.quantity} × {formatNaira(item.unit_price_minor)}
                             </div>

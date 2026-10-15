@@ -6,6 +6,8 @@ namespace Tests\Feature\Admin\Payments;
 
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -42,5 +44,38 @@ class AdminCanViewPaymentsListAndDetailTest extends TestCase
         $response = $this->actingAs($cashier, 'staff')->get('/admin/payments');
 
         $response->assertForbidden();
+    }
+
+    public function test_payments_for_walk_in_repairs_without_customers_do_not_crash_the_list_or_detail(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $accountant = StaffRecord::factory()->create();
+        $accountant->assignRole('Accountant');
+        $repair = RepairJobRecord::factory()->create([
+            'shop_id' => ShopRecord::factory()->create()->id,
+            'customer_id' => null,
+            'device_make' => 'Google',
+            'device_model' => 'Pixel 7',
+        ]);
+        $transaction = PaymentTransactionRecord::factory()->create([
+            'payable_type' => 'repair_job',
+            'payable_id' => $repair->id,
+            'purpose' => 'repair_diagnosis_fee',
+        ]);
+
+        $this->actingAs($accountant, 'staff')
+            ->get('/admin/payments')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Payments/Index')
+                ->where('payments.data.0.source_label', "Repair #{$repair->id} — Google Pixel 7"));
+
+        $this->actingAs($accountant, 'staff')
+            ->get("/admin/payments/{$transaction->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Payments/Show')
+                ->where('payment.source.label', "Repair #{$repair->id} — Google Pixel 7"));
     }
 }

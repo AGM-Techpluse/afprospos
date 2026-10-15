@@ -16,16 +16,14 @@ interface SkuRepository
     public function existsWithCode(string $skuCode): bool;
 
     /**
-     * BRD INV-01 (restock): re-adding/re-importing the same brand+model+
-     * category+attributes reuses the existing SKU rather than minting a
-     * duplicate. `$attributes` disambiguates between variants (INV-BR-16)
-     * — a product with several non-serialized SKUs (e.g. screenguard
-     * brands) matches only the one whose attributes are identical, never
-     * an arbitrary sibling variant.
+     * The SKU for one exact configuration of a product (INV-BR-08/16/18). A
+     * serialized device with the same attributes is the same SKU as the
+     * previous one — its IMEIs are items under it, not new SKUs. Only an
+     * identical signature matches, never a sibling variant.
      *
      * @param  array<string, mixed>  $attributes
      */
-    public function findNonSerializedByProduct(ProductId $productId, array $attributes): ?Sku;
+    public function findByProductAndAttributes(ProductId $productId, array $attributes, bool $isSerialized): ?Sku;
 
     /** @return Sku[] every non-serialized SKU for this product, for listing a product's variants (INV-BR-17/18). */
     public function findAllNonSerializedByProduct(ProductId $productId): array;
@@ -44,6 +42,8 @@ interface SkuRepository
         Money $sellingPrice,
         bool $sellingPriceOverridden,
         ?int $lowStockThreshold,
+        bool $isCommissionable = false,
+        ?Money $commissionAmount = null,
     ): SkuId;
 
     public function save(Sku $sku): void;

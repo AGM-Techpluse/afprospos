@@ -1,14 +1,18 @@
 import Icon from '../../Components/Icons/Icon';
 import AdminBadge, { AdminBadgeStatus } from '../../Components/Admin/AdminBadge';
 
-const HAPPY_PATH = ['received', 'diagnosing', 'awaiting_authorization', 'awaiting_parts', 'in_progress', 'completed'] as const;
+/** The stakeholder's stages. Parts being fitted belongs to "In Progress", so awaiting_parts is shown at the In Progress step. */
+const HAPPY_PATH = ['received', 'diagnosing', 'awaiting_authorization', 'in_progress', 'qc_pending', 'handover', 'completed'] as const;
 
 const STEP_LABEL: Record<string, string> = {
     received: 'Received',
-    diagnosing: 'Diagnosing',
-    awaiting_authorization: 'Awaiting authorization',
-    awaiting_parts: 'Awaiting parts',
-    in_progress: 'In progress',
+    diagnosing: 'Functional Test & Diagnosis',
+    awaiting_authorization: 'Quote & Authorization',
+    awaiting_parts: 'In Progress',
+    in_progress: 'In Progress',
+    qc_pending: 'Quality Check',
+    handover: 'Handover',
+    cancelled: 'Cancelled',
     completed: 'Completed',
 };
 
@@ -40,7 +44,8 @@ export default function RepairStatusStepper({ status }: RepairStatusStepperProps
         );
     }
 
-    const currentIndex = HAPPY_PATH.indexOf(status as (typeof HAPPY_PATH)[number]);
+    const currentStep = status === 'awaiting_parts' ? 'in_progress' : status;
+    const currentIndex = HAPPY_PATH.indexOf(currentStep as (typeof HAPPY_PATH)[number]);
 
     return (
         <ol className="flex items-center gap-1 flex-wrap">

@@ -44,6 +44,8 @@ class StaffRecipientDeliveryIntegrationTest extends TestCase
     public function test_a_repair_payment_approval_email_links_directly_to_the_repair(): void
     {
         Mail::fake();
+        // The test env defaults to the `array` mailer, which is not a real transport; Mail::fake still intercepts it.
+        config(['mail.default' => 'smtp']);
 
         $owner = StaffRecord::factory()->create();
 

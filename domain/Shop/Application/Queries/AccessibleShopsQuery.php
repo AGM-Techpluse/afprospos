@@ -17,7 +17,7 @@ final class AccessibleShopsQuery
 {
     public function __construct(private readonly StaffShopGrantsQuery $grants) {}
 
-    /** @return array<int, array{id:int, name:string, sku_prefix_code:string}> */
+    /** @return array<int, array{id:int, name:string, sku_prefix_code:string, is_warehouse:bool}> */
     public function forStaff(int $staffId, bool $isOwner): array
     {
         $query = ShopRecord::query()->where('status', 'active');
@@ -26,11 +26,12 @@ final class AccessibleShopsQuery
             $query->whereIn('id', $this->grants->activeShopIdsForStaff($staffId));
         }
 
-        return $query->get(['id', 'name', 'sku_prefix_code'])
+        return $query->get(['id', 'name', 'sku_prefix_code', 'is_warehouse'])
             ->map(static fn (ShopRecord $shop): array => [
                 'id' => $shop->id,
                 'name' => $shop->name,
                 'sku_prefix_code' => $shop->sku_prefix_code,
+                'is_warehouse' => (bool) $shop->is_warehouse,
             ])
             ->all();
     }

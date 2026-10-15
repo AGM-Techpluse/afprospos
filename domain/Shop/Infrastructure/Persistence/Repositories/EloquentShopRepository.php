@@ -43,6 +43,7 @@ final class EloquentShopRepository implements ShopRepository
         string $contactPhone,
         string $contactEmail,
         array $offlinePolicy,
+        bool $isWarehouse = false,
     ): ShopId {
         $record = ShopRecord::query()->create([
             'name' => $name,
@@ -52,6 +53,7 @@ final class EloquentShopRepository implements ShopRepository
             'contact_email' => $contactEmail,
             'offline_policy' => $offlinePolicy,
             'status' => 'active',
+            'is_warehouse' => $isWarehouse,
         ]);
 
         return new ShopId($record->id);
@@ -64,6 +66,7 @@ final class EloquentShopRepository implements ShopRepository
         string $address,
         string $contactPhone,
         string $contactEmail,
+        bool $isWarehouse = false,
     ): void {
         ShopRecord::query()->findOrFail($id->value)->update([
             'name' => $name,
@@ -71,6 +74,7 @@ final class EloquentShopRepository implements ShopRepository
             'address' => $address,
             'contact_phone' => $contactPhone,
             'contact_email' => $contactEmail,
+            'is_warehouse' => $isWarehouse,
         ]);
     }
 }

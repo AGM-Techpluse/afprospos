@@ -16,7 +16,7 @@ interface RepairJobLookup
      * @return array{
      *     id: int,
      *     shop_id: int,
-     *     customer_id: int,
+     *     customer_id: int|null,
      *     device_make: string,
      *     device_model: string,
      *     repair_status: string,

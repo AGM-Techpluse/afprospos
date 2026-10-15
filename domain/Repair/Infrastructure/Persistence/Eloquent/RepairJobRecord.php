@@ -11,6 +11,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int|null $diagnosis_case_id
+ * @property int|null $reopened_from_repair_job_id
  * @property int $shop_id
  * @property int $customer_id
  * @property string $device_make
@@ -20,7 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string $device_lock_type
  * @property string|null $device_lock_value
  * @property int|null $technician_staff_id
- * @property int $labour_charge_minor
+ * @property int|null $labour_charge_minor
+ * @property int|null $repair_cost_minor
  * @property int|null $down_payment_required_minor
  * @property Carbon|null $down_payment_deadline_at
  * @property string $repair_status
@@ -28,6 +31,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $estimated_collection_date
  * @property string|null $unrepairable_settlement_state
  * @property string|null $resolution_notes
+ * @property int|null $failure_service_charge_minor
+ * @property int|null $failure_refund_due_minor
  * @property Carbon $created_at
  */
 final class RepairJobRecord extends Model
@@ -38,6 +43,8 @@ final class RepairJobRecord extends Model
 
     protected $fillable = [
         'shop_id',
+        'diagnosis_case_id',
+        'reopened_from_repair_job_id',
         'customer_id',
         'device_make',
         'device_model',
@@ -47,6 +54,7 @@ final class RepairJobRecord extends Model
         'device_lock_value',
         'technician_staff_id',
         'labour_charge_minor',
+        'repair_cost_minor',
         'down_payment_required_minor',
         'down_payment_deadline_at',
         'repair_status',
@@ -54,6 +62,8 @@ final class RepairJobRecord extends Model
         'estimated_collection_date',
         'unrepairable_settlement_state',
         'resolution_notes',
+        'failure_service_charge_minor',
+        'failure_refund_due_minor',
     ];
 
     protected function casts(): array

@@ -33,15 +33,32 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     released: 'neutral',
 };
 
+const PART_FILTERS = [
+    { label: 'All parts', value: '' },
+    { label: 'Screens', value: 'screen' },
+    { label: 'Batteries', value: 'battery' },
+    { label: 'Charging', value: 'charging' },
+    { label: 'Cameras', value: 'camera' },
+    { label: 'Speakers', value: 'speaker' },
+];
+
 interface PartsReservationPickerProps {
     repairId: number;
     reservations: PartReservationRow[];
     suggestedParts?: SuggestedPart[];
     disabled?: boolean;
+    /** Fits inside an actions card: stacks the search and the reserved list, and leaves installing to the In Progress step. */
+    compact?: boolean;
 }
 
 /** SKU search + reserve, reusing the same InventoryCatalogQuery-backed search pattern as Sales' ProductSearch (Implementation Plan Phase 6 UI list). */
-export default function PartsReservationPicker({ repairId, reservations, suggestedParts = [], disabled = false }: PartsReservationPickerProps) {
+export default function PartsReservationPicker({
+    repairId,
+    reservations,
+    suggestedParts = [],
+    disabled = false,
+    compact = false,
+}: PartsReservationPickerProps) {
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<PartSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -79,11 +96,12 @@ export default function PartsReservationPicker({ repairId, reservations, suggest
     }
 
     const reservedSkuIds = new Set(reservations.map((r) => r.sku_id));
+    const panelClass = compact ? 'min-w-0' : 'bg-admin-surface border border-admin-border rounded-admin-card p-6';
     const pendingSuggestions = suggestedParts.filter((part) => !reservedSkuIds.has(part.sku_id));
 
     return (
-        <div className="grid gap-6 lg:grid-cols-2 items-start">
-            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+        <div className={compact ? 'flex flex-col gap-4 min-w-0' : 'grid gap-6 lg:grid-cols-2 items-start'}>
+            <div className={panelClass}>
                 {pendingSuggestions.length > 0 && (
                     <div className="mb-4 pb-4 border-b border-admin-border">
                         <h3 className="text-sm font-semibold text-admin-text mb-1">Suggested for this repair</h3>
@@ -105,7 +123,20 @@ export default function PartsReservationPicker({ repairId, reservations, suggest
                 )}
 
                 <h3 className="text-sm font-semibold text-admin-text mb-3">Search parts</h3>
-                <div className="relative mb-3">
+                <div className="mb-3 grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
+                    <select
+                        value={PART_FILTERS.some((filter) => filter.value === term) ? term : ''}
+                        disabled={disabled}
+                        onChange={(e) => setTerm(e.target.value)}
+                        className="border border-admin-border-strong rounded-admin-button px-2 py-2 text-admin-field outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus disabled:bg-admin-hover disabled:cursor-not-allowed disabled:text-admin-text3"
+                    >
+                        {PART_FILTERS.map((filter) => (
+                            <option key={filter.label} value={filter.value}>
+                                {filter.label}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="relative">
                     <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text3" />
                     <input
                         type="text"
@@ -115,6 +146,7 @@ export default function PartsReservationPicker({ repairId, reservations, suggest
                         placeholder={disabled ? 'Parts search is locked for this repair' : 'Search by SKU, brand, or model…'}
                         className="w-full border border-admin-border-strong rounded-admin-button pl-9 pr-3 py-2 text-admin-field outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus disabled:bg-admin-hover disabled:cursor-not-allowed disabled:text-admin-text3"
                     />
+                    </div>
                 </div>
 
                 {term.trim() === '' ? (
@@ -146,7 +178,7 @@ export default function PartsReservationPicker({ repairId, reservations, suggest
                 )}
             </div>
 
-            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+            <div className={panelClass}>
                 <h3 className="text-sm font-semibold text-admin-text mb-3">Reserved parts</h3>
                 {reservations.length === 0 ? (
                     <AdminEmptyState icon="tools" title="No parts reserved yet" />
@@ -165,7 +197,7 @@ export default function PartsReservationPicker({ repairId, reservations, suggest
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <AdminBadge status={STATUS_BADGE[reservation.status] ?? 'neutral'}>{reservation.status}</AdminBadge>
-                                    {reservation.status === 'reserved' && !disabled && (
+                                    {reservation.status === 'reserved' && !disabled && !compact && (
                                         <AdminButton variant="neutral" onClick={() => install(reservation.id)}>
                                             Mark installed
                                         </AdminButton>

@@ -20,4 +20,12 @@ interface PaymentTransactionLookup
      * @return array{id: int, status: string, method: string, amount_minor: int, provider_reference: ?string}|null
      */
     public function pendingTransactionFor(string $payableType, int $payableId): ?array;
+
+    /**
+     * The most recent transaction of one purpose for a payable, whatever its status —
+     * lets a module show "paid" or "awaiting payment" for a charge it asked for.
+     *
+     * @return array{id: int, status: string, method: string, amount_minor: int, provider_reference: ?string}|null
+     */
+    public function latestTransactionForPurpose(string $payableType, int $payableId, string $purpose): ?array;
 }

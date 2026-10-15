@@ -7,6 +7,7 @@ namespace Domain\Repair\Domain\Entities;
 use DateTimeImmutable;
 use Domain\Repair\Domain\Exceptions\InvalidRepairTransition;
 use Domain\Repair\Domain\Exceptions\RepairJobIsClosed;
+use Domain\Repair\Domain\Exceptions\RepairTransferNotAllowed;
 use Domain\Repair\Domain\Policies\RepairTransitionPolicy;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
@@ -27,8 +28,8 @@ final class RepairJob
 {
     private function __construct(
         private readonly ?RepairJobId $id,
-        private readonly ShopId $shopId,
-        private readonly CustomerId $customerId,
+        private ShopId $shopId,
+        private readonly ?CustomerId $customerId,
         private readonly string $deviceMake,
         private readonly string $deviceModel,
         private readonly ?string $reportedIssue,
@@ -36,7 +37,8 @@ final class RepairJob
         private string $deviceLockType,
         private ?string $deviceLockValue,
         private ?StaffId $technicianStaffId,
-        private readonly Money $labourCharge,
+        private readonly ?Money $labourCharge,
+        private ?Money $repairCost,
         private ?Money $downPaymentRequired,
         private ?DateTimeImmutable $downPaymentDeadlineAt,
         private string $status,
@@ -44,18 +46,20 @@ final class RepairJob
         private ?DateTimeImmutable $estimatedCollectionDate,
         private ?string $unrepairableSettlementState,
         private ?string $resolutionNotes,
+        private ?Money $failureServiceCharge,
+        private ?Money $failureRefundDue,
     ) {}
 
     /** @param  'none'|'code'|'pattern'  $deviceLockType */
-    public static function intake(ShopId $shopId, CustomerId $customerId, string $deviceMake, string $deviceModel, Money $labourCharge, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null): self
+    public static function intake(ShopId $shopId, ?CustomerId $customerId, string $deviceMake, string $deviceModel, ?Money $labourCharge = null, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null): self
     {
-        return new self(null, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, 'received', 'unpaid', null, null, null);
+        return new self(null, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, null, 'received', 'unpaid', null, null, null, null, null);
     }
 
     public static function reconstitute(
         RepairJobId $id,
         ShopId $shopId,
-        CustomerId $customerId,
+        ?CustomerId $customerId,
         string $deviceMake,
         string $deviceModel,
         ?string $reportedIssue,
@@ -63,7 +67,8 @@ final class RepairJob
         string $deviceLockType,
         ?string $deviceLockValue,
         ?StaffId $technicianStaffId,
-        Money $labourCharge,
+        ?Money $labourCharge,
+        ?Money $repairCost,
         ?Money $downPaymentRequired,
         ?DateTimeImmutable $downPaymentDeadlineAt,
         string $status,
@@ -71,8 +76,17 @@ final class RepairJob
         ?DateTimeImmutable $estimatedCollectionDate,
         ?string $unrepairableSettlementState,
         ?string $resolutionNotes,
+        ?Money $failureServiceCharge = null,
+        ?Money $failureRefundDue = null,
     ): self {
-        return new self($id, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes);
+        return new self($id, $shopId, $customerId, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $repairCost, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes, $failureServiceCharge, $failureRefundDue);
+    }
+
+    /** Staff have saved the diagnosis and send it for the manager to quote and authorize. */
+    public function sendToQuote(): void
+    {
+        $this->assertTransition('awaiting_authorization');
+        $this->status = 'awaiting_authorization';
     }
 
     public function startDiagnosis(): void
@@ -99,6 +113,26 @@ final class RepairJob
         }
     }
 
+    /**
+     * The customer-agreed price, only knowable once a `repairable` diagnosis
+     * conclusion has been recorded — distinct from `labourCharge`, which is
+     * captured at intake for a possible future technician-commission use
+     * case and is never the repair's price. Editable across every open
+     * post-diagnosis state (a technician may need to revise it once more
+     * parts/work turn out to be needed), locked once the job closes.
+     */
+    /** The quote can only change before the manager authorizes it. Once approved, the amount is fixed. */
+    private const REPAIR_COST_EDITABLE_STATUSES = ['awaiting_authorization', 'payment_overdue'];
+
+    public function setRepairCost(Money $cost): void
+    {
+        if (! in_array($this->status, self::REPAIR_COST_EDITABLE_STATUSES, true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'repair_cost');
+        }
+
+        $this->repairCost = $cost;
+    }
+
     public function setAuthorizationRequirements(?Money $downPaymentRequired, ?DateTimeImmutable $deadline): void
     {
         if ($this->status !== 'awaiting_authorization') {
@@ -112,8 +146,8 @@ final class RepairJob
     /** Down payment is zero, or Payments has confirmed it — either way, authorization is granted. */
     public function grantAuthorization(): void
     {
-        $this->assertTransition('awaiting_parts');
-        $this->status = 'awaiting_parts';
+        $this->assertTransition('in_progress');
+        $this->status = 'in_progress';
     }
 
     public function markPaymentOverdue(): void
@@ -151,6 +185,20 @@ final class RepairJob
         $this->technicianStaffId = $technicianStaffId;
     }
 
+    public function transferToShop(ShopId $targetShopId): void
+    {
+        if ($this->shopId->value === $targetShopId->value) {
+            throw RepairTransferNotAllowed::sameShop($targetShopId->value);
+        }
+
+        if (in_array($this->status, ['completed', 'unrepairable', 'expired_cancelled', 'cancelled'], true)) {
+            throw RepairTransferNotAllowed::closed($this->id?->value ?? 0, $this->status);
+        }
+
+        $this->shopId = $targetShopId;
+        $this->technicianStaffId = null;
+    }
+
     /**
      * `resolutionNotes` is optional even here — a repair that used parts
      * already has the part reservations as its record of what was done;
@@ -164,15 +212,50 @@ final class RepairJob
      */
     public function complete(?string $resolutionNotes = null): void
     {
+        $this->assertTransition('qc_pending');
+        $this->status = 'qc_pending';
+        $this->resolutionNotes = $resolutionNotes;
+    }
+
+    /** QC passed, or not testable with a recorded note — the repair is done and the device can be handed over. */
+    public function passQualityCheck(): void
+    {
+        $this->assertTransition('handover');
+        $this->status = 'handover';
+    }
+
+    /** The device has been released from collection: the repair is finished. */
+    public function markCollected(): void
+    {
         $this->assertTransition('completed');
         $this->status = 'completed';
-        $this->resolutionNotes = $resolutionNotes;
+    }
+
+    /** QC failed and the admin's policy sends the job back to diagnosis. */
+    public function returnToDiagnosisAfterFailedQc(): void
+    {
+        $this->assertTransition('diagnosing');
+        $this->status = 'diagnosing';
+    }
+
+    /** Cancels an open job (customer declined the quote, QC failed under a cancel policy, or staff stopped it). The reason is kept in resolution notes. */
+    public function cancel(string $reason): void
+    {
+        $this->assertTransition('cancelled');
+        $this->status = 'cancelled';
+        $this->resolutionNotes = $reason;
     }
 
     public function fail(): void
     {
         $this->assertTransition('failed_requires_resolution');
         $this->status = 'failed_requires_resolution';
+    }
+
+    public function recordFailureSettlement(Money $serviceCharge, Money $refundDue): void
+    {
+        $this->failureServiceCharge = $serviceCharge;
+        $this->failureRefundDue = $refundDue;
     }
 
     public function resume(): void
@@ -199,8 +282,8 @@ final class RepairJob
      */
     public function recordFinancialStatus(string $financialStatus): void
     {
-        if ($this->status !== 'completed') {
-            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'completed');
+        if (! in_array($this->status, ['handover', 'completed'], true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'handover');
         }
 
         $this->financialStatus = $financialStatus;
@@ -209,7 +292,9 @@ final class RepairJob
     /** Implementation Plan Phase 6 exit criterion: parts may never be reserved before authorization. */
     public function assertPartsReservable(): void
     {
-        if (! in_array($this->status, ['awaiting_parts', 'in_progress'], true)) {
+        // Parts are set aside as soon as the fault is diagnosed, so the manager can price them into the quote.
+        // They are only fitted (consumed) once the repair is in progress.
+        if (! in_array($this->status, ['diagnosing', 'awaiting_authorization', 'awaiting_parts', 'in_progress'], true)) {
             throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'awaiting_parts');
         }
     }
@@ -217,8 +302,8 @@ final class RepairJob
     /** REP-BR-28: a payment-recording request may only be raised once the repair is completed. */
     public function assertCompleted(): void
     {
-        if ($this->status !== 'completed') {
-            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'completed');
+        if (! in_array($this->status, ['handover', 'completed'], true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'handover');
         }
     }
 
@@ -266,7 +351,8 @@ final class RepairJob
         return $this->shopId;
     }
 
-    public function customerId(): CustomerId
+    /** Null for a walk-in repair with no customer on record. */
+    public function customerId(): ?CustomerId
     {
         return $this->customerId;
     }
@@ -307,9 +393,14 @@ final class RepairJob
         return $this->technicianStaffId;
     }
 
-    public function labourCharge(): Money
+    public function labourCharge(): ?Money
     {
         return $this->labourCharge;
+    }
+
+    public function repairCost(): ?Money
+    {
+        return $this->repairCost;
     }
 
     public function downPaymentRequired(): ?Money
@@ -345,5 +436,15 @@ final class RepairJob
     public function resolutionNotes(): ?string
     {
         return $this->resolutionNotes;
+    }
+
+    public function failureServiceCharge(): ?Money
+    {
+        return $this->failureServiceCharge;
+    }
+
+    public function failureRefundDue(): ?Money
+    {
+        return $this->failureRefundDue;
     }
 }

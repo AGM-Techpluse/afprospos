@@ -17,13 +17,15 @@ const OUTCOMES = [
 ];
 
 interface DiagnosisConclusionFormProps {
+    /** Rendered inside a parent card, so drop this form's own frame. */
+    bare?: boolean;
     submitUrl: string;
     conclusions: DiagnosisConclusionRow[];
     disabled?: boolean;
 }
 
 /** Step 2 — the actual diagnosis (REP-BR-29): the technician's stated root cause of the fault plus a repairable/unrepairable/requires-further-assessment verdict, distinct from the component tests in step 1. */
-export default function DiagnosisConclusionForm({ submitUrl, conclusions, disabled = false }: DiagnosisConclusionFormProps) {
+export default function DiagnosisConclusionForm({ submitUrl, conclusions, disabled = false, bare = false }: DiagnosisConclusionFormProps) {
     const { data, setData, post, processing, errors } = useForm({
         root_cause: '',
         outcome: '',
@@ -35,7 +37,7 @@ export default function DiagnosisConclusionForm({ submitUrl, conclusions, disabl
     }
 
     return (
-        <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+        <div className={bare ? '' : 'bg-admin-surface border border-admin-border rounded-admin-card p-6'}>
             <p className="text-xs text-admin-text3 mb-4">
                 Based on the component tests above, state the main cause of the fault and whether the device can be repaired.
             </p>

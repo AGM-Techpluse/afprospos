@@ -12,13 +12,14 @@ namespace Domain\Inventory\Application\Commands;
  */
 final readonly class ReceiveStockCommand
 {
-    /** @param  string[]|null  $imeis */
+    /** @param  string[]|null  $imeis  @param  string[]|null  $serialNumbers */
     public function __construct(
         public int $skuId,
         public int $shopId,
         public string $condition,
         public ?int $quantity,
         public ?array $imeis,
+        public ?array $serialNumbers,
         public int $receivedByStaffId,
     ) {}
 }

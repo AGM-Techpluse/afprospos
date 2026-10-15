@@ -6,6 +6,7 @@ namespace Domain\Repair\Application\Queries;
 
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceBrandRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceModelRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemSuggestedSkuRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceTypeRecord;
@@ -21,11 +22,12 @@ final class DeviceCatalogQuery
      * problem tags only, skipping the suggested-SKU lookups `full()` does
      * for the Settings page (intake has no shop-scoped part data to show).
      *
-     * @return array<int, array{id:int, label:string, icon:string, brands: array<int, array{id:int, name:string}>, problem_tags: array<int, array{id:int, label:string}>}>
+     * @return array<int, array{id:int, label:string, icon:string, brands: array<int, array{id:int, name:string, models: array<int, array{id:int, name:string}>}>, problem_tags: array<int, array{id:int, label:string}>}>
      */
     public function structure(): array
     {
         $brandsByType = DeviceBrandRecord::query()->orderBy('sort_order')->get()->groupBy('device_type_id');
+        $modelsByBrand = DeviceModelRecord::query()->orderBy('sort_order')->get()->groupBy('device_brand_id');
         $tagsByType = DeviceProblemTagRecord::query()->orderBy('sort_order')->get()->groupBy('device_type_id');
 
         return DeviceTypeRecord::query()
@@ -36,7 +38,13 @@ final class DeviceCatalogQuery
                 'label' => $type->label,
                 'icon' => $type->icon,
                 'brands' => ($brandsByType->get($type->id) ?? collect())
-                    ->map(static fn (DeviceBrandRecord $brand): array => ['id' => $brand->id, 'name' => $brand->name])
+                    ->map(static fn (DeviceBrandRecord $brand): array => [
+                        'id' => $brand->id,
+                        'name' => $brand->name,
+                        'models' => ($modelsByBrand->get($brand->id) ?? collect())
+                            ->map(static fn (DeviceModelRecord $model): array => ['id' => $model->id, 'name' => $model->name])
+                            ->values()->all(),
+                    ])
                     ->values()->all(),
                 'problem_tags' => ($tagsByType->get($type->id) ?? collect())
                     ->map(static fn (DeviceProblemTagRecord $tag): array => ['id' => $tag->id, 'label' => $tag->label])
@@ -85,6 +93,7 @@ final class DeviceCatalogQuery
     public function full(int $shopId): array
     {
         $brandsByType = DeviceBrandRecord::query()->orderBy('sort_order')->get()->groupBy('device_type_id');
+        $modelsByBrand = DeviceModelRecord::query()->orderBy('sort_order')->get()->groupBy('device_brand_id');
         $tagsByType = DeviceProblemTagRecord::query()->orderBy('sort_order')->get()->groupBy('device_type_id');
 
         $tagIds = $tagsByType->flatten()->pluck('id')->all();
@@ -96,7 +105,7 @@ final class DeviceCatalogQuery
         return DeviceTypeRecord::query()
             ->orderBy('sort_order')
             ->get()
-            ->map(function (DeviceTypeRecord $type) use ($brandsByType, $tagsByType, $suggestedByTag, $shopId): array {
+            ->map(function (DeviceTypeRecord $type) use ($brandsByType, $modelsByBrand, $tagsByType, $suggestedByTag, $shopId): array {
                 return [
                     'id' => $type->id,
                     'label' => $type->label,
@@ -107,6 +116,12 @@ final class DeviceCatalogQuery
                             'id' => $brand->id,
                             'name' => $brand->name,
                             'sort_order' => $brand->sort_order,
+                            'models' => ($modelsByBrand->get($brand->id) ?? collect())
+                                ->map(static fn (DeviceModelRecord $model): array => [
+                                    'id' => $model->id,
+                                    'name' => $model->name,
+                                    'sort_order' => $model->sort_order,
+                                ])->values()->all(),
                         ])->values()->all(),
                     'problem_tags' => ($tagsByType->get($type->id) ?? collect())
                         ->map(function (DeviceProblemTagRecord $tag) use ($suggestedByTag, $shopId): array {
@@ -114,6 +129,7 @@ final class DeviceCatalogQuery
                                 'id' => $tag->id,
                                 'label' => $tag->label,
                                 'sort_order' => $tag->sort_order,
+                                'commission_amount_minor' => $tag->commission_amount_minor,
                                 'suggested_parts' => ($suggestedByTag->get($tag->id) ?? collect())
                                     ->map(function (DeviceProblemSuggestedSkuRecord $suggested) use ($shopId): array {
                                         $sku = $this->catalog->find($suggested->sku_id, $shopId);

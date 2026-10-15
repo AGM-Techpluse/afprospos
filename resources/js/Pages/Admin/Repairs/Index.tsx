@@ -41,6 +41,9 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     expired_cancelled: 'danger',
     awaiting_parts: 'info',
     in_progress: 'info',
+    qc_pending: 'info',
+    handover: 'info',
+    cancelled: 'neutral',
     completed: 'success',
     unrepairable: 'danger',
     failed_requires_resolution: 'danger',
@@ -103,9 +106,18 @@ export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexPr
                 title="Repairs"
                 description="Intake, diagnosis, and repair progress."
                 actions={
-                    <div className="flex items-center gap-2">
-                        <AdminButton variant="neutral" onClick={exportMatchingFilters}>Export all matching filters</AdminButton>
-                        <AdminButton onClick={() => router.visit('/admin/repairs/create')}>
+                    <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
+                        <AdminButton className="w-full sm:w-auto" variant="neutral" onClick={exportMatchingFilters}>
+                            <span className="sm:hidden">Export filters</span>
+                            <span className="hidden sm:inline">Export all matching filters</span>
+                        </AdminButton>
+                        <AdminButton className="w-full sm:w-auto" variant="neutral" onClick={() => router.visit('/admin/repairs/diagnosis-cases')}>
+                            Diagnosis cases
+                        </AdminButton>
+                        <AdminButton className="w-full sm:w-auto" variant="neutral" onClick={() => router.visit('/admin/repairs/diagnosis-cases/create')}>
+                            New diagnosis
+                        </AdminButton>
+                        <AdminButton className="w-full sm:w-auto" onClick={() => router.visit('/admin/repairs/create')}>
                             <Icon name="plus-lg" className="mr-1.5" />
                             New repair
                         </AdminButton>

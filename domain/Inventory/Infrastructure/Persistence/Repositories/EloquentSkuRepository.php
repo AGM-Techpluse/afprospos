@@ -6,6 +6,7 @@ namespace Domain\Inventory\Infrastructure\Persistence\Repositories;
 
 use Domain\Inventory\Domain\Entities\Sku;
 use Domain\Inventory\Domain\Repositories\SkuRepository;
+use Domain\Inventory\Domain\Services\AttributeSignature;
 use Domain\Inventory\Domain\ValueObjects\ProductId;
 use Domain\Inventory\Domain\ValueObjects\SkuId;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
@@ -23,24 +24,13 @@ final class EloquentSkuRepository implements SkuRepository
         return SkuRecord::query()->where('sku_code', $skuCode)->exists();
     }
 
-    public function findNonSerializedByProduct(ProductId $productId, array $attributes): ?Sku
+    public function findByProductAndAttributes(ProductId $productId, array $attributes, bool $isSerialized): ?Sku
     {
-        // Compared in PHP rather than a DB-level JSON-equality clause — a
-        // product has at most a handful of variants, and JSON comparison
-        // semantics differ enough between MySQL and the SQLite used in
-        // tests that an in-PHP compare is the more portable correctness bet.
-        ksort($attributes);
-
         $record = SkuRecord::query()
             ->where('product_id', $productId->value)
-            ->where('is_serialized', false)
-            ->get()
-            ->first(function (SkuRecord $candidate) use ($attributes): bool {
-                $candidateAttributes = $candidate->attributes ?? [];
-                ksort($candidateAttributes);
-
-                return $candidateAttributes === $attributes;
-            });
+            ->where('is_serialized', $isSerialized)
+            ->where('attributes_signature', AttributeSignature::of($attributes))
+            ->first();
 
         return $record !== null ? $this->toDomain($record) : null;
     }
@@ -72,17 +62,22 @@ final class EloquentSkuRepository implements SkuRepository
         Money $sellingPrice,
         bool $sellingPriceOverridden,
         ?int $lowStockThreshold,
+        bool $isCommissionable = false,
+        ?Money $commissionAmount = null,
     ): SkuId {
         $record = SkuRecord::query()->create([
             'product_id' => $productId->value,
             'sku_code' => $skuCode,
             'attributes' => $attributes,
+            'attributes_signature' => AttributeSignature::of($attributes),
             'is_serialized' => $isSerialized,
             'cost_price_minor' => $costPrice->minor,
             'markup_percent' => $markupPercent,
             'selling_price_minor' => $sellingPrice->minor,
             'selling_price_overridden' => $sellingPriceOverridden,
             'low_stock_threshold' => $lowStockThreshold,
+            'is_commissionable' => $isCommissionable,
+            'commission_amount_minor' => $isCommissionable ? $commissionAmount?->minor : null,
         ]);
 
         return new SkuId($record->id);
@@ -93,6 +88,8 @@ final class EloquentSkuRepository implements SkuRepository
         SkuRecord::query()->whereKey($sku->id()->value)->update([
             'selling_price_minor' => $sku->sellingPrice()->minor,
             'selling_price_overridden' => $sku->sellingPriceOverridden(),
+            'is_commissionable' => $sku->isCommissionable(),
+            'commission_amount_minor' => $sku->commissionAmount()?->minor,
         ]);
     }
 
@@ -109,6 +106,8 @@ final class EloquentSkuRepository implements SkuRepository
             new Money($record->selling_price_minor),
             $record->selling_price_overridden,
             $record->low_stock_threshold,
+            $record->is_commissionable,
+            $record->commission_amount_minor !== null ? new Money($record->commission_amount_minor) : null,
         );
     }
 }

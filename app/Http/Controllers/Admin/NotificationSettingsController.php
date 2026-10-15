@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use Domain\Notifications\Application\Queries\RecentFailedNotificationsQuery;
+use Domain\Notifications\Infrastructure\Channels\Email\Smtp\SmtpMailer;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,12 +16,16 @@ use Inertia\Response;
  */
 final class NotificationSettingsController
 {
-    public function __construct(private readonly RecentFailedNotificationsQuery $recentFailed) {}
+    public function __construct(
+        private readonly RecentFailedNotificationsQuery $recentFailed,
+        private readonly SmtpMailer $smtp,
+    ) {}
 
     public function index(): Response
     {
         return Inertia::render('Admin/Settings/Notifications/Index', [
             'resendConfigured' => filled(config('services.resend.key')),
+            'fallbackConfigured' => $this->smtp->isConfigured(),
             'defaultMailer' => config('mail.default'),
             'mandatoryCategories' => config('afprospos.notifications.mandatory_categories', []),
             'maxDeliveryAttempts' => config('afprospos.notifications.max_delivery_attempts'),

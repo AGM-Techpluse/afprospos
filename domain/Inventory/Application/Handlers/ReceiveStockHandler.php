@@ -41,8 +41,11 @@ final class ReceiveStockHandler
 
         $this->atomic->run(function () use ($command, $skuId, $shopId, $sku): void {
             if ($sku->isSerialized()) {
-                foreach ($command->imeis ?? [] as $imei) {
-                    $this->items->create($skuId, $imei, $shopId, $command->condition);
+                foreach ($command->imeis ?? [] as $index => $imei) {
+                    $serialNumber = $command->serialNumbers[$index] ?? null;
+                    $serialNumber = is_string($serialNumber) && $serialNumber !== '' ? $serialNumber : null;
+
+                    $this->items->create($skuId, $imei, $shopId, $command->condition, $serialNumber);
                 }
             } else {
                 $level = $this->stockLevels->lockForUpdate($skuId, $shopId);
@@ -62,6 +65,7 @@ final class ReceiveStockHandler
                     'shop_id' => $shopId->value,
                     'quantity' => $command->quantity,
                     'imeis' => $command->imeis,
+                    'serial_numbers' => $command->serialNumbers,
                 ],
             );
         });

@@ -6,12 +6,15 @@ namespace Domain\Inventory\Infrastructure\Laravel;
 
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
+use Domain\Inventory\Application\Contracts\ShopStockReader;
 use Domain\Inventory\Domain\Repositories\InventoryItemRepository;
+use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Domain\Repositories\InventoryStockLevelRepository;
 use Domain\Inventory\Domain\Repositories\InventoryTransferRepository;
 use Domain\Inventory\Domain\Repositories\ProductRepository;
 use Domain\Inventory\Domain\Repositories\SkuRepository;
 use Domain\Inventory\Infrastructure\Persistence\Repositories\EloquentInventoryItemRepository;
+use Domain\Inventory\Infrastructure\Persistence\Repositories\EloquentInventoryMasterRepository;
 use Domain\Inventory\Infrastructure\Persistence\Repositories\EloquentInventoryStockLevelRepository;
 use Domain\Inventory\Infrastructure\Persistence\Repositories\EloquentInventoryTransferRepository;
 use Domain\Inventory\Infrastructure\Persistence\Repositories\EloquentProductRepository;
@@ -22,7 +25,9 @@ final class InventoryServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(ShopStockReader::class, EloquentShopStockReader::class);
         $this->app->bind(ProductRepository::class, EloquentProductRepository::class);
+        $this->app->bind(InventoryMasterRepository::class, EloquentInventoryMasterRepository::class);
         $this->app->bind(SkuRepository::class, EloquentSkuRepository::class);
         $this->app->bind(InventoryItemRepository::class, EloquentInventoryItemRepository::class);
         $this->app->bind(InventoryStockLevelRepository::class, EloquentInventoryStockLevelRepository::class);

@@ -9,6 +9,8 @@ use Domain\Inventory\Application\Commands\ImportProductsCommand;
 use Domain\Inventory\Application\DTOs\ProductImportRowResult;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
+use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
+use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Domain\Repositories\SkuRepository;
 use Throwable;
 
@@ -21,6 +23,7 @@ final class ImportProductsHandler
     public function __construct(
         private readonly CreateProductHandler $createProduct,
         private readonly SkuRepository $skus,
+        private readonly InventoryMasterRepository $masters,
     ) {}
 
     /** @return ProductImportRowResult[] */
@@ -30,11 +33,18 @@ final class ImportProductsHandler
 
         foreach ($command->rows as $row) {
             try {
+                $supplierId = null;
+
+                if ($row->supplierName !== null) {
+                    $supplierId = $this->masters->idOf('supplier', $row->supplierName)
+                        ?? throw UnknownMasterEntry::forName('supplier', $row->supplierName);
+                }
+
                 $skuId = $this->createProduct->handle(new CreateProductCommand(
                     brand: $row->brand,
                     model: $row->model,
                     category: $row->category,
-                    attributes: [],
+                    attributes: $row->attributes,
                     isSerialized: $row->imei !== null,
                     costPriceMinor: $row->costPriceMinor,
                     markupPercent: $row->markupPercent,
@@ -45,7 +55,11 @@ final class ImportProductsHandler
                     condition: $row->condition,
                     initialQuantity: $row->quantity,
                     initialImeis: $row->imei !== null ? [$row->imei] : null,
+                    initialSerialNumbers: null,
                     createdByStaffId: $command->importedByStaffId,
+                    unit: $row->unit,
+                    purpose: $row->purpose,
+                    supplierId: $supplierId,
                 ));
 
                 $results[] = new ProductImportRowResult($row->rowNumber, true, $this->skus->get($skuId)->skuCode(), null);

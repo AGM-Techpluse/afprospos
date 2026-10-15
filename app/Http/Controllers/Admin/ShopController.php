@@ -98,6 +98,7 @@ final class ShopController
                 contactPhone: $request->string('contact_phone')->toString(),
                 contactEmail: $request->string('contact_email')->toString(),
                 updatedByStaffId: $actor->staffId->value,
+                isWarehouse: $request->boolean('is_warehouse'),
             ));
         } catch (DuplicateShopSkuPrefixCode $exception) {
             throw ValidationException::withMessages(['sku_prefix_code' => $exception->getMessage()]);
@@ -121,6 +122,7 @@ final class ShopController
                 contactEmail: $request->string('contact_email')->toString(),
                 offlinePolicy: [],
                 createdByStaffId: $actor->staffId->value,
+                isWarehouse: $request->boolean('is_warehouse'),
             ));
         } catch (DuplicateShopSkuPrefixCode $exception) {
             throw ValidationException::withMessages(['sku_prefix_code' => $exception->getMessage()]);

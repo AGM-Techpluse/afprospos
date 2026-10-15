@@ -25,6 +25,8 @@ final class Sku
         private Money $sellingPrice,
         private bool $sellingPriceOverridden,
         private ?int $lowStockThreshold,
+        private bool $isCommissionable,
+        private ?Money $commissionAmount,
     ) {}
 
     /** @param  array<string, mixed>  $attributes */
@@ -39,6 +41,8 @@ final class Sku
         Money $sellingPrice,
         bool $sellingPriceOverridden,
         ?int $lowStockThreshold,
+        bool $isCommissionable = false,
+        ?Money $commissionAmount = null,
     ): self {
         return new self(
             $id,
@@ -51,6 +55,8 @@ final class Sku
             $sellingPrice,
             $sellingPriceOverridden,
             $lowStockThreshold,
+            $isCommissionable,
+            $commissionAmount,
         );
     }
 
@@ -67,6 +73,13 @@ final class Sku
     {
         $this->sellingPrice = $price;
         $this->sellingPriceOverridden = true;
+    }
+
+    /** The flat staff commission paid when this SKU is sold, earned by the cashier at sale finalization. Null amount means not commissionable. */
+    public function setCommission(bool $isCommissionable, ?Money $amount): void
+    {
+        $this->isCommissionable = $isCommissionable;
+        $this->commissionAmount = $isCommissionable ? $amount : null;
     }
 
     public function id(): SkuId
@@ -112,6 +125,16 @@ final class Sku
     public function lowStockThreshold(): ?int
     {
         return $this->lowStockThreshold;
+    }
+
+    public function isCommissionable(): bool
+    {
+        return $this->isCommissionable;
+    }
+
+    public function commissionAmount(): ?Money
+    {
+        return $this->commissionAmount;
     }
 
     /** @return array<string, mixed> */

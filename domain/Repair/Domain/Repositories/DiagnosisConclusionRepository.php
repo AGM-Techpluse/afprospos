@@ -14,4 +14,6 @@ interface DiagnosisConclusionRepository
 
     /** Append-only — a recorded conclusion is never updated. */
     public function save(DiagnosisConclusion $conclusion): void;
+
+    public function hasRepairableConclusion(RepairJobId $repairJobId): bool;
 }

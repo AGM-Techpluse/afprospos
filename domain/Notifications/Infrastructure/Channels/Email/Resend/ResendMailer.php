@@ -25,6 +25,10 @@ final class ResendMailer implements EmailChannel
             return DeliveryResult::failedPermanent('resend', 'Recipient has no email address on file.');
         }
 
+        if (! $this->isConfigured()) {
+            return DeliveryResult::failedPermanent('resend', 'RESEND_API_KEY is not set. Nothing was sent.');
+        }
+
         try {
             Mail::mailer('resend')->to($message->recipientEmail)->send(new NotificationMailable($message->title, $message->body, $message->actionUrl));
 

@@ -19,6 +19,7 @@ final class SaveDeviceProblemTagRequest extends FormRequest
             'device_type_id' => [$this->isMethod('post') ? 'required' : 'nullable', 'integer', 'exists:device_types,id'],
             'label' => ['required', 'string', 'max:100'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'commission_amount_minor' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

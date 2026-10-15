@@ -100,7 +100,9 @@ final class PaymentTransactionsQuery
                 return "Repair #{$payableId}";
             }
 
-            $customerName = $this->customers->find($job['customer_id'])['name'] ?? null;
+            $customerName = $job['customer_id'] !== null
+                ? $this->customers->find($job['customer_id'])['name'] ?? null
+                : null;
 
             return "Repair #{$payableId} — {$job['device_make']} {$job['device_model']}".($customerName !== null ? " ({$customerName})" : '');
         }

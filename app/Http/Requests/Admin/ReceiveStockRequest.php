@@ -21,6 +21,8 @@ final class ReceiveStockRequest extends FormRequest
             'quantity' => ['nullable', 'integer', 'min:1'],
             'imeis' => ['nullable', 'array'],
             'imeis.*' => ['string', 'max:20'],
+            'serial_numbers' => ['nullable', 'array'],
+            'serial_numbers.*' => ['nullable', 'string', 'max:80'],
         ];
     }
 }

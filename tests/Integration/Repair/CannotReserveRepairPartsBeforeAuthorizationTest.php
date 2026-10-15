@@ -6,7 +6,9 @@ namespace Tests\Integration\Repair;
 
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
+use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
+use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Domain\Exceptions\InvalidRepairTransition;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
@@ -15,12 +17,15 @@ use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Implementation Plan Phase 6 exit criterion: "parts are never silently consumed at selection" — reservation must never precede authorization. */
+/**
+ * Parts are set aside (reserved) from diagnosis onwards, so the manager can price them into the quote.
+ * Reserving never consumes stock: that only happens when the part is fitted during the repair.
+ */
 class CannotReserveRepairPartsBeforeAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_reserving_parts_before_authorization_is_rejected(): void
+    public function test_parts_can_be_set_aside_while_diagnosing_and_stock_is_held_not_consumed(): void
     {
         $shop = ShopRecord::factory()->create();
         $staff = StaffRecord::factory()->create();
@@ -29,17 +34,17 @@ class CannotReserveRepairPartsBeforeAuthorizationTest extends TestCase
 
         $job = RepairJobRecord::factory()->create(['shop_id' => $shop->id, 'repair_status' => 'diagnosing']);
 
-        $this->expectException(InvalidRepairTransition::class);
-
         app(ReserveRepairPartsHandler::class)->handle(new ReserveRepairPartsCommand(
             repairJobId: $job->id,
             skuId: $sku->id,
             quantity: 1,
             reservedByStaffId: $staff->id,
         ));
+
+        $this->assertDatabaseHas('inventory_stock_levels', ['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 5, 'reserved' => 1]);
     }
 
-    public function test_reserving_parts_while_received_is_also_rejected(): void
+    public function test_parts_cannot_be_set_aside_before_the_fault_is_diagnosed(): void
     {
         $shop = ShopRecord::factory()->create();
         $staff = StaffRecord::factory()->create();
@@ -56,7 +61,27 @@ class CannotReserveRepairPartsBeforeAuthorizationTest extends TestCase
             quantity: 1,
             reservedByStaffId: $staff->id,
         ));
+    }
 
-        $this->assertDatabaseMissing('inventory_stock_levels', ['sku_id' => $sku->id, 'reserved' => 1]);
+    public function test_a_walk_in_repair_can_be_taken_without_a_customer(): void
+    {
+        $shop = ShopRecord::factory()->create();
+        $staff = StaffRecord::factory()->create();
+
+        $id = app(CreateRepairJobHandler::class)->handle(new CreateRepairJobCommand(
+            shopId: $shop->id,
+            customerId: null,
+            deviceMake: 'Tecno',
+            deviceModel: 'Spark 10',
+            reportedIssue: 'No display',
+            deviceImeiSerial: null,
+            deviceLockType: 'none',
+            deviceLockValue: null,
+            problemTagIds: [],
+            labourChargeMinor: null,
+            createdByStaffId: $staff->id,
+        ));
+
+        $this->assertDatabaseHas('repair_jobs', ['id' => $id, 'customer_id' => null, 'repair_status' => 'received']);
     }
 }

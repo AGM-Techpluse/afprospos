@@ -29,6 +29,15 @@ final readonly class CreateProductCommand
         public string $condition,
         public ?int $initialQuantity,
         public ?array $initialImeis,
+        public ?array $initialSerialNumbers,
         public int $createdByStaffId,
+        /** Base unit, from the admin's unit list (e.g. pcs, pack, tons, kegs). */
+        public string $unit = 'pcs',
+        /** What the product is used for: sale, repair_part, or both. */
+        public string $purpose = 'sale',
+        public ?int $supplierId = null,
+        public ?string $imagePath = null,
+        public bool $isCommissionable = false,
+        public ?int $commissionAmountMinor = null,
     ) {}
 }

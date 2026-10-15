@@ -10,6 +10,8 @@ final readonly class CompleteRepairCommand
     public function __construct(
         public int $repairJobId,
         public ?string $resolutionNotes,
+        /** @var array<int, array{diagnosis_case_fault_id?: int|null, device_problem_tag_id?: int|null, label: string, notes?: string|null}> */
+        public array $fixedFaults,
         public int $completedByStaffId,
     ) {}
 }

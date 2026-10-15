@@ -27,9 +27,20 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class InventoryImportController
 {
+    /** Required and optional columns that are not SKU attributes. unit/purpose/supplier are optional and default to pcs / sale / none. */
     private const EXPECTED_HEADER = [
         'brand', 'model', 'category', 'condition',
         'cost_price_minor', 'markup_percent', 'quantity', 'imei', 'low_stock_threshold',
+        'unit', 'purpose', 'supplier',
+    ];
+
+    /** Attributes with a fixed slot in the single-product form; anything else is a custom attribute. */
+    private const FIXED_ATTRIBUTE_COLUMNS = ['color', 'material', 'compatibility'];
+
+    private const TEMPLATE_HEADER = [
+        'brand', 'model', 'category', 'condition',
+        'cost_price_minor', 'markup_percent', 'quantity', 'imei', 'low_stock_threshold',
+        'unit', 'purpose', 'supplier', 'color', 'storage',
     ];
 
     public function __construct(
@@ -53,9 +64,10 @@ final class InventoryImportController
     {
         return response()->streamDownload(function (): void {
             $handle = fopen('php://output', 'wb');
-            fputcsv($handle, self::EXPECTED_HEADER);
-            fputcsv($handle, ['Apple', 'iPhone 15', 'Phones', 'new', '400000', '15', '', '123456789012345', '']);
-            fputcsv($handle, ['Anker', 'PowerCore 10000', 'Accessories', 'new', '15000', '20', '25', '', '5']);
+            fputcsv($handle, self::TEMPLATE_HEADER);
+            fputcsv($handle, ['Apple', 'iPhone 15', 'Phones', 'new', '400000', '15', '', '123456789012345', '', 'Black', '256GB']);
+            fputcsv($handle, ['Apple', 'iPhone 15', 'Phones', 'new', '400000', '15', '', '123456789012346', '', 'Black', '256GB']);
+            fputcsv($handle, ['Anker', 'PowerCore 10000', 'Accessories', 'new', '15000', '20', '25', '', '5', '', '']);
             fclose($handle);
         }, 'afprospos-product-import-template.csv', ['Content-Type' => 'text/csv']);
     }
@@ -105,6 +117,10 @@ final class InventoryImportController
     {
         $handle = fopen($file->getRealPath(), 'rb');
         $header = fgetcsv($handle);
+
+        if ($header !== false) {
+            $header = array_map(static fn ($column): string => strtolower(trim((string) $column)), $header);
+        }
         $columnCount = $header !== false ? count($header) : 0;
         $rows = [];
         $failures = [];
@@ -135,6 +151,14 @@ final class InventoryImportController
                 continue;
             }
 
+            $purpose = trim((string) ($row['purpose'] ?? '')) ?: 'sale';
+
+            if (! in_array($purpose, ['sale', 'repair_part', 'both'], true)) {
+                $failures[] = new ProductImportRowResult($rowNumber, false, null, "Purpose [{$purpose}] must be sale, repair_part, or both.");
+
+                continue;
+            }
+
             $rows[] = new ProductImportRow(
                 rowNumber: $rowNumber,
                 brand: $brand,
@@ -146,11 +170,50 @@ final class InventoryImportController
                 quantity: isset($row['quantity']) && $row['quantity'] !== '' ? (int) $row['quantity'] : null,
                 imei: ($row['imei'] ?? '') !== '' ? trim((string) $row['imei']) : null,
                 lowStockThreshold: ($row['low_stock_threshold'] ?? '') !== '' ? (int) $row['low_stock_threshold'] : null,
+                attributes: $this->attributesFromRow($row),
+                unit: trim((string) ($row['unit'] ?? '')) ?: 'pcs',
+                purpose: $purpose,
+                supplierName: trim((string) ($row['supplier'] ?? '')) ?: null,
             );
         }
 
         fclose($handle);
 
         return [$rows, $failures];
+    }
+
+    /**
+     * Builds the same attribute shape the single-product form sends
+     * (AttributeEditor's serializeAttributes): color/material/compatibility at the top
+     * level, every other extra column under `custom`. Empty cells are not part of
+     * the configuration, so they are dropped rather than stored as blanks.
+     *
+     * @param  array<string, string>  $row
+     * @return array<string, mixed>
+     */
+    private function attributesFromRow(array $row): array
+    {
+        $attributes = [];
+        $custom = [];
+
+        foreach ($row as $column => $value) {
+            $value = trim((string) $value);
+
+            if (in_array($column, self::EXPECTED_HEADER, true) || $value === '') {
+                continue;
+            }
+
+            if (in_array($column, self::FIXED_ATTRIBUTE_COLUMNS, true)) {
+                $attributes[$column] = $value;
+            } else {
+                $custom[$column] = $value;
+            }
+        }
+
+        if ($custom !== []) {
+            $attributes['custom'] = $custom;
+        }
+
+        return $attributes;
     }
 }

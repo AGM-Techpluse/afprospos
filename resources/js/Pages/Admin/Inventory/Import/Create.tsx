@@ -19,7 +19,7 @@ type Shop = { id: number; name: string; sku_prefix_code: string };
  */
 function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSerialized: boolean }) {
     const [open, setOpen] = useState(false);
-    const { data, setData, post, transform, processing, errors, reset } = useForm({
+    const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         brand: '',
         model: '',
         category: '',
@@ -30,6 +30,9 @@ function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSeriali
         imei: '',
         quantity: '1',
     });
+    // The server validates minor-unit/plural field names (`cost_price_minor`,
+    // `imeis`) that don't match this form's naira/singular-bound field names.
+    const errors = formErrors as Record<string, string | undefined>;
 
     function submit(e: FormEvent) {
         e.preventDefault();

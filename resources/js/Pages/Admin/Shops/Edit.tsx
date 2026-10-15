@@ -13,6 +13,7 @@ type Shop = {
     address: string;
     contact_phone: string;
     contact_email: string;
+    is_warehouse: boolean;
     status: 'active' | 'inactive';
 };
 
@@ -23,6 +24,7 @@ export default function ShopEdit({ shop }: { shop: Shop }) {
         address: shop.address,
         contact_phone: shop.contact_phone,
         contact_email: shop.contact_email,
+        is_warehouse: shop.is_warehouse,
     });
 
     function submit(e: FormEvent) {
@@ -80,6 +82,13 @@ export default function ShopEdit({ shop }: { shop: Shop }) {
                         error={errors.contact_email}
                         required
                     />
+
+                    <label className="flex items-start gap-2 text-sm text-admin-text mb-5">
+                        <input type="checkbox" className="mt-0.5" checked={data.is_warehouse} onChange={(e) => setData('is_warehouse', e.target.checked)} />
+                        <span>
+                            Warehouse — holds stock and sends it to shops. No sales or repairs happen here.
+                        </span>
+                    </label>
 
                     <div className="flex items-center gap-2">
                         <AdminButton type="submit" isLoading={processing}>

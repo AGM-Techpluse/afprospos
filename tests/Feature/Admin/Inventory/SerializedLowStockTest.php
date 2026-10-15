@@ -52,6 +52,40 @@ class SerializedLowStockTest extends TestCase
         $response->assertInertia(fn ($page) => $page->has('items', 0));
     }
 
+    public function test_an_out_of_stock_serialized_sku_appears_on_the_out_of_stock_page(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $sku = SkuRecord::factory()->create(['is_serialized' => true, 'sku_code' => 'SER-OOS-001', 'low_stock_threshold' => 2]);
+        InventoryItemRecord::factory()->create(['sku_id' => $sku->id, 'current_shop_id' => $shop->id, 'status' => 'sold']);
+
+        $response = $this->actingAs($owner, 'staff')->get('/admin/inventory/stock/out-of-stock');
+
+        $response->assertInertia(fn ($page) => $page
+            ->has('items', 1)
+            ->where('items.0.sku_code', 'SER-OOS-001')
+            ->where('items.0.available', 0)
+            ->where('items.0.is_serialized', true));
+    }
+
+    public function test_a_serialized_sku_with_available_stock_does_not_appear_on_the_out_of_stock_page(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $sku = SkuRecord::factory()->create(['is_serialized' => true]);
+        InventoryItemRecord::factory()->create(['sku_id' => $sku->id, 'current_shop_id' => $shop->id, 'status' => 'available']);
+
+        $response = $this->actingAs($owner, 'staff')->get('/admin/inventory/stock/out-of-stock');
+
+        $response->assertInertia(fn ($page) => $page->has('items', 0));
+    }
+
     public function test_dashboard_inventory_health_counts_include_serialized_skus(): void
     {
         $this->seed(RolePermissionSeeder::class);

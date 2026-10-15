@@ -23,6 +23,7 @@ final class EloquentDeviceProblemTagRepository implements DeviceProblemTagReposi
             'device_type_id' => $tag->deviceTypeId()->value,
             'label' => $tag->label(),
             'sort_order' => $tag->sortOrder(),
+            'commission_amount_minor' => $tag->commissionAmountMinor(),
         ];
 
         if ($tag->id() === null) {
@@ -47,6 +48,7 @@ final class EloquentDeviceProblemTagRepository implements DeviceProblemTagReposi
             new DeviceTypeId($record->device_type_id),
             $record->label,
             $record->sort_order,
+            $record->commission_amount_minor,
         );
     }
 }

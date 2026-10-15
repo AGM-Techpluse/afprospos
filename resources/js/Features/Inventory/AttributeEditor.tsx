@@ -1,20 +1,31 @@
 export type VariantAttributes = {
     brand: string;
     color: string;
+    storage: string;
     material: string;
     compatibility: string;
     custom: { key: string; value: string }[];
 };
 
 export function emptyAttributes(): VariantAttributes {
-    return { brand: '', color: '', material: '', compatibility: '', custom: [] };
+    return { brand: '', color: '', storage: '', material: '', compatibility: '', custom: [] };
 }
 
+export type SerializedAttributes = {
+    brand?: string;
+    color?: string;
+    storage?: string;
+    material?: string;
+    compatibility?: string;
+    custom?: Record<string, string>;
+};
+
 /** Converts the editor's shape into the {brand,color,material,compatibility,custom:{key:value}} JSON the backend expects, dropping blanks. */
-export function serializeAttributes(attrs: VariantAttributes): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
+export function serializeAttributes(attrs: VariantAttributes): SerializedAttributes {
+    const result: SerializedAttributes = {};
     if (attrs.brand.trim()) result.brand = attrs.brand.trim();
     if (attrs.color.trim()) result.color = attrs.color.trim();
+    if (attrs.storage.trim()) result.storage = attrs.storage.trim();
     if (attrs.material.trim()) result.material = attrs.material.trim();
     if (attrs.compatibility.trim()) result.compatibility = attrs.compatibility.trim();
 
@@ -73,6 +84,13 @@ export default function AttributeEditor({ value, onChange }: AttributeEditorProp
                     value={value.material}
                     onChange={(e) => set('material', e.target.value)}
                     placeholder="Material"
+                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                />
+                <input
+                    type="text"
+                    value={value.storage}
+                    onChange={(e) => set('storage', e.target.value)}
+                    placeholder="Storage (e.g. 256GB)"
                     className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                 />
                 <input

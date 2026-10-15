@@ -9,8 +9,10 @@ use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Sales\Application\Commands\CreateCheckoutCommand;
 use Domain\Sales\Domain\Entities\SalesCheckout;
+use Domain\Sales\Domain\Exceptions\WarehouseCannotSell;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
 use Domain\Sales\Domain\ValueObjects\CheckoutId;
+use Domain\Shared\Domain\Contracts\ShopClassification;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
 use Domain\Shared\Domain\ValueObjects\ShopId;
 use Domain\Shared\Domain\ValueObjects\StaffId;
@@ -20,12 +22,17 @@ final class CreateCheckoutHandler
 {
     public function __construct(
         private readonly SalesCheckoutRepository $checkouts,
+        private readonly ShopClassification $shops,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
 
     public function handle(CreateCheckoutCommand $command): CheckoutId
     {
+        if ($this->shops->isWarehouse(new ShopId($command->shopId))) {
+            throw WarehouseCannotSell::forShop($command->shopId);
+        }
+
         return $this->atomic->run(function () use ($command): CheckoutId {
             $existing = $this->checkouts->findOpenIdForCashier(new StaffId($command->cashierStaffId));
 

@@ -23,6 +23,14 @@ final class EloquentDiagnosisConclusionRepository implements DiagnosisConclusion
             ->all();
     }
 
+    public function hasRepairableConclusion(RepairJobId $repairJobId): bool
+    {
+        return DiagnosisConclusionRecord::query()
+            ->where('repair_job_id', $repairJobId->value)
+            ->where('outcome', 'repairable')
+            ->exists();
+    }
+
     public function save(DiagnosisConclusion $conclusion): void
     {
         DiagnosisConclusionRecord::query()->create([

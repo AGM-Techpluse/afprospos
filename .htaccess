@@ -1,0 +1,54 @@
+# AfProsPos — production root .htaccess
+#
+# Use this ONLY if your host deploys the whole Laravel project (this file's
+# folder) as the web root and you cannot point the domain's document root
+# directly at the `public/` folder (typical on shared/cPanel hosting).
+#
+# If you control the document root (VPS, Docker, managed Laravel hosting),
+# do NOT use this file — point the web server's document root straight at
+# `public/` instead and skip this entirely. That's the more secure setup;
+# this file is a compatibility shim for hosts that don't allow it.
+#
+# What it does: forwards every request into public/, where Laravel's own
+# public/.htaccess takes over (front controller routing, static assets,
+# etc. — already present in this repo, untouched). None of .env, vendor/,
+# domain/, config/, routes/, storage/logs, etc. exist as real files under
+# public/, so the forwarding rule alone already 404s direct requests for
+# them — this section only adds an explicit, faster-failing block for the
+# small set of dotfiles/composer/package manifests as defense-in-depth.
+#
+# Deliberately NOT blocking /storage/* here: repair photos, product
+# images, and anything else uploaded to the "public" disk are served at
+# exactly that URL via the storage:link symlink (public/storage ->
+# storage/app/public) — blocking it outright would 403 real app features.
+
+# ---------- Block direct access to a few sensitive root-level files ----------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^(\.env.*|\.git.*|composer\.(json|lock)|package(-lock)?\.json|\.htaccess)$ - [F,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    # Fallback for the same paths if mod_rewrite is unavailable
+    <FilesMatch "^(\.env.*|\.git.*|composer\.(json|lock)|package(-lock)?\.json)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+Options -Indexes -MultiViews
+
+# ---------- Optional: force HTTPS ----------
+# Uncomment once TLS is confirmed working end-to-end (some hosts terminate
+# SSL before Apache ever sees the request, which makes %{HTTPS} unreliable —
+# test this on your actual host before relying on it).
+# <IfModule mod_rewrite.c>
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# ---------- Forward everything else into public/ ----------
+<IfModule mod_rewrite.c>
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
