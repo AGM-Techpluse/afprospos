@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use Domain\Commission\Application\Queries\CommissionReportQuery;
+use Domain\Inventory\Application\Queries\LowStockQuery;
+use Domain\Repair\Application\Queries\RepairsListQuery;
 use Domain\Reports\Application\Queries\InventoryReportsQuery;
 use Domain\Reports\Application\Queries\RepairReportsQuery;
 use Domain\Reports\Application\Queries\SalesReportsQuery;
 use Domain\Reports\Application\Queries\StaffReportsQuery;
+use Domain\Sales\Application\Queries\SalesHistoryQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Support\Carbon;
@@ -21,6 +25,10 @@ final class ReportsController
         private readonly SalesReportsQuery $sales,
         private readonly InventoryReportsQuery $inventory,
         private readonly StaffReportsQuery $staff,
+        private readonly CommissionReportQuery $commission,
+        private readonly RepairsListQuery $repairsList,
+        private readonly SalesHistoryQuery $salesHistory,
+        private readonly LowStockQuery $lowStock,
         private readonly AccessibleShopsQuery $shops,
     ) {}
 
@@ -35,6 +43,7 @@ final class ReportsController
                 'sales' => $this->sales->card($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
                 'inventory' => $this->inventory->card($filters['shop_id'], $filters['restrict_to_shop_ids']),
                 'staff' => $this->staff->card($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
+                'commission' => $this->commission->card($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
             ],
             'filters' => $filters['public'],
             'shops' => $this->shops->forStaff($actor->staffId->value, $actor->isOwner),
@@ -44,9 +53,18 @@ final class ReportsController
     public function repairs(): Response
     {
         $filters = $this->filters();
+        $request = request();
 
         return Inertia::render('Admin/Reports/Repairs', [
             'report' => $this->repairs->report($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
+            'repair_list' => $this->repairsList->paginate(
+                status: $request->string('status')->toString() ?: null,
+                shopId: $filters['shop_id'],
+                page: $request->integer('page', 1),
+                restrictToShopIds: $filters['restrict_to_shop_ids'],
+                fromDate: $filters['start'],
+                toDate: $filters['end'],
+            ),
             'filters' => $filters['public'],
             'shops' => $this->accessibleShops(),
         ]);
@@ -55,9 +73,18 @@ final class ReportsController
     public function sales(): Response
     {
         $filters = $this->filters();
+        $request = request();
 
         return Inertia::render('Admin/Reports/Sales', [
             'report' => $this->sales->report($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
+            'sales_list' => $this->salesHistory->paginate(
+                search: null,
+                shopId: $filters['shop_id'],
+                page: $request->integer('page', 1),
+                restrictToShopIds: $filters['restrict_to_shop_ids'],
+                fromDate: $filters['start'],
+                toDate: $filters['end'],
+            ),
             'filters' => $filters['public'],
             'shops' => $this->accessibleShops(),
         ]);
@@ -66,9 +93,16 @@ final class ReportsController
     public function inventory(): Response
     {
         $filters = $this->filters();
+        $request = request();
 
         return Inertia::render('Admin/Reports/Inventory', [
             'report' => $this->inventory->report($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
+            'low_stock_list' => $this->lowStock->paginate(
+                shopId: $filters['shop_id'],
+                search: $request->string('search')->toString() ?: null,
+                page: $request->integer('page', 1),
+                restrictToShopIds: $filters['restrict_to_shop_ids'],
+            ),
             'filters' => $filters['public'],
             'shops' => $this->accessibleShops(),
         ]);
@@ -80,6 +114,7 @@ final class ReportsController
 
         return Inertia::render('Admin/Reports/Staff', [
             'report' => $this->staff->report($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
+            'commission_by_staff' => $this->commission->totalsByStaff($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
             'filters' => $filters['public'],
             'shops' => $this->accessibleShops(),
         ]);
@@ -96,6 +131,9 @@ final class ReportsController
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
             'shop_id' => ['nullable', 'integer'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'status' => ['nullable', 'string'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         $range = $request->string('range')->toString() ?: '30_days';

@@ -7,6 +7,7 @@ namespace Domain\Repair\Application\Queries;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
+use Illuminate\Support\Carbon;
 
 /** Backs Admin Repairs/Index — search/filter/pagination per the standing table-pages rule. */
 final class RepairsListQuery
@@ -22,7 +23,7 @@ final class RepairsListQuery
      * @param  int[]|null  $restrictToShopIds
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null): array
+    public function paginate(?string $status, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null, ?Carbon $fromDate = null, ?Carbon $toDate = null): array
     {
         $query = RepairJobRecord::query();
 
@@ -34,6 +35,10 @@ final class RepairsListQuery
             $query->where('shop_id', $shopId);
         } elseif ($restrictToShopIds !== null) {
             $query->whereIn('shop_id', $restrictToShopIds);
+        }
+
+        if ($fromDate !== null && $toDate !== null) {
+            $query->whereBetween('created_at', [$fromDate, $toDate]);
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);

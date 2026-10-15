@@ -35,7 +35,6 @@ final class RepairReportsQuery
             'status_breakdown' => $this->statusBreakdown($start, $end, $shopId, $restrictToShopIds),
             'trend' => $this->trend($start, $end, $shopId, $restrictToShopIds),
             'technicians' => $this->technicians($start, $end, $shopId, $restrictToShopIds),
-            'settlements' => $this->settlements($start, $end, $shopId, $restrictToShopIds),
             'collections' => $this->collections($start, $end, $shopId, $restrictToShopIds),
         ];
     }
@@ -140,25 +139,6 @@ final class RepairReportsQuery
                 'completed' => (int) $row->completed,
                 'failed' => (int) $row->failed,
             ])
-            ->all();
-    }
-
-    private function settlements(Carbon $start, Carbon $end, ?int $shopId, ?array $restrictToShopIds): array
-    {
-        return $this->scopeShop(DB::table('repair_jobs'), $shopId, $restrictToShopIds)
-            ->whereBetween('created_at', [$start, $end])
-            ->where(function (Builder $query): void {
-                $query->whereNotNull('failure_service_charge_minor')
-                    ->orWhereNotNull('failure_refund_due_minor')
-                    ->orWhereNotNull('unrepairable_settlement_state');
-            })
-            ->select('id', 'device_make', 'device_model', 'repair_status', 'unrepairable_settlement_state')
-            ->selectRaw('coalesce(failure_service_charge_minor, 0) as service_charge_minor')
-            ->selectRaw('coalesce(failure_refund_due_minor, 0) as refund_due_minor')
-            ->orderByDesc('updated_at')
-            ->limit(20)
-            ->get()
-            ->map(fn ($row): array => (array) $row)
             ->all();
     }
 

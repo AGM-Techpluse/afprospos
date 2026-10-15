@@ -14,6 +14,7 @@ const MODULES: Record<string, { title: string; description: string; icon: string
     sales: { title: 'Sales report', description: 'Revenue, invoices, cashier performance, payment methods, and top products.', icon: 'receipt' },
     inventory: { title: 'Inventory reports', description: 'Stock value, availability, low stock, serialized units, and transfers.', icon: 'box-seam' },
     staff: { title: 'Staff report', description: 'Role mix, shop coverage, cashier sales, technician output, and activity.', icon: 'people' },
+    commission: { title: 'Commission report', description: 'Commission earned from fault-fix repairs and commissionable device sales, by staff.', icon: 'cash-coin' },
 };
 
 export default function ReportsIndex({ cards, filters, shops }: { cards: Record<string, Card>; filters: ReportFilters; shops: ShopOption[] }) {
@@ -54,7 +55,7 @@ export default function ReportsIndex({ cards, filters, shops }: { cards: Record<
                                 ))}
                             </div>
                             <div className="border-t border-admin-border pt-3">
-                                <DoughnutBreakdown rows={card.preview.slice(0, 5)} money={key === 'sales' && card.preview.some((row) => row.value_minor !== undefined)} />
+                                <DoughnutBreakdown rows={card.preview.slice(0, 5)} money={(key === 'sales' || key === 'commission') && card.preview.some((row) => row.value_minor !== undefined)} />
                             </div>
                         </button>
                     );

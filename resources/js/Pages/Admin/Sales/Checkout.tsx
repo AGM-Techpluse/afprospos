@@ -13,6 +13,7 @@ import CustomerSearch, { CustomerSearchResult } from '../../../Features/Sales/Cu
 import { formatNaira } from '../../../lib/money';
 import POSCart, { CheckoutItemView } from '../../../Features/Sales/POSCart';
 import CheckoutExpiryTimer from '../../../Features/Sales/CheckoutExpiryTimer';
+import Icon from '../../../Components/Icons/Icon';
 
 type Shop = { id: number; name: string; sku_prefix_code: string; is_warehouse?: boolean };
 
@@ -240,7 +241,16 @@ export default function SalesCheckout({
         return (
             <AdminShell>
                 <Head title="New sale" />
-                <AdminPageHead title="New sale" description="Start a checkout to begin building a cart." />
+                <AdminPageHead
+                    title="New sale"
+                    description="Start a checkout to begin building a cart."
+                    actions={
+                        <AdminButton variant="neutral" onClick={() => router.visit('/admin/sales')}>
+                            <Icon name="clock-history" className="mr-1.5" />
+                            Sales history
+                        </AdminButton>
+                    }
+                />
                 <div className="max-w-[1160px] mx-auto">
                     {todaysSales && (
                         <div className="grid grid-cols-2 gap-4 mb-6 max-w-xl">

@@ -15,7 +15,7 @@ final class SalesHistoryQuery
 
     /** @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int} */
     /** @param  int[]|null  $restrictToShopIds */
-    public function paginate(?string $search, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null): array
+    public function paginate(?string $search, ?int $shopId, int $page, int $perPage = 20, ?array $restrictToShopIds = null, ?Carbon $fromDate = null, ?Carbon $toDate = null): array
     {
         $query = SaleRecord::query();
 
@@ -27,6 +27,10 @@ final class SalesHistoryQuery
 
         if ($search !== null && $search !== '') {
             $query->where('invoice_number', 'like', "%{$search}%");
+        }
+
+        if ($fromDate !== null && $toDate !== null) {
+            $query->whereBetween('created_at', [$fromDate, $toDate]);
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
