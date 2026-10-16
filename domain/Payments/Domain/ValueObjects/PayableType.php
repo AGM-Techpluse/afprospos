@@ -6,10 +6,10 @@ namespace Domain\Payments\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
-/** The four business objects a payment can belong to (DBDD §16.1) — a cross-module string tag, never a foreign key (Payments is a standalone bounded context). */
+/** The business objects a payment can belong to (DBDD §16.1, extended with diagnosis_case for pre-repair-job diagnosis-fee collection) — a cross-module string tag, never a foreign key (Payments is a standalone bounded context). */
 final readonly class PayableType
 {
-    private const VALID = ['sales_checkout', 'repair_job', 'warranty_claim', 'return_request'];
+    private const VALID = ['sales_checkout', 'repair_job', 'warranty_claim', 'return_request', 'diagnosis_case'];
 
     public function __construct(public string $value)
     {

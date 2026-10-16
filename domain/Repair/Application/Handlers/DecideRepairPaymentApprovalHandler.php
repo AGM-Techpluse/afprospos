@@ -107,7 +107,13 @@ final class DecideRepairPaymentApprovalHandler
         });
     }
 
-    /** Mirrors RequestRepairPaymentApprovalHandler::expectedOutstandingMinor()'s diagnosis-fee check. */
+    /**
+     * Mirrors RequestRepairPaymentApprovalHandler::expectedOutstandingMinor()'s
+     * diagnosis-fee check. Also checks the fee collected against the
+     * originating diagnosis case (before this repair job existed) so a
+     * pre-paid fee correctly reports 0 outstanding and never gets folded
+     * into (double-counted in) this fully_paid approval.
+     */
     private function outstandingDiagnosisFeeMinor(RepairJobId $repairJobId): int
     {
         $diagnosisFee = $this->diagnosisFees->find($repairJobId);
@@ -120,6 +126,16 @@ final class DecideRepairPaymentApprovalHandler
 
         if (($transaction['status'] ?? null) === 'confirmed') {
             return 0;
+        }
+
+        $diagnosisCaseId = $this->repairJobs->findDiagnosisCaseId($repairJobId);
+
+        if ($diagnosisCaseId !== null) {
+            $caseTransaction = $this->paymentLookup->latestTransactionForPurpose('diagnosis_case', $diagnosisCaseId, 'repair_diagnosis_fee');
+
+            if (($caseTransaction['status'] ?? null) === 'confirmed') {
+                return 0;
+            }
         }
 
         return $diagnosisFee->amountMinor();

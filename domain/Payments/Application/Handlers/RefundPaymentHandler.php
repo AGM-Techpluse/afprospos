@@ -9,8 +9,11 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Payments\Application\Commands\RefundPaymentCommand;
 use Domain\Payments\Application\Contracts\PaymentGatewayResolver;
 use Domain\Payments\Application\DTOs\RefundPaymentGatewayRequest;
+use Domain\Payments\Domain\Entities\PaymentRefund;
+use Domain\Payments\Domain\Repositories\PaymentRefundRepository;
 use Domain\Payments\Domain\Repositories\PaymentTransactionRepository;
 use Domain\Payments\Domain\ValueObjects\PaymentTransactionId;
+use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 
 /** Calls the gateway's refund() uniformly regardless of method (a no-op for manual gateways today) — keeps this Handler branch-free and matches how a real provider's refund will need to work once one exists. */
@@ -18,6 +21,7 @@ final class RefundPaymentHandler
 {
     public function __construct(
         private readonly PaymentTransactionRepository $transactions,
+        private readonly PaymentRefundRepository $refunds,
         private readonly PaymentGatewayResolver $gateways,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
@@ -30,15 +34,19 @@ final class RefundPaymentHandler
             $transaction = $this->transactions->lockForUpdate($id);
             $actor = new StaffId($command->refundedByStaffId);
 
+            $priorRefundedMinor = $this->refunds->totalRefundedMinor($id);
+            $refundAmount = new Money($command->amountMinor ?? ($transaction->amount()->minor - $priorRefundedMinor));
+
             $gateway = $this->gateways->resolve($transaction->method());
             $gatewayResult = $gateway->refund(new RefundPaymentGatewayRequest(
                 method: $transaction->method()->value,
-                amountMinor: $transaction->amount()->minor,
+                amountMinor: $refundAmount->minor,
                 providerReference: $transaction->providerReference(),
             ));
 
-            $transaction->refund();
+            $resultingStatus = $transaction->applyRefund($priorRefundedMinor, $refundAmount);
             $this->transactions->save($transaction);
+            $this->refunds->append(PaymentRefund::record($id, $refundAmount, $actor, 'manual_refund'));
 
             $this->audit->record(
                 module: 'Payments',
@@ -48,7 +56,11 @@ final class RefundPaymentHandler
                 subjectType: 'payments_transaction',
                 subjectId: $id->value,
                 beforeState: null,
-                afterState: ['provider_reference' => $gatewayResult->providerReference],
+                afterState: [
+                    'provider_reference' => $gatewayResult->providerReference,
+                    'amount_minor' => $refundAmount->minor,
+                    'resulting_status' => $resultingStatus,
+                ],
             );
         });
     }

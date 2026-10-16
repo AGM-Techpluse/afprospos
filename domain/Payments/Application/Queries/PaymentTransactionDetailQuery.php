@@ -6,6 +6,9 @@ namespace Domain\Payments\Application\Queries;
 
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
+use Domain\Payments\Domain\Entities\PaymentRefund;
+use Domain\Payments\Domain\Repositories\PaymentRefundRepository;
+use Domain\Payments\Domain\ValueObjects\PaymentTransactionId;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Repair\Application\Contracts\RepairJobLookup;
 
@@ -15,6 +18,7 @@ final class PaymentTransactionDetailQuery
         private readonly StaffDirectoryQuery $staff,
         private readonly RepairJobLookup $repairJobs,
         private readonly CustomerDirectoryQuery $customers,
+        private readonly PaymentRefundRepository $refunds,
     ) {}
 
     /** @return array<string, mixed>|null */
@@ -25,6 +29,10 @@ final class PaymentTransactionDetailQuery
         if ($transaction === null) {
             return null;
         }
+
+        $transactionId = new PaymentTransactionId($transaction->id);
+        $refunds = $this->refunds->listForTransaction($transactionId);
+        $refundedAmountMinor = array_sum(array_map(static fn (PaymentRefund $refund): int => $refund->amount()->minor, $refunds));
 
         return [
             'id' => $transaction->id,
@@ -47,6 +55,16 @@ final class PaymentTransactionDetailQuery
                 : null,
             'created_at' => $transaction->created_at->toIso8601String(),
             'source' => $this->describeSource($transaction->payable_type, $transaction->payable_id),
+            'refunded_amount_minor' => $refundedAmountMinor,
+            'remaining_refundable_minor' => $transaction->amount_minor - $refundedAmountMinor,
+            'refunds' => array_map(fn (PaymentRefund $refund): array => [
+                'amount_minor' => $refund->amount()->minor,
+                'refunded_by_staff_name' => $refund->refundedByStaffId() !== null
+                    ? ($this->staff->find($refund->refundedByStaffId()->value)['name'] ?? null)
+                    : null,
+                'source' => $refund->source(),
+                'created_at' => $refund->createdAt()?->toIso8601String(),
+            ], $refunds),
         ];
     }
 

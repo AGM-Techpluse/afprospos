@@ -10,7 +10,9 @@ use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Payments\Application\Contracts\PaymentRefundService;
 use Domain\Payments\Application\Contracts\PaymentRevenueReader;
 use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
+use Domain\Payments\Domain\Repositories\PaymentRefundRepository;
 use Domain\Payments\Domain\Repositories\PaymentTransactionRepository;
+use Domain\Payments\Infrastructure\Persistence\Repositories\EloquentPaymentRefundRepository;
 use Domain\Payments\Infrastructure\Persistence\Repositories\EloquentPaymentTransactionRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +22,7 @@ final class PaymentsServiceProvider extends ServiceProvider
     {
         $this->app->bind(PaymentRevenueReader::class, EloquentPaymentRevenueReader::class);
         $this->app->bind(PaymentTransactionRepository::class, EloquentPaymentTransactionRepository::class);
+        $this->app->bind(PaymentRefundRepository::class, EloquentPaymentRefundRepository::class);
         $this->app->bind(PaymentInitiationService::class, HandlerBackedPaymentInitiationService::class);
         $this->app->bind(PaymentRefundService::class, HandlerBackedPaymentRefundService::class);
         $this->app->bind(PaymentConfirmationService::class, HandlerBackedPaymentConfirmationService::class);

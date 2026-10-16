@@ -7,6 +7,7 @@ namespace Domain\Payments\Domain\Entities;
 use DateTimeImmutable;
 use Domain\Payments\Domain\Exceptions\InvalidPaymentStateTransition;
 use Domain\Payments\Domain\Exceptions\PaymentAlreadyConfirmed;
+use Domain\Payments\Domain\Exceptions\PaymentRefundExceedsRemainingBalance;
 use Domain\Payments\Domain\Policies\PaymentTransitionPolicy;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
@@ -111,27 +112,57 @@ final class PaymentTransaction
         $this->status = 'disputed';
     }
 
-    /** @param  'confirmed'|'refunded'|'exception'  $resolution */
+    /**
+     * For 'confirmed'/'exception' this fully resolves the dispute. For
+     * 'refunded' it only stamps the resolver — the caller must follow up
+     * with applyRefund() to actually move the status and record how much
+     * was returned, exactly like the standalone refund path does.
+     *
+     * @param  'confirmed'|'refunded'|'exception'  $resolution
+     */
     public function resolveDispute(StaffId $resolvedBy, string $resolution): void
     {
         if (! in_array($resolution, ['confirmed', 'refunded', 'exception'], true)) {
             throw new InvalidArgumentException("Invalid dispute resolution [{$resolution}].");
         }
 
-        $this->assertTransition($resolution);
         $this->disputeResolvedByStaffId = $resolvedBy;
 
         if ($resolution === 'confirmed') {
+            $this->assertTransition('confirmed');
             $this->confirmedByStaffId = $resolvedBy;
+            $this->status = 'confirmed';
+        } elseif ($resolution === 'exception') {
+            $this->assertTransition('exception');
+            $this->status = 'exception';
         }
-
-        $this->status = $resolution;
     }
 
-    public function refund(): void
+    /**
+     * Records money actually returned to the customer — full or partial.
+     * The ledger row itself is the caller's responsibility (this only
+     * governs the resulting status); several partial refunds may be
+     * applied over time until the cumulative total reaches amount().
+     *
+     * @return 'refunded'|'partially_refunded' the resulting status
+     */
+    public function applyRefund(int $priorRefundedMinor, Money $refundAmount): string
     {
-        $this->assertTransition('refunded');
-        $this->status = 'refunded';
+        if ($refundAmount->isZero()) {
+            throw new InvalidArgumentException('Refund amount must be greater than zero.');
+        }
+
+        $remaining = $this->amount->subtract(new Money($priorRefundedMinor));
+
+        if ($refundAmount->isGreaterThan($remaining)) {
+            throw PaymentRefundExceedsRemainingBalance::forTransaction($this->id?->value ?? 0, $refundAmount->minor, $remaining->minor);
+        }
+
+        $nextStatus = $refundAmount->equals($remaining) ? 'refunded' : 'partially_refunded';
+        $this->assertTransition($nextStatus);
+        $this->status = $nextStatus;
+
+        return $nextStatus;
     }
 
     private function assertTransition(string $to): void

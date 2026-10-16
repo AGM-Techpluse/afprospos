@@ -31,6 +31,8 @@ type DiagnosisCase = {
     outcome: string | null;
     diagnosis_notes: string | null;
     diagnosis_fee_minor: number | null;
+    diagnosis_fee_paid: boolean;
+    diagnosis_fee_payment_method: string | null;
     revealed_faults: RevealedFault[];
     created_at: string;
 };
@@ -66,6 +68,8 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
     const [selectedFaultId, setSelectedFaultId] = useState('');
     const [customFault, setCustomFault] = useState('');
     const [diagnosisSaved, setDiagnosisSaved] = useState(false);
+    const [feeMethod, setFeeMethod] = useState('cash');
+    const [collectingFee, setCollectingFee] = useState(false);
     const { data, setData, processing, errors } = useForm({
         outcome: diagnosisCase.outcome ?? 'repairable',
         diagnosis_notes: diagnosisCase.diagnosis_notes ?? '',
@@ -146,6 +150,16 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
         );
     }
 
+    function collectFee(e: FormEvent) {
+        e.preventDefault();
+        setCollectingFee(true);
+        router.post(
+            `/admin/repairs/diagnosis-cases/${diagnosisCase.id}/fee/collect`,
+            { method: feeMethod },
+            { preserveScroll: true, onFinish: () => setCollectingFee(false) },
+        );
+    }
+
     function createRepair() {
         if (openRepair) {
             router.visit(`/admin/repairs/${openRepair.id}`);
@@ -190,7 +204,16 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                     <Row label="IMEI / serial" value={diagnosisCase.device_imei_serial ?? 'Not recorded'} />
                     <Row label="Diagnosis technician" value={assignedTechnicianName} />
                     <Row label="Device lock" value={!diagnosisCase.device_lock_present ? 'None set' : diagnosisCase.device_lock_visible_to_you ? diagnosisCase.device_lock_value : 'Set - hidden from you'} />
-                    <Row label="Diagnosis fee" value={diagnosisCase.diagnosis_fee_minor !== null ? formatNaira(diagnosisCase.diagnosis_fee_minor) : 'Not set'} />
+                    <Row
+                        label="Diagnosis fee"
+                        value={
+                            diagnosisCase.diagnosis_fee_minor !== null
+                                ? diagnosisCase.diagnosis_fee_paid
+                                    ? `${formatNaira(diagnosisCase.diagnosis_fee_minor)} — Paid via ${diagnosisCase.diagnosis_fee_payment_method?.replace('_', ' ') ?? 'unknown method'}`
+                                    : `${formatNaira(diagnosisCase.diagnosis_fee_minor)} — unpaid`
+                                : 'Not set'
+                        }
+                    />
 
                     <div className="mt-5">
                         <div className="text-sm font-semibold text-admin-text mb-2">Revealed faults</div>
@@ -277,6 +300,22 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                             {diagnosisSaved ? 'Diagnosis saved' : 'Save diagnosis'}
                         </AdminButton>
                     </form>
+
+                    {diagnosisCase.diagnosis_fee_minor !== null && !diagnosisCase.diagnosis_fee_paid && diagnosisCase.status === 'diagnosed' && (
+                        <form onSubmit={collectFee} className="flex flex-col gap-2 py-4 border-b border-admin-border">
+                            <label className="text-xs font-semibold text-admin-text">
+                                Collect diagnosis fee ({formatNaira(diagnosisCase.diagnosis_fee_minor)})
+                            </label>
+                            <select value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)} className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white">
+                                <option value="cash">Cash</option>
+                                <option value="pos_terminal">POS terminal</option>
+                                <option value="bank_transfer">Bank transfer</option>
+                            </select>
+                            <AdminButton type="submit" variant="neutral" isLoading={collectingFee}>
+                                Collect diagnosis fee
+                            </AdminButton>
+                        </form>
+                    )}
 
                     <div className="flex flex-col gap-2 pt-4">
                         {openRepair && (

@@ -2,16 +2,15 @@ import { FormEvent, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../../Components/Icons/Icon';
 
-type DeviceModel = { id: number; name: string };
-type DeviceBrand = { id: number; name: string; models: DeviceModel[] };
 type DeviceProblemTag = { id: number; label: string };
+type DeviceModel = { id: number; name: string; fixable_faults: DeviceProblemTag[]; has_model_specific_faults: boolean };
+type DeviceBrand = { id: number; name: string; models: DeviceModel[] };
 export type DeviceType = { id: number; label: string; icon: string; brands: DeviceBrand[]; problem_tags: DeviceProblemTag[] };
 
 interface DeviceTypePickerProps {
     deviceTypes: DeviceType[];
-    selectedProblemTagIds: number[];
-    onSelectBrand: (deviceType: string, brand: string, model?: string, modelId?: number) => void;
-    onToggleProblemTag: (id: number) => void;
+    /** Only fires once a model is picked/quick-added — model selection is required for intake, unlike the old optional brand-only flow. */
+    onSelectModel: (deviceType: string, brand: string, model: string, modelId: number) => void;
 }
 
 const quickAddInputClass =
@@ -87,18 +86,19 @@ function QuickAddInline({ placeholder, onSubmit }: { placeholder: string; onSubm
 }
 
 /**
- * A faster path to filling device make/model/problem than typing from
- * scratch — pick a device type, then a brand (pre-fills "Device make",
- * still freely editable), then any fixable problems that apply (feeds
- * `problem_tag_ids`, which also drives the Parts page's suggested-parts
- * list later). All three levels are admin-editable inline here, or in
- * bulk under Settings / Device catalog. Reads from the DB-backed catalog
+ * Picks device type -> brand -> model (model selection is required —
+ * device_model_id is what scopes a diagnosis case's fixable-fault/
+ * commission catalog later, on the Show page). Prefills "Device make"/
+ * "Device model", still freely editable as display text. All three
+ * levels are admin-editable inline here via quick-add, or in bulk under
+ * Settings / Device catalog. Reads from the DB-backed catalog
  * (`Domain\Repair\Application\Queries\DeviceCatalogQuery`) rather than a
  * hardcoded list.
  */
-export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, onSelectBrand, onToggleProblemTag }: DeviceTypePickerProps) {
+export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceTypePickerProps) {
     const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
     const [selectedBrand, setSelectedBrand] = useState<DeviceBrand | null>(null);
+    const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
     const selectedType = deviceTypes.find((type) => type.id === selectedTypeId) ?? null;
 
     function refresh() {
@@ -125,7 +125,7 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                     ))}
                     <QuickAddDeviceType onAdded={refresh} />
                 </div>
-                <p className="text-xs text-admin-text3 mt-3">Not sure, or something else entirely? Just type the device details in the form directly.</p>
+                <p className="text-xs text-admin-text3 mt-3">Don't see the device type? Add it above — a model must be picked (or quick-added) before this diagnosis case can be saved.</p>
             </div>
         );
     }
@@ -152,20 +152,15 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                         type="button"
                         onClick={() => {
                             setSelectedBrand(brand);
-                            onSelectBrand(selectedType.label, brand.name);
+                            setSelectedModelId(null);
                         }}
-                        className="bg-admin-surface border border-admin-border rounded-admin-card p-3 text-sm font-semibold text-admin-text hover:border-admin-blue hover:bg-admin-blue-soft transition-colors"
+                        className={`bg-admin-surface border rounded-admin-card p-3 text-sm font-semibold text-admin-text hover:border-admin-blue hover:bg-admin-blue-soft transition-colors ${
+                            selectedBrand?.id === brand.id ? 'border-admin-blue bg-admin-blue-soft' : 'border-admin-border'
+                        }`}
                     >
                         {brand.name}
                     </button>
                 ))}
-                <button
-                    type="button"
-                    onClick={() => onSelectBrand(selectedType.label, '')}
-                    className="bg-admin-surface border border-admin-border rounded-admin-card p-3 text-sm font-semibold text-admin-text3 hover:border-admin-blue hover:bg-admin-blue-soft transition-colors"
-                >
-                    Other / not listed
-                </button>
             </div>
             <div className="mb-5">
                 <QuickAddInline
@@ -183,7 +178,7 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
             {selectedBrand !== null && (
                 <div className="mb-5">
                     <h3 className="text-xs font-semibold text-admin-text2 mb-2">
-                        Models for {selectedBrand.name} (optional)
+                        Model for {selectedBrand.name} (required)
                     </h3>
                     {selectedBrand.models.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -191,9 +186,17 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                                 <button
                                     key={model.id}
                                     type="button"
-                                    onClick={() => onSelectBrand(selectedType.label, selectedBrand.name, model.name, model.id)}
-                                    className="text-xs font-semibold rounded-admin-badge px-2.5 py-1 border bg-white text-admin-text2 border-admin-border hover:border-admin-blue"
+                                    onClick={() => {
+                                        setSelectedModelId(model.id);
+                                        onSelectModel(selectedType.label, selectedBrand.name, model.name, model.id);
+                                    }}
+                                    className={`text-xs font-semibold rounded-admin-badge px-2.5 py-1 border transition-colors ${
+                                        selectedModelId === model.id
+                                            ? 'bg-admin-blue text-white border-admin-blue'
+                                            : 'bg-white text-admin-text2 border-admin-border hover:border-admin-blue'
+                                    }`}
                                 >
+                                    {selectedModelId === model.id && <Icon name="check" className="mr-1" />}
                                     {model.name}
                                 </button>
                             ))}
@@ -205,50 +208,13 @@ export default function DeviceTypePicker({ deviceTypes, selectedProblemTagIds, o
                             router.post(
                                 '/admin/settings/device-catalog/models',
                                 { device_brand_id: selectedBrand.id, name },
-                                { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: refresh },
+                                { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: refresh }
                             )
                         }
                     />
+                    <p className="text-xs text-admin-text3 mt-1.5">After adding, click the new model above to select it.</p>
                 </div>
             )}
-
-            {selectedType.problem_tags.length > 0 && (
-                <>
-                    <h3 className="text-xs font-semibold text-admin-text2 mb-2">
-                        Common problems for {selectedType.label.toLowerCase()} (optional — pick any that apply)
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                        {selectedType.problem_tags.map((tag) => {
-                            const checked = selectedProblemTagIds.includes(tag.id);
-                            return (
-                                <button
-                                    key={tag.id}
-                                    type="button"
-                                    onClick={() => onToggleProblemTag(tag.id)}
-                                    className={`text-xs font-semibold rounded-admin-badge px-2.5 py-1 border transition-colors ${
-                                        checked
-                                            ? 'bg-admin-blue text-white border-admin-blue'
-                                            : 'bg-white text-admin-text2 border-admin-border hover:border-admin-blue'
-                                    }`}
-                                >
-                                    {checked && <Icon name="check" className="mr-1" />}
-                                    {tag.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
-            <QuickAddInline
-                placeholder="Add a problem tag"
-                onSubmit={(label) =>
-                    router.post(
-                        '/admin/settings/device-catalog/problem-tags',
-                        { device_type_id: selectedType.id, label },
-                        { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: refresh },
-                    )
-                }
-            />
         </div>
     );
 }

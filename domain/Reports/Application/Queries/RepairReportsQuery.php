@@ -56,13 +56,20 @@ final class RepairReportsQuery
             ->selectRaw('coalesce(sum(failure_refund_due_minor), 0) as refund_due_minor')
             ->first();
 
+        // A partially-refunded transaction still counts toward collected_minor, net of what's been refunded,
+        // so it isn't silently dropped the way excluding it on status alone would.
+        $refundTotals = DB::table('payment_refunds')
+            ->select('payment_transaction_id', DB::raw('SUM(amount_minor) as refunded_minor'))
+            ->groupBy('payment_transaction_id');
+
         $payments = $this->repairPayments($shopId, $restrictToShopIds)
-            ->where('payments_transactions.status', 'confirmed')
+            ->leftJoinSub($refundTotals, 'payment_refund_totals', 'payment_refund_totals.payment_transaction_id', '=', 'payments_transactions.id')
+            ->whereIn('payments_transactions.status', ['confirmed', 'partially_refunded'])
             ->whereBetween('payments_transactions.created_at', [$start, $end])
-            ->selectRaw('coalesce(sum(payments_transactions.amount_minor), 0) as collected_minor')
-            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_diagnosis_fee' then payments_transactions.amount_minor else 0 end), 0) as diagnosis_fee_minor")
-            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_down_payment' then payments_transactions.amount_minor else 0 end), 0) as down_payment_minor")
-            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_final_payment' then payments_transactions.amount_minor else 0 end), 0) as final_payment_minor")
+            ->selectRaw('coalesce(sum(payments_transactions.amount_minor - coalesce(payment_refund_totals.refunded_minor, 0)), 0) as collected_minor')
+            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_diagnosis_fee' then payments_transactions.amount_minor - coalesce(payment_refund_totals.refunded_minor, 0) else 0 end), 0) as diagnosis_fee_minor")
+            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_down_payment' then payments_transactions.amount_minor - coalesce(payment_refund_totals.refunded_minor, 0) else 0 end), 0) as down_payment_minor")
+            ->selectRaw("coalesce(sum(case when payments_transactions.purpose = 'repair_final_payment' then payments_transactions.amount_minor - coalesce(payment_refund_totals.refunded_minor, 0) else 0 end), 0) as final_payment_minor")
             ->first();
 
         $received = (int) $statuses->received;

@@ -33,9 +33,13 @@ class PaymentTransitionPolicyTest extends TestCase
             'payment_pending_confirmation -> disputed' => ['payment_pending_confirmation', 'disputed'],
             'confirmed -> disputed' => ['confirmed', 'disputed'],
             'confirmed -> refunded' => ['confirmed', 'refunded'],
+            'confirmed -> partially_refunded' => ['confirmed', 'partially_refunded'],
             'disputed -> confirmed' => ['disputed', 'confirmed'],
             'disputed -> refunded' => ['disputed', 'refunded'],
+            'disputed -> partially_refunded' => ['disputed', 'partially_refunded'],
             'disputed -> exception' => ['disputed', 'exception'],
+            'partially_refunded -> refunded' => ['partially_refunded', 'refunded'],
+            'partially_refunded -> partially_refunded' => ['partially_refunded', 'partially_refunded'],
         ];
     }
 
@@ -50,6 +54,8 @@ class PaymentTransitionPolicyTest extends TestCase
             'exception -> anything' => ['exception', 'refunded'],
             'pending -> disputed' => ['pending', 'disputed'],
             'pending -> refunded' => ['pending', 'refunded'],
+            'partially_refunded -> confirmed' => ['partially_refunded', 'confirmed'],
+            'partially_refunded -> disputed' => ['partially_refunded', 'disputed'],
         ];
     }
 }

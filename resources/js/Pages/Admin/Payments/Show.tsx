@@ -7,6 +7,13 @@ import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import { formatNaira } from '../../../lib/money';
 
+type PaymentRefund = {
+    amount_minor: number;
+    refunded_by_staff_name: string | null;
+    source: 'manual_refund' | 'dispute_resolution';
+    created_at: string | null;
+};
+
 type PaymentDetail = {
     id: number;
     payable_type: string;
@@ -24,6 +31,9 @@ type PaymentDetail = {
     dispute_resolved_by_staff_name: string | null;
     created_at: string;
     source: { label: string; link: string };
+    refunded_amount_minor: number;
+    remaining_refundable_minor: number;
+    refunds: PaymentRefund[];
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
@@ -41,6 +51,7 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     payment_pending_confirmation: 'warning',
     confirmed: 'success',
     disputed: 'danger',
+    partially_refunded: 'warning',
     refunded: 'info',
     exception: 'danger',
 };
@@ -50,6 +61,7 @@ const STATUS_LABEL: Record<string, string> = {
     payment_pending_confirmation: 'Awaiting confirmation',
     confirmed: 'Confirmed',
     disputed: 'Disputed',
+    partially_refunded: 'Partially refunded',
     refunded: 'Refunded',
     exception: 'Exception',
 };
@@ -66,6 +78,9 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 export default function PaymentShow({ payment }: PaymentShowProps) {
     const confirm = useConfirm();
     const [resolution, setResolution] = useState('confirmed');
+    const remainingNaira = (payment.remaining_refundable_minor / 100).toFixed(2);
+    const [disputeRefundNaira, setDisputeRefundNaira] = useState(remainingNaira);
+    const [standaloneRefundNaira, setStandaloneRefundNaira] = useState(remainingNaira);
     const [processing, setProcessing] = useState(false);
 
     function post(url: string, data: Record<string, string> = {}) {
@@ -97,21 +112,18 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
 
     function resolveDispute(e: FormEvent) {
         e.preventDefault();
-        post(`/admin/payments/${payment.id}/dispute/resolve`, { resolution });
+        const data: Record<string, string> = { resolution };
+        if (resolution === 'refunded') {
+            data.amount_minor = Math.round(parseFloat(disputeRefundNaira || '0') * 100).toString();
+        }
+        post(`/admin/payments/${payment.id}/dispute/resolve`, data);
     }
 
-    async function refundPayment() {
-        const confirmed = await confirm({
-            kind: 'danger',
-            title: 'Refund this payment?',
-            body: 'This marks the full amount as refunded. It cannot be reversed from here.',
-            confirmLabel: 'Refund payment',
-            cancelLabel: 'Cancel',
+    function refundPayment(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/payments/${payment.id}/refund`, {
+            amount_minor: Math.round(parseFloat(standaloneRefundNaira || '0') * 100).toString(),
         });
-
-        if (confirmed) {
-            post(`/admin/payments/${payment.id}/refund`);
-        }
     }
 
     return (
@@ -137,6 +149,12 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                     <DetailRow label="Purpose" value={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')} />
                     <DetailRow label="Method" value={payment.method.replace('_', ' ')} />
                     <DetailRow label="Amount" value={formatNaira(payment.amount_minor)} />
+                    {payment.refunded_amount_minor > 0 && (
+                        <>
+                            <DetailRow label="Refunded so far" value={formatNaira(payment.refunded_amount_minor)} />
+                            <DetailRow label="Remaining refundable" value={formatNaira(payment.remaining_refundable_minor)} />
+                        </>
+                    )}
                     <DetailRow label="Provider reference" value={payment.provider_reference ?? '—'} />
                     <DetailRow label="Confirmed by" value={payment.confirmed_by_staff_id ? (payment.confirmed_by_staff_name ?? 'Staff member') : '—'} />
                     {payment.dispute_opened_at && (
@@ -148,6 +166,22 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                                 value={payment.dispute_resolved_by_staff_id ? (payment.dispute_resolved_by_staff_name ?? 'Staff member') : '—'}
                             />
                         </>
+                    )}
+                    {payment.refunds.length > 1 && (
+                        <div className="py-2.5 border-b border-admin-border last:border-b-0">
+                            <span className="text-sm text-admin-text2 block mb-1.5">Refunds</span>
+                            <ul className="space-y-1">
+                                {payment.refunds.map((refund, index) => (
+                                    <li key={index} className="flex items-center justify-between text-xs text-admin-text2">
+                                        <span>
+                                            {refund.refunded_by_staff_name ?? 'Staff member'}
+                                            {refund.created_at && ` · ${new Date(refund.created_at).toLocaleDateString()}`}
+                                        </span>
+                                        <span className="font-medium text-admin-text">{formatNaira(refund.amount_minor)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
                     <DetailRow label="Created" value={new Date(payment.created_at).toLocaleString()} />
                 </div>
@@ -172,10 +206,24 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                         </AdminButton>
                     )}
 
-                    {payment.status === 'confirmed' && (
-                        <AdminButton variant="neutral" onClick={refundPayment} disabled={processing}>
-                            Refund payment
-                        </AdminButton>
+                    {(payment.status === 'confirmed' || payment.status === 'partially_refunded') && (
+                        <form onSubmit={refundPayment} className="border-t border-admin-border pt-3 mt-1">
+                            <label className="text-xs font-semibold text-admin-text mb-1.5 block">
+                                Refund amount (₦, up to {formatNaira(payment.remaining_refundable_minor)})
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max={payment.remaining_refundable_minor / 100}
+                                value={standaloneRefundNaira}
+                                onChange={(e) => setStandaloneRefundNaira(e.target.value)}
+                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2"
+                            />
+                            <AdminButton type="submit" variant="neutral" isLoading={processing}>
+                                Refund payment
+                            </AdminButton>
+                        </form>
                     )}
 
                     {payment.status === 'disputed' && (
@@ -190,6 +238,22 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                                 <option value="refunded">Refunded</option>
                                 <option value="exception">Exception</option>
                             </select>
+                            {resolution === 'refunded' && (
+                                <>
+                                    <label className="text-xs font-semibold text-admin-text mb-1.5 block">
+                                        Refund amount (₦, up to {formatNaira(payment.remaining_refundable_minor)})
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        max={payment.remaining_refundable_minor / 100}
+                                        value={disputeRefundNaira}
+                                        onChange={(e) => setDisputeRefundNaira(e.target.value)}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2"
+                                    />
+                                </>
+                            )}
                             <AdminButton type="submit" isLoading={processing}>
                                 Resolve dispute
                             </AdminButton>

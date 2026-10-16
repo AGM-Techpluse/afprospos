@@ -9,6 +9,7 @@ use Domain\Repair\Domain\Exceptions\InvalidRepairTransition;
 use Domain\Repair\Domain\Exceptions\RepairJobIsClosed;
 use Domain\Repair\Domain\Exceptions\RepairTransferNotAllowed;
 use Domain\Repair\Domain\Policies\RepairTransitionPolicy;
+use Domain\Repair\Domain\ValueObjects\DeviceModelId;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
 use Domain\Shared\Domain\ValueObjects\Money;
@@ -35,6 +36,7 @@ final class RepairJob
         private readonly ?string $walkInEmail,
         private readonly string $deviceMake,
         private readonly string $deviceModel,
+        private readonly ?DeviceModelId $deviceModelId,
         private readonly ?string $reportedIssue,
         private readonly ?string $deviceImeiSerial,
         private string $deviceLockType,
@@ -54,9 +56,9 @@ final class RepairJob
     ) {}
 
     /** @param  'none'|'code'|'pattern'  $deviceLockType */
-    public static function intake(ShopId $shopId, ?CustomerId $customerId, string $deviceMake, string $deviceModel, ?Money $labourCharge = null, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null): self
+    public static function intake(ShopId $shopId, ?CustomerId $customerId, string $deviceMake, string $deviceModel, ?Money $labourCharge = null, ?string $reportedIssue = null, ?string $deviceImeiSerial = null, string $deviceLockType = 'none', ?string $deviceLockValue = null, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null, ?DeviceModelId $deviceModelId = null): self
     {
-        return new self(null, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, null, 'received', 'unpaid', null, null, null, null, null);
+        return new self(null, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $deviceModelId, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, null, $labourCharge, null, null, null, 'received', 'unpaid', null, null, null, null, null);
     }
 
     public static function reconstitute(
@@ -84,8 +86,9 @@ final class RepairJob
         ?string $walkInName = null,
         ?string $walkInPhone = null,
         ?string $walkInEmail = null,
+        ?DeviceModelId $deviceModelId = null,
     ): self {
-        return new self($id, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $repairCost, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes, $failureServiceCharge, $failureRefundDue);
+        return new self($id, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $deviceMake, $deviceModel, $deviceModelId, $reportedIssue, $deviceImeiSerial, $deviceLockType, $deviceLockValue, $technicianStaffId, $labourCharge, $repairCost, $downPaymentRequired, $downPaymentDeadlineAt, $status, $financialStatus, $estimatedCollectionDate, $unrepairableSettlementState, $resolutionNotes, $failureServiceCharge, $failureRefundDue);
     }
 
     /** Staff have saved the diagnosis and send it for the manager to quote and authorize. */
@@ -387,6 +390,11 @@ final class RepairJob
     public function deviceModel(): string
     {
         return $this->deviceModel;
+    }
+
+    public function deviceModelId(): ?DeviceModelId
+    {
+        return $this->deviceModelId;
     }
 
     public function reportedIssue(): ?string

@@ -599,6 +599,11 @@ Route::prefix('admin')
             ->whereNumber('diagnosisCase')
             ->name('diagnosis-cases.result.store');
 
+        Route::middleware('permission:repairs.approve-payment')
+            ->post('/repairs/diagnosis-cases/{diagnosisCase}/fee/collect', [DiagnosisCasesController::class, 'collectFee'])
+            ->whereNumber('diagnosisCase')
+            ->name('diagnosis-cases.fee.collect');
+
         Route::middleware('permission:repairs.create')
             ->post('/repairs/diagnosis-cases/{diagnosisCase}/repairs', [DiagnosisCasesController::class, 'createRepair'])
             ->whereNumber('diagnosisCase')

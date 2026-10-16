@@ -6,6 +6,8 @@ namespace Tests\Feature\Admin\Repairs;
 
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\CommonComponentRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceBrandRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceModelRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceTypeRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
@@ -43,10 +45,12 @@ final class DiagnosisCaseWorkflowTest extends TestCase
             'label' => 'Battery fault',
             'sort_order' => 2,
         ]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
 
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'reported_issue' => 'Screen and battery issues',
@@ -163,10 +167,12 @@ final class DiagnosisCaseWorkflowTest extends TestCase
             'sort_order' => 1,
             'commission_amount_minor' => 150000,
         ]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
 
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'reported_issue' => 'Screen issue',
@@ -243,10 +249,12 @@ final class DiagnosisCaseWorkflowTest extends TestCase
             'sort_order' => 1,
             'commission_amount_minor' => null,
         ]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
 
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'reported_issue' => 'Battery issue',
@@ -304,9 +312,13 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $technician->assignRole('Technician');
         $this->grantShopAccess($cashier, $shop->id);
 
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
+
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'device_lock_type' => 'none',
@@ -341,9 +353,13 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $otherTechnician->assignRole('Technician');
         $this->grantShopAccess($cashier, $shop->id);
 
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
+
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'device_lock_type' => 'none',
@@ -378,10 +394,13 @@ final class DiagnosisCaseWorkflowTest extends TestCase
             'sort_order' => 0,
             'commission_amount_minor' => 80000,
         ]);
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
 
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'device_make' => 'Apple',
             'device_model' => 'iPhone 15 Pro',
             'device_lock_type' => 'none',
@@ -455,9 +474,13 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $cashier->assignRole('Cashier');
         $this->grantShopAccess($cashier, $shop->id);
 
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
+
         $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
             'shop_id' => $shop->id,
             'customer_id' => '',
+            'device_model_id' => $deviceModelId,
             'walk_in_name' => 'Chidi Okafor',
             'walk_in_phone' => '08012345678',
             'walk_in_email' => 'chidi@example.com',
@@ -482,5 +505,127 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $this->assertSame('Chidi Okafor', $repair->walk_in_name);
         $this->assertSame('08012345678', $repair->walk_in_phone);
         $this->assertSame('chidi@example.com', $repair->walk_in_email);
+    }
+
+    public function test_a_diagnosis_case_cannot_be_created_without_a_device_model(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $shop = ShopRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $this->grantShopAccess($cashier, $shop->id);
+
+        $response = $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
+            'shop_id' => $shop->id,
+            'customer_id' => '',
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone 15 Pro',
+            'device_lock_type' => 'none',
+        ]);
+
+        $response->assertSessionHasErrors('device_model_id');
+        $this->assertDatabaseCount('diagnosis_cases', 0);
+    }
+
+    public function test_two_models_under_the_same_type_credit_different_commission_amounts_for_the_same_labelled_fault(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $shop = ShopRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $technician = StaffRecord::factory()->create();
+        $technician->assignRole('Technician');
+        $this->grantShopAccess($cashier, $shop->id);
+        $this->grantShopAccess($technician, $shop->id);
+
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $brand = DeviceBrandRecord::query()->create(['device_type_id' => $deviceType->id, 'name' => 'Apple', 'sort_order' => 0]);
+        $proModelId = DeviceModelRecord::query()->create(['device_brand_id' => $brand->id, 'name' => 'iPhone 15 Pro', 'sort_order' => 0])->id;
+        $seModelId = DeviceModelRecord::query()->create(['device_brand_id' => $brand->id, 'name' => 'iPhone SE', 'sort_order' => 1])->id;
+
+        $proScreenTag = DeviceProblemTagRecord::query()->create([
+            'device_type_id' => $deviceType->id,
+            'device_model_id' => $proModelId,
+            'label' => 'Screen',
+            'sort_order' => 0,
+            'commission_amount_minor' => 300000,
+        ]);
+        $seScreenTag = DeviceProblemTagRecord::query()->create([
+            'device_type_id' => $deviceType->id,
+            'device_model_id' => $seModelId,
+            'label' => 'Screen',
+            'sort_order' => 0,
+            'commission_amount_minor' => 100000,
+        ]);
+
+        $proRepairId = $this->diagnoseAndCompleteScreenRepair($shop, $cashier, $technician, $proModelId, $proScreenTag);
+        $seRepairId = $this->diagnoseAndCompleteScreenRepair($shop, $cashier, $technician, $seModelId, $seScreenTag);
+
+        $this->assertDatabaseHas('commission_ledger_entries', [
+            'staff_id' => $technician->id,
+            'source_type' => 'repair',
+            'source_id' => $proRepairId,
+            'commissionable_amount_minor' => 300000,
+        ]);
+        $this->assertDatabaseHas('commission_ledger_entries', [
+            'staff_id' => $technician->id,
+            'source_type' => 'repair',
+            'source_id' => $seRepairId,
+            'commissionable_amount_minor' => 100000,
+        ]);
+    }
+
+    private function diagnoseAndCompleteScreenRepair(ShopRecord $shop, StaffRecord $cashier, StaffRecord $technician, int $deviceModelId, DeviceProblemTagRecord $screenTag): int
+    {
+        $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
+            'shop_id' => $shop->id,
+            'customer_id' => '',
+            'device_model_id' => $deviceModelId,
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone',
+            'device_lock_type' => 'none',
+            'diagnosis_technician_staff_id' => $technician->id,
+        ])->assertRedirect();
+
+        $case = DiagnosisCaseRecord::query()->where('device_model_id', $deviceModelId)->firstOrFail();
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/diagnosis-cases/{$case->id}/result", [
+            'outcome' => 'repairable',
+            'revealed_faults' => [
+                ['device_problem_tag_id' => $screenTag->id, 'label' => 'Screen', 'notes' => ''],
+            ],
+        ])->assertRedirect();
+
+        $diagnosisFault = DiagnosisCaseFaultRecord::query()->where('diagnosis_case_id', $case->id)->firstOrFail();
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/diagnosis-cases/{$case->id}/repairs", [
+            'fault_ids' => [$diagnosisFault->id],
+        ])->assertRedirect();
+
+        $repair = RepairJobRecord::query()->where('diagnosis_case_id', $case->id)->firstOrFail();
+        $repair->update(['repair_status' => 'in_progress']);
+
+        $this->actingAs($cashier, 'staff')->post("/admin/repairs/{$repair->id}/complete", [
+            'resolution_notes' => 'Replaced screen.',
+            'fixed_faults' => [
+                [
+                    'diagnosis_case_fault_id' => $diagnosisFault->id,
+                    'device_problem_tag_id' => $screenTag->id,
+                    'label' => 'Screen',
+                    'notes' => '',
+                ],
+            ],
+        ])->assertRedirect();
+
+        return $repair->id;
+    }
+
+    private function createDeviceModel(int $deviceTypeId, string $name = 'iPhone 15 Pro'): int
+    {
+        $brand = DeviceBrandRecord::query()->create(['device_type_id' => $deviceTypeId, 'name' => 'Apple', 'sort_order' => 0]);
+
+        return DeviceModelRecord::query()->create(['device_brand_id' => $brand->id, 'name' => $name, 'sort_order' => 0])->id;
     }
 }

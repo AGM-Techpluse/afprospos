@@ -246,6 +246,7 @@ final class RepairsController
                 problemTagIds: array_map('intval', $request->array('problem_tag_ids') ?? []),
                 labourChargeMinor: $request->filled('labour_charge_minor') ? $request->integer('labour_charge_minor') : null,
                 createdByStaffId: $actor->staffId->value,
+                deviceModelId: $request->filled('device_model_id') ? $request->integer('device_model_id') : null,
             ));
         } catch (WarehouseCannotTakeRepairs $exception) {
             throw ValidationException::withMessages(['shop_id' => $exception->getMessage()]);

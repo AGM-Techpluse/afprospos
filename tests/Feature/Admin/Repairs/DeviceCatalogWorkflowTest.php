@@ -69,6 +69,93 @@ class DeviceCatalogWorkflowTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceProblemSuggestedPartAttached']);
     }
 
+    public function test_an_admin_can_manage_device_models_through_the_ddd_backed_endpoints(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        ShopRecord::factory()->create();
+
+        $typeId = DB::table('device_types')->insertGetId(['label' => 'Smartphones', 'icon' => 'phone', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $brandId = DB::table('device_brands')->insertGetId(['device_type_id' => $typeId, 'name' => 'Apple', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $otherBrandId = DB::table('device_brands')->insertGetId(['device_type_id' => $typeId, 'name' => 'Samsung', 'sort_order' => 1, 'created_at' => now(), 'updated_at' => now()]);
+
+        $storeResponse = $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/models', [
+            'device_brand_id' => $brandId,
+            'name' => 'iPhone 15 Pro',
+        ]);
+        $storeResponse->assertRedirect();
+        $this->assertDatabaseHas('device_models', ['device_brand_id' => $brandId, 'name' => 'iPhone 15 Pro']);
+        $modelId = DB::table('device_models')->where('name', 'iPhone 15 Pro')->value('id');
+
+        // Idempotent quick-add: posting the same (brand, name) again must not create a duplicate row.
+        $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/models', [
+            'device_brand_id' => $brandId,
+            'name' => 'iPhone 15 Pro',
+        ])->assertRedirect();
+        $this->assertDatabaseCount('device_models', 1);
+
+        $updateResponse = $this->actingAs($owner, 'staff')->put("/admin/settings/device-catalog/models/{$modelId}", [
+            'device_brand_id' => $otherBrandId,
+            'name' => 'iPhone 15 Pro Max',
+        ]);
+        $updateResponse->assertRedirect();
+        $this->assertDatabaseHas('device_models', ['id' => $modelId, 'device_brand_id' => $otherBrandId, 'name' => 'iPhone 15 Pro Max']);
+
+        $destroyResponse = $this->actingAs($owner, 'staff')->delete("/admin/settings/device-catalog/models/{$modelId}");
+        $destroyResponse->assertRedirect();
+        $this->assertDatabaseMissing('device_models', ['id' => $modelId]);
+
+        $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceModelCreated']);
+        $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceModelUpdated']);
+        $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceModelDeleted']);
+    }
+
+    public function test_a_model_specific_fault_overrides_its_type_default_but_a_bare_model_falls_back_to_it(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        ShopRecord::factory()->create();
+
+        $typeId = DB::table('device_types')->insertGetId(['label' => 'Smartphones', 'icon' => 'phone', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $brandId = DB::table('device_brands')->insertGetId(['device_type_id' => $typeId, 'name' => 'Apple', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $overriddenModelId = DB::table('device_models')->insertGetId(['device_brand_id' => $brandId, 'name' => 'iPhone 15 Pro', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $bareModelId = DB::table('device_models')->insertGetId(['device_brand_id' => $brandId, 'name' => 'iPhone SE', 'sort_order' => 1, 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/problem-tags', [
+            'device_type_id' => $typeId,
+            'label' => 'Screen (default)',
+        ])->assertRedirect();
+
+        $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/problem-tags', [
+            'device_model_id' => $overriddenModelId,
+            'label' => 'Screen (Pro-specific)',
+            'commission_amount_minor' => 300000,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('device_problem_tags', [
+            'device_model_id' => $overriddenModelId,
+            'device_type_id' => $typeId,
+            'label' => 'Screen (Pro-specific)',
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->get('/admin/settings/device-catalog');
+        $response->assertOk();
+
+        $models = collect($response->viewData('page')['props']['deviceTypes'][0]['brands'][0]['models'])->keyBy('id');
+        $overridden = $models[$overriddenModelId];
+        $bare = $models[$bareModelId];
+
+        $this->assertTrue($overridden['has_model_specific_faults']);
+        $this->assertSame(['Screen (Pro-specific)'], collect($overridden['fixable_faults'])->pluck('label')->all());
+
+        $this->assertFalse($bare['has_model_specific_faults']);
+        $this->assertSame(['Screen (default)'], collect($bare['fixable_faults'])->pluck('label')->all());
+    }
+
     public function test_a_staff_member_without_repairs_manage_cannot_edit_the_device_catalog(): void
     {
         $this->seed(RolePermissionSeeder::class);

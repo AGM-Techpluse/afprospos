@@ -35,8 +35,8 @@ class SuggestedPartsForRepairTest extends TestCase
         $unrelatedSku = SkuRecord::factory()->nonSerialized()->create();
 
         $typeId = app(CreateDeviceTypeHandler::class)->handle(new CreateDeviceTypeCommand('Smartphones', 'phone', 0, $staff->id));
-        $screenTagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Screen', 0, $staff->id));
-        $batteryTagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Battery', 1, $staff->id));
+        $screenTagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand(deviceTypeId: $typeId, deviceModelId: null, label: 'Screen', sortOrder: 0, createdByStaffId: $staff->id));
+        $batteryTagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand(deviceTypeId: $typeId, deviceModelId: null, label: 'Battery', sortOrder: 1, createdByStaffId: $staff->id));
 
         app(AttachSuggestedPartHandler::class)->handle(new AttachSuggestedPartCommand($screenTagId, $screenSku->id, $staff->id));
         app(AttachSuggestedPartHandler::class)->handle(new AttachSuggestedPartCommand($batteryTagId, $batterySku->id, $staff->id));

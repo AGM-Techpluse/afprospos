@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\ConfirmPaymentRequest;
 use App\Http\Requests\Admin\OpenPaymentDisputeRequest;
+use App\Http\Requests\Admin\RefundPaymentRequest;
 use App\Http\Requests\Admin\ResolvePaymentDisputeRequest;
 use Domain\Payments\Application\Commands\ConfirmPaymentCommand;
 use Domain\Payments\Application\Commands\OpenPaymentDisputeCommand;
@@ -21,6 +22,7 @@ use Domain\Payments\Application\Handlers\ResolvePaymentDisputeHandler;
 use Domain\Payments\Application\Queries\PaymentTransactionDetailQuery;
 use Domain\Payments\Application\Queries\PaymentTransactionsQuery;
 use Domain\Payments\Domain\Exceptions\InvalidPaymentStateTransition;
+use Domain\Payments\Domain\Exceptions\PaymentRefundExceedsRemainingBalance;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -158,6 +160,7 @@ final class PaymentController
             transactionId: $payment,
             resolvedByStaffId: $actor->staffId->value,
             resolution: $request->string('resolution')->toString(),
+            amountMinor: $request->filled('amount_minor') ? $request->integer('amount_minor') : null,
         )));
 
         $this->flashSuccess('Dispute resolved');
@@ -165,13 +168,14 @@ final class PaymentController
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
 
-    public function refund(int $payment): RedirectResponse
+    public function refund(RefundPaymentRequest $request, int $payment): RedirectResponse
     {
         $actor = app(ActorContext::class);
 
         $this->guardTransition(fn () => $this->refundPayment->handle(new RefundPaymentCommand(
             transactionId: $payment,
             refundedByStaffId: $actor->staffId->value,
+            amountMinor: $request->filled('amount_minor') ? $request->integer('amount_minor') : null,
         )));
 
         $this->flashSuccess('Payment refunded');
@@ -179,13 +183,15 @@ final class PaymentController
         return redirect()->route('admin.payments.show', ['payment' => $payment]);
     }
 
-    /** An illegal transition (e.g. confirming an already-refunded payment) surfaces as a friendly validation message, not a 500. */
+    /** An illegal transition (e.g. confirming an already-refunded payment) or an over-amount refund surfaces as a friendly validation message, not a 500. */
     private function guardTransition(callable $action): void
     {
         try {
             $action();
         } catch (InvalidPaymentStateTransition $exception) {
             throw ValidationException::withMessages(['status' => $exception->getMessage()]);
+        } catch (PaymentRefundExceedsRemainingBalance $exception) {
+            throw ValidationException::withMessages(['amount_minor' => $exception->getMessage()]);
         }
     }
 }

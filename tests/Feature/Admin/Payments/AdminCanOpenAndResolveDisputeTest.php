@@ -21,7 +21,7 @@ class AdminCanOpenAndResolveDisputeTest extends TestCase
         $accountant = StaffRecord::factory()->create();
         $accountant->assignRole('Accountant');
 
-        $transaction = PaymentTransactionRecord::factory()->create(['status' => 'confirmed']);
+        $transaction = PaymentTransactionRecord::factory()->create(['status' => 'confirmed', 'amount_minor' => 5000]);
 
         $openResponse = $this->actingAs($accountant, 'staff')->post("/admin/payments/{$transaction->id}/dispute", [
             'dispute_proof_reference' => 'chargeback-notice.pdf',
@@ -36,6 +36,7 @@ class AdminCanOpenAndResolveDisputeTest extends TestCase
 
         $resolveResponse = $this->actingAs($accountant, 'staff')->post("/admin/payments/{$transaction->id}/dispute/resolve", [
             'resolution' => 'refunded',
+            'amount_minor' => 5000,
         ]);
 
         $resolveResponse->assertRedirect("/admin/payments/{$transaction->id}");
@@ -43,6 +44,38 @@ class AdminCanOpenAndResolveDisputeTest extends TestCase
             'id' => $transaction->id,
             'status' => 'refunded',
             'dispute_resolved_by_staff_id' => $accountant->id,
+        ]);
+        $this->assertDatabaseHas('payment_refunds', [
+            'payment_transaction_id' => $transaction->id,
+            'amount_minor' => 5000,
+            'refunded_by_staff_id' => $accountant->id,
+            'source' => 'dispute_resolution',
+        ]);
+    }
+
+    public function test_resolving_a_dispute_as_refunded_with_a_partial_amount_leaves_the_payment_partially_refunded(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $accountant = StaffRecord::factory()->create();
+        $accountant->assignRole('Accountant');
+
+        $transaction = PaymentTransactionRecord::factory()->create(['status' => 'disputed', 'amount_minor' => 5000]);
+
+        $resolveResponse = $this->actingAs($accountant, 'staff')->post("/admin/payments/{$transaction->id}/dispute/resolve", [
+            'resolution' => 'refunded',
+            'amount_minor' => 2000,
+        ]);
+
+        $resolveResponse->assertRedirect("/admin/payments/{$transaction->id}");
+        $this->assertDatabaseHas('payments_transactions', [
+            'id' => $transaction->id,
+            'status' => 'partially_refunded',
+        ]);
+        $this->assertDatabaseHas('payment_refunds', [
+            'payment_transaction_id' => $transaction->id,
+            'amount_minor' => 2000,
+            'source' => 'dispute_resolution',
         ]);
     }
 

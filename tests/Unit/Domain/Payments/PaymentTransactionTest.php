@@ -7,6 +7,7 @@ namespace Tests\Unit\Domain\Payments;
 use Domain\Payments\Domain\Entities\PaymentTransaction;
 use Domain\Payments\Domain\Exceptions\InvalidPaymentStateTransition;
 use Domain\Payments\Domain\Exceptions\PaymentAlreadyConfirmed;
+use Domain\Payments\Domain\Exceptions\PaymentRefundExceedsRemainingBalance;
 use Domain\Payments\Domain\ValueObjects\PayableType;
 use Domain\Payments\Domain\ValueObjects\PaymentMethod;
 use Domain\Payments\Domain\ValueObjects\PaymentPurpose;
@@ -57,10 +58,77 @@ class PaymentTransactionTest extends TestCase
             new Money(5000),
         );
         $transaction->confirm(new StaffId(1));
-        $transaction->refund();
+        $transaction->applyRefund(0, new Money(5000));
 
         $this->expectException(InvalidPaymentStateTransition::class);
         $transaction->confirm(new StaffId(1));
+    }
+
+    public function test_a_full_refund_in_one_go_moves_the_transaction_to_refunded(): void
+    {
+        $transaction = PaymentTransaction::initiate(
+            new PayableType('sales_checkout'),
+            1,
+            new PaymentPurpose('sale_payment'),
+            new PaymentMethod('cash'),
+            new Money(5000),
+        );
+        $transaction->confirm(new StaffId(1));
+
+        $resultingStatus = $transaction->applyRefund(0, new Money(5000));
+
+        $this->assertSame('refunded', $resultingStatus);
+        $this->assertSame('refunded', $transaction->status());
+    }
+
+    public function test_a_partial_refund_moves_the_transaction_to_partially_refunded(): void
+    {
+        $transaction = PaymentTransaction::initiate(
+            new PayableType('sales_checkout'),
+            1,
+            new PaymentPurpose('sale_payment'),
+            new PaymentMethod('cash'),
+            new Money(5000),
+        );
+        $transaction->confirm(new StaffId(1));
+
+        $resultingStatus = $transaction->applyRefund(0, new Money(2000));
+
+        $this->assertSame('partially_refunded', $resultingStatus);
+        $this->assertSame('partially_refunded', $transaction->status());
+    }
+
+    public function test_a_second_partial_refund_that_completes_the_balance_moves_to_refunded(): void
+    {
+        $transaction = PaymentTransaction::initiate(
+            new PayableType('sales_checkout'),
+            1,
+            new PaymentPurpose('sale_payment'),
+            new PaymentMethod('cash'),
+            new Money(5000),
+        );
+        $transaction->confirm(new StaffId(1));
+        $transaction->applyRefund(0, new Money(2000));
+
+        $resultingStatus = $transaction->applyRefund(2000, new Money(3000));
+
+        $this->assertSame('refunded', $resultingStatus);
+    }
+
+    public function test_a_refund_amount_over_the_remaining_balance_is_rejected(): void
+    {
+        $transaction = PaymentTransaction::initiate(
+            new PayableType('sales_checkout'),
+            1,
+            new PaymentPurpose('sale_payment'),
+            new PaymentMethod('cash'),
+            new Money(5000),
+        );
+        $transaction->confirm(new StaffId(1));
+        $transaction->applyRefund(0, new Money(2000));
+
+        $this->expectException(PaymentRefundExceedsRemainingBalance::class);
+        $transaction->applyRefund(2000, new Money(4000));
     }
 
     public function test_a_pending_transaction_cannot_be_disputed(): void

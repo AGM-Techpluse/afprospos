@@ -66,7 +66,7 @@ class RepairsControllerTest extends TestCase
         $customer = CustomerRecord::factory()->create();
 
         $typeId = app(CreateDeviceTypeHandler::class)->handle(new CreateDeviceTypeCommand('Smartphones', 'phone', 0, $cashier->id));
-        $tagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand($typeId, 'Screen', 0, $cashier->id));
+        $tagId = app(CreateDeviceProblemTagHandler::class)->handle(new CreateDeviceProblemTagCommand(deviceTypeId: $typeId, deviceModelId: null, label: 'Screen', sortOrder: 0, createdByStaffId: $cashier->id));
 
         $response = $this->actingAs($cashier, 'staff')->post('/admin/repairs', [
             'shop_id' => $shop->id,

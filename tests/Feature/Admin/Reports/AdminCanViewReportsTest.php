@@ -19,6 +19,7 @@ use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Domain\Shop\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AdminCanViewReportsTest extends TestCase
@@ -85,6 +86,39 @@ class AdminCanViewReportsTest extends TestCase
                 ->where('report.summary.cash_collected_minor', 300000)
                 ->where('report.summary.earned_minor', 100000)
                 ->where('report.summary.refund_due_minor', 200000));
+    }
+
+    public function test_repair_report_nets_a_partial_refund_out_of_cash_collected_instead_of_dropping_it_entirely(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $repair = RepairJobRecord::factory()->create(['shop_id' => $shop->id]);
+
+        $transaction = PaymentTransactionRecord::factory()->create([
+            'payable_type' => 'repair_job',
+            'payable_id' => $repair->id,
+            'purpose' => 'repair_final_payment',
+            'amount_minor' => 300000,
+            'status' => 'partially_refunded',
+        ]);
+
+        DB::table('payment_refunds')->insert([
+            'payment_transaction_id' => $transaction->id,
+            'amount_minor' => 50000,
+            'refunded_by_staff_id' => $owner->id,
+            'source' => 'manual_refund',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($owner, 'staff')
+            ->get('/admin/reports/repairs?shop_id='.$shop->id)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Reports/Repairs')
+                ->where('report.summary.cash_collected_minor', 250000));
     }
 
     public function test_sales_and_inventory_reports_read_operational_totals(): void

@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
+use App\Http\Requests\Admin\Repairs\CollectDiagnosisFeeRequest;
 use App\Http\Requests\Admin\Repairs\CreateDiagnosisCaseRequest;
 use App\Http\Requests\Admin\Repairs\CreateRepairFromDiagnosisRequest;
 use App\Http\Requests\Admin\Repairs\SaveDiagnosisCaseResultRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
+use Domain\Payments\Application\Commands\InitiatePaymentCommand;
+use Domain\Payments\Application\Contracts\PaymentInitiationService;
+use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
 use Domain\Repair\Application\Commands\AssignDiagnosisTechnicianCommand;
 use Domain\Repair\Application\Commands\AssignTechnicianCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
@@ -52,6 +56,8 @@ final class DiagnosisCasesController
         private readonly AssignTechnicianHandler $assignTechnician,
         private readonly SetDiagnosisFeeHandler $setDiagnosisFee,
         private readonly AssignDiagnosisTechnicianHandler $assignDiagnosisTechnician,
+        private readonly PaymentInitiationService $paymentInitiation,
+        private readonly PaymentTransactionLookup $paymentLookup,
     ) {}
 
     public function index(Request $request): Response
@@ -178,7 +184,7 @@ final class DiagnosisCasesController
             'diagnosisCase' => $this->detail($case, $actor),
             'shop' => $this->shops->find($case->shop_id),
             'technicians' => $this->technicians($case->shop_id),
-            'faultCatalog' => $this->faultCatalog(),
+            'faultCatalog' => $this->faultCatalog($case->device_model_id),
             'relatedRepairs' => $this->relatedRepairs($case->id),
         ]);
     }
@@ -242,6 +248,48 @@ final class DiagnosisCasesController
         return redirect()->back();
     }
 
+    /**
+     * Collects the diagnosis fee against the case itself, before any repair
+     * job exists — mirrors how a sales_checkout is paid before the Sale
+     * aggregate exists. Only available while the case hasn't yet been
+     * converted (RepairJobDetailQuery::diagnosisFee() checks this same
+     * diagnosis_case-keyed transaction as a fallback so a pre-paid fee
+     * shows as paid on the resulting repair job without a second payment).
+     */
+    public function collectFee(CollectDiagnosisFeeRequest $request, int $diagnosisCase): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $case = DiagnosisCaseRecord::query()->findOrFail($diagnosisCase);
+        abort_unless($actor->canAccessShop($case->shop_id), 403);
+
+        if ($case->diagnosis_fee_minor === null) {
+            throw ValidationException::withMessages(['method' => 'This diagnosis case has no fee set yet.']);
+        }
+
+        if ($case->status !== 'diagnosed') {
+            throw ValidationException::withMessages(['method' => 'The diagnosis fee can only be collected while the case is still diagnosed and not yet converted to a repair.']);
+        }
+
+        $existing = $this->paymentLookup->latestTransactionForPurpose('diagnosis_case', $case->id, 'repair_diagnosis_fee');
+
+        if (($existing['status'] ?? null) === 'confirmed') {
+            throw ValidationException::withMessages(['method' => 'The diagnosis fee has already been paid.']);
+        }
+
+        $this->paymentInitiation->initiate(new InitiatePaymentCommand(
+            payableType: 'diagnosis_case',
+            payableId: $case->id,
+            purpose: 'repair_diagnosis_fee',
+            method: $request->string('method')->toString(),
+            amountMinor: $case->diagnosis_fee_minor,
+            initiatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Diagnosis fee collected');
+
+        return redirect()->back();
+    }
+
     public function createRepair(CreateRepairFromDiagnosisRequest $request, int $diagnosisCase): RedirectResponse
     {
         $actor = app(ActorContext::class);
@@ -289,6 +337,7 @@ final class DiagnosisCasesController
             problemTagIds: $problemTagIds,
             labourChargeMinor: null,
             createdByStaffId: $actor->staffId->value,
+            deviceModelId: $case->device_model_id,
         ));
 
         RepairJobRecord::query()->whereKey($repairId)->update([
@@ -401,6 +450,8 @@ final class DiagnosisCasesController
             'diagnosis_technician_staff_id' => $case->diagnosis_technician_staff_id,
             'diagnosis_notes' => $case->diagnosis_notes,
             'diagnosis_fee_minor' => $case->diagnosis_fee_minor,
+            'diagnosis_fee_paid' => $this->diagnosisFeePaid($case),
+            'diagnosis_fee_payment_method' => $this->diagnosisFeePaymentMethod($case),
             'diagnosed_at' => $case->diagnosed_at?->toIso8601String(),
             'revealed_faults' => DiagnosisCaseFaultRecord::query()
                 ->where('diagnosis_case_id', $case->id)
@@ -416,9 +467,38 @@ final class DiagnosisCasesController
         ];
     }
 
-    /** @return array<int, array{id:int, label:string}> */
-    private function faultCatalog(): array
+    private function diagnosisFeePaid(DiagnosisCaseRecord $case): bool
     {
+        if ($case->diagnosis_fee_minor === null) {
+            return false;
+        }
+
+        $transaction = $this->paymentLookup->latestTransactionForPurpose('diagnosis_case', $case->id, 'repair_diagnosis_fee');
+
+        return ($transaction['status'] ?? null) === 'confirmed';
+    }
+
+    private function diagnosisFeePaymentMethod(DiagnosisCaseRecord $case): ?string
+    {
+        $transaction = $this->paymentLookup->latestTransactionForPurpose('diagnosis_case', $case->id, 'repair_diagnosis_fee');
+
+        return ($transaction['status'] ?? null) === 'confirmed' ? $transaction['method'] : null;
+    }
+
+    /**
+     * Scoped to the case's own device model (model-specific tags, falling
+     * back to the model's device type's tags) — legacy cases saved before
+     * model selection was required fall back to the full flat catalog so
+     * they aren't left with no fault options at all.
+     *
+     * @return array<int, array{id:int, label:string}>
+     */
+    private function faultCatalog(?int $deviceModelId): array
+    {
+        if ($deviceModelId !== null) {
+            return $this->deviceCatalog->fixableFaultsForModel($deviceModelId);
+        }
+
         return DeviceProblemTagRecord::query()
             ->orderBy('label')
             ->get()

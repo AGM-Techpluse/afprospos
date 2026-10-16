@@ -18,6 +18,7 @@ final class ResolvePaymentDisputeRequest extends FormRequest
     {
         return [
             'resolution' => ['required', Rule::in(['confirmed', 'refunded', 'exception'])],
+            'amount_minor' => ['required_if:resolution,refunded', 'integer', 'min:1'],
         ];
     }
 }

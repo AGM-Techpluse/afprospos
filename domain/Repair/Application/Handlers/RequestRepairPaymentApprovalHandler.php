@@ -72,8 +72,18 @@ final class RequestRepairPaymentApprovalHandler
         $quoteTotalMinor = $job->repairCost()?->minor ?? 0;
         $diagnosisFee = $this->diagnosisFees->find($jobId);
         $diagnosisTransaction = $this->payments->latestTransactionForPurpose('repair_job', $jobId->value, 'repair_diagnosis_fee');
+        $diagnosisFeePaid = ($diagnosisTransaction['status'] ?? null) === 'confirmed';
 
-        if ($diagnosisFee !== null && $diagnosisFee->decision() === 'approved' && ($diagnosisTransaction['status'] ?? null) !== 'confirmed') {
+        if (! $diagnosisFeePaid) {
+            $diagnosisCaseId = $this->repairJobs->findDiagnosisCaseId($jobId);
+
+            if ($diagnosisCaseId !== null) {
+                $caseTransaction = $this->payments->latestTransactionForPurpose('diagnosis_case', $diagnosisCaseId, 'repair_diagnosis_fee');
+                $diagnosisFeePaid = ($caseTransaction['status'] ?? null) === 'confirmed';
+            }
+        }
+
+        if ($diagnosisFee !== null && $diagnosisFee->decision() === 'approved' && ! $diagnosisFeePaid) {
             $quoteTotalMinor += $diagnosisFee->amountMinor();
         }
 

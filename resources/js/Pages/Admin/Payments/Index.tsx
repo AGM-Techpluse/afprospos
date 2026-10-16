@@ -35,6 +35,7 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     payment_pending_confirmation: 'warning',
     confirmed: 'success',
     disputed: 'danger',
+    partially_refunded: 'warning',
     refunded: 'info',
     exception: 'danger',
 };
@@ -44,6 +45,7 @@ const STATUS_LABEL: Record<string, string> = {
     payment_pending_confirmation: 'Awaiting confirmation',
     confirmed: 'Confirmed',
     disputed: 'Disputed',
+    partially_refunded: 'Partially refunded',
     refunded: 'Refunded',
     exception: 'Exception',
 };

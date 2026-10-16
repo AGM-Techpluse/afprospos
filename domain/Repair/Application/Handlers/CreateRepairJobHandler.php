@@ -14,6 +14,7 @@ use Domain\Repair\Domain\Exceptions\WarehouseCannotTakeRepairs;
 use Domain\Repair\Domain\Repositories\DeviceProblemTagRepository;
 use Domain\Repair\Domain\Repositories\RepairJobProblemTagRepository;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
+use Domain\Repair\Domain\ValueObjects\DeviceModelId;
 use Domain\Repair\Domain\ValueObjects\DeviceProblemTagId;
 use Domain\Shared\Domain\Contracts\ShopClassification;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
@@ -53,6 +54,7 @@ final class CreateRepairJobHandler
                 $command->walkInName,
                 $command->walkInPhone,
                 $command->walkInEmail,
+                $command->deviceModelId !== null ? new DeviceModelId($command->deviceModelId) : null,
             );
 
             $id = $this->repairJobs->save($job);
@@ -75,6 +77,7 @@ final class CreateRepairJobHandler
                     'customer_id' => $command->customerId,
                     'device_make' => $command->deviceMake,
                     'device_model' => $command->deviceModel,
+                    'device_model_id' => $command->deviceModelId,
                     'reported_issue' => $command->reportedIssue,
                     'device_imei_serial' => $command->deviceImeiSerial,
                     // device_lock_value deliberately excluded — a device passcode/pattern never belongs in an audit log, even encrypted at rest elsewhere.

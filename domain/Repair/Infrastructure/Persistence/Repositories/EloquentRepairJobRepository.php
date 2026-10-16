@@ -6,6 +6,7 @@ namespace Domain\Repair\Infrastructure\Persistence\Repositories;
 
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
+use Domain\Repair\Domain\ValueObjects\DeviceModelId;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Domain\ValueObjects\CustomerId;
@@ -39,6 +40,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             'walk_in_email' => $repairJob->walkInEmail(),
             'device_make' => $repairJob->deviceMake(),
             'device_model' => $repairJob->deviceModel(),
+            'device_model_id' => $repairJob->deviceModelId()?->value,
             'reported_issue' => $repairJob->reportedIssue(),
             'device_imei_serial' => $repairJob->deviceImeiSerial(),
             'device_lock_type' => $repairJob->deviceLockType(),
@@ -65,6 +67,12 @@ final class EloquentRepairJobRepository implements RepairJobRepository
         }
 
         return new RepairJobId($record->id);
+    }
+
+    /** Narrow raw-column read — diagnosis_case_id isn't on the RepairJob aggregate itself (it's written directly to the row by DiagnosisCasesController::createRepair()'s own raw-update step), so a full entity round-trip isn't needed to read it back. */
+    public function findDiagnosisCaseId(RepairJobId $id): ?int
+    {
+        return RepairJobRecord::query()->whereKey($id->value)->value('diagnosis_case_id');
     }
 
     public function findExpirableAuthorizationIds(int $limit): array
@@ -109,6 +117,7 @@ final class EloquentRepairJobRepository implements RepairJobRepository
             $record->walk_in_name,
             $record->walk_in_phone,
             $record->walk_in_email,
+            $record->device_model_id !== null ? new DeviceModelId($record->device_model_id) : null,
         );
     }
 }

@@ -113,7 +113,7 @@ final class RepairJobDetailQuery
 
         $collectionCase = $this->collectionCases->findLatestBySource('repair_job', $repairJobId);
         $customer = $job->customer_id !== null ? $this->customers->find($job->customer_id) : null;
-        $diagnosisFee = $this->diagnosisFee($repairJobId);
+        $diagnosisFee = $this->diagnosisFee($repairJobId, $job->diagnosis_case_id);
         $quoteTotalMinor = $job->repair_cost_minor !== null ? $job->repair_cost_minor + ($diagnosisFee['outstanding_minor'] ?? 0) : null;
         $downPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_down_payment');
         $finalPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_final_payment');
@@ -234,14 +234,17 @@ final class RepairJobDetailQuery
         ];
     }
 
-    /** The diagnosis fee charged for this job, and whether it has been paid. Kept separate from the repair quote. */
     /**
      * The diagnosis fee: what was set, the manager's decision, and whether it has been
      * paid. An approved, unpaid fee is outstanding and is added to the quote total.
+     * Checks the repair_job-keyed transaction first; if nothing's confirmed there,
+     * falls back to a transaction collected against the originating diagnosis case
+     * before this repair job even existed, so a fee paid at intake still shows paid
+     * here without a second payment.
      *
      * @return array{amount_minor: int, decision: string, paid: bool, payment_status: ?string, method: ?string, outstanding_minor: int}|null
      */
-    private function diagnosisFee(int $repairJobId): ?array
+    private function diagnosisFee(int $repairJobId, ?int $diagnosisCaseId): ?array
     {
         $fee = $this->diagnosisFees->find(new RepairJobId($repairJobId));
 
@@ -250,6 +253,15 @@ final class RepairJobDetailQuery
         }
 
         $transaction = $this->payments->latestTransactionForPurpose('repair_job', $repairJobId, 'repair_diagnosis_fee');
+
+        if (($transaction['status'] ?? null) !== 'confirmed' && $diagnosisCaseId !== null) {
+            $caseTransaction = $this->payments->latestTransactionForPurpose('diagnosis_case', $diagnosisCaseId, 'repair_diagnosis_fee');
+
+            if (($caseTransaction['status'] ?? null) === 'confirmed') {
+                $transaction = $caseTransaction;
+            }
+        }
+
         $paid = $transaction !== null && $transaction['status'] === 'confirmed';
         $outstanding = $fee->decision() === 'approved' && ! $paid;
 

@@ -56,6 +56,8 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog,
         post('/admin/repairs/diagnosis-cases');
     }
 
+    const modelRequired = data.device_model_id === '';
+
     return (
         <AdminShell>
             <Head title="New diagnosis" />
@@ -100,19 +102,16 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog,
                         error={errors.device_lock_value}
                     />
 
-                    <AdminButton type="submit" isLoading={processing}>Create diagnosis case</AdminButton>
+                    {modelRequired && <p className="text-xs text-admin-red mb-2">Pick (or quick-add) a device model on the right before saving.</p>}
+                    <AdminButton type="submit" isLoading={processing} disabled={modelRequired}>Create diagnosis case</AdminButton>
                 </form>
 
                 <div className="flex flex-col gap-4">
                     <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4">
                         <DeviceTypePicker
                             deviceTypes={deviceCatalog}
-                            selectedProblemTagIds={[]}
-                            onToggleProblemTag={() => {}}
-                            onSelectBrand={(deviceType, brand, model, modelId) => {
-                                setData('device_make', brand || deviceType);
-                                setData('device_model', model ?? '');
-                                setData('device_model_id', modelId ? String(modelId) : '');
+                            onSelectModel={(deviceType, brand, model, modelId) => {
+                                setData({ ...data, device_make: brand || deviceType, device_model: model, device_model_id: String(modelId) });
                             }}
                         />
                     </div>

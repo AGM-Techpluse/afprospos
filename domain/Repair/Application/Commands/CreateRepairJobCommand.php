@@ -25,5 +25,6 @@ final readonly class CreateRepairJobCommand
         public ?string $walkInName = null,
         public ?string $walkInPhone = null,
         public ?string $walkInEmail = null,
+        public ?int $deviceModelId = null,
     ) {}
 }

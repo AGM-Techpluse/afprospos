@@ -28,7 +28,7 @@ final class CreateDiagnosisCaseRequest extends FormRequest
             'walk_in_name' => ['nullable', 'string', 'max:150'],
             'walk_in_phone' => ['nullable', 'string', 'max:30'],
             'walk_in_email' => ['nullable', 'string', 'max:150'],
-            'device_model_id' => ['nullable', 'integer', 'exists:device_models,id'],
+            'device_model_id' => ['required', 'integer', 'exists:device_models,id'],
             'diagnosis_technician_staff_id' => ['nullable', 'integer', 'exists:staff,id'],
             'device_make' => ['required', 'string', 'max:100'],
             'device_model' => ['required', 'string', 'max:150'],

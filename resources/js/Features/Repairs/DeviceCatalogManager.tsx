@@ -6,9 +6,9 @@ import AdminButton from '../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../Components/Admin/AdminEmptyState';
 
 export type SuggestedPart = { id: number; sku_id: number; sku_code: string | null; product_name: string | null };
-export type DeviceModel = { id: number; name: string; sort_order: number };
-export type DeviceBrand = { id: number; name: string; sort_order: number; models: DeviceModel[] };
 export type DeviceProblemTag = { id: number; label: string; sort_order: number; commission_amount_minor: number | null; suggested_parts: SuggestedPart[] };
+export type DeviceModel = { id: number; name: string; sort_order: number; fixable_faults: DeviceProblemTag[]; has_model_specific_faults: boolean };
+export type DeviceBrand = { id: number; name: string; sort_order: number; models: DeviceModel[] };
 export type DeviceType = {
     id: number;
     label: string;
@@ -161,6 +161,103 @@ function ProblemTagCommissionInput({ problemTag }: { problemTag: DeviceProblemTa
     );
 }
 
+/**
+ * Editable list of fixable-fault tags, reused for both a device type's own
+ * (fallback/default) tags and a specific model's override tags — only the
+ * `scope` posted to the create endpoint differs.
+ */
+function ProblemTagList({
+    tags,
+    scope,
+    addPlaceholder,
+}: {
+    tags: DeviceProblemTag[];
+    scope: { device_type_id: number } | { device_model_id: number };
+    addPlaceholder: string;
+}) {
+    const [newProblem, setNewProblem] = useState('');
+    const [expandedTagId, setExpandedTagId] = useState<number | null>(null);
+
+    function addProblem(e: FormEvent) {
+        e.preventDefault();
+        if (!newProblem.trim()) return;
+        router.post(
+            '/admin/settings/device-catalog/problem-tags',
+            { ...scope, label: newProblem.trim(), sort_order: tags.length },
+            { preserveScroll: true, showProgress: false, onSuccess: () => setNewProblem('') },
+        );
+    }
+
+    function removeProblem(id: number) {
+        router.delete(`/admin/settings/device-catalog/problem-tags/${id}`, { preserveScroll: true, showProgress: false });
+    }
+
+    return (
+        <>
+            {tags.length === 0 ? (
+                <p className="text-xs text-admin-text3">No problem tags yet.</p>
+            ) : (
+                <ul className="flex flex-col gap-1">
+                    {tags.map((tag) => (
+                        <li key={tag.id}>
+                            <div className="flex items-center justify-between gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setExpandedTagId(expandedTagId === tag.id ? null : tag.id)}
+                                    className="flex items-center gap-1.5 text-xs text-admin-text hover:text-admin-blue"
+                                >
+                                    <Icon name={expandedTagId === tag.id ? 'chevron-down' : 'chevron-right'} />
+                                    {tag.label}
+                                    <span className="text-admin-text3">({tag.suggested_parts.length})</span>
+                                </button>
+                                <button type="button" onClick={() => removeProblem(tag.id)} className="text-admin-text3 hover:text-admin-red" aria-label={`Remove ${tag.label}`}>
+                                    <Icon name="x" />
+                                </button>
+                            </div>
+                            <ProblemTagCommissionInput problemTag={tag} />
+                            {expandedTagId === tag.id && <SuggestedPartsEditor problemTag={tag} />}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <form onSubmit={addProblem} className="flex items-center gap-1.5 mt-2">
+                <input value={newProblem} onChange={(e) => setNewProblem(e.target.value)} placeholder={addPlaceholder} className={`${inputClass} min-w-0 flex-1`} />
+                <AdminButton type="submit" variant="neutral">Add</AdminButton>
+            </form>
+        </>
+    );
+}
+
+/** A model's own fixable faults, or (while it has none of its own) its device type's fallback list shown read-only until an override is added. */
+function ModelFaultsEditor({ model, deviceTypeLabel }: { model: DeviceModel; deviceTypeLabel: string }) {
+    if (model.has_model_specific_faults) {
+        return (
+            <div className="mt-2 pl-3 border-l-2 border-admin-border">
+                <ProblemTagList tags={model.fixable_faults} scope={{ device_model_id: model.id }} addPlaceholder="Add another override…" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="mt-2 pl-3 border-l-2 border-admin-border">
+            <p className="text-xs text-admin-text3 mb-1.5">Using {deviceTypeLabel}&apos;s default faults — add one below to override for this model only.</p>
+            {model.fixable_faults.length > 0 && (
+                <ul className="flex flex-col gap-1 mb-2">
+                    {model.fixable_faults.map((tag) => (
+                        <li key={tag.id} className="text-xs text-admin-text2">
+                            {tag.label}
+                            {tag.commission_amount_minor !== null && (
+                                <span className="text-admin-text3"> — ₦{(tag.commission_amount_minor / 100).toFixed(2)}</span>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <ProblemTagList tags={[]} scope={{ device_model_id: model.id }} addPlaceholder="Add a model-specific fault…" />
+        </div>
+    );
+}
+
 function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
     const confirm = useConfirm();
     const [editing, setEditing] = useState(false);
@@ -168,8 +265,7 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
     const [icon, setIcon] = useState(deviceType.icon);
     const [newBrand, setNewBrand] = useState('');
     const [newModelByBrand, setNewModelByBrand] = useState<Record<number, string>>({});
-    const [newProblem, setNewProblem] = useState('');
-    const [expandedTagId, setExpandedTagId] = useState<number | null>(null);
+    const [expandedModelId, setExpandedModelId] = useState<number | null>(null);
 
     function saveType(e: FormEvent) {
         e.preventDefault();
@@ -225,20 +321,6 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
         router.delete(`/admin/settings/device-catalog/models/${id}`, { preserveScroll: true, showProgress: false });
     }
 
-    function addProblem(e: FormEvent) {
-        e.preventDefault();
-        if (!newProblem.trim()) return;
-        router.post(
-            '/admin/settings/device-catalog/problem-tags',
-            { device_type_id: deviceType.id, label: newProblem.trim(), sort_order: deviceType.problem_tags.length },
-            { preserveScroll: true, showProgress: false, onSuccess: () => setNewProblem('') },
-        );
-    }
-
-    function removeProblem(id: number) {
-        router.delete(`/admin/settings/device-catalog/problem-tags/${id}`, { preserveScroll: true, showProgress: false });
-    }
-
     return (
         <div className="bg-admin-surface border border-admin-border rounded-admin-card p-5">
             <div className="flex items-start justify-between gap-2 mb-4">
@@ -292,11 +374,33 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
                                         </button>
                                     </div>
                                     <div className="mt-2">
-                                        <ChipList
-                                            items={brand.models.map((model) => ({ id: model.id, label: model.name }))}
-                                            onRemove={removeModel}
-                                            emptyLabel="No models yet."
-                                        />
+                                        {brand.models.length === 0 ? (
+                                            <p className="text-xs text-admin-text3">No models yet.</p>
+                                        ) : (
+                                            <ul className="flex flex-col gap-1">
+                                                {brand.models.map((model) => (
+                                                    <li key={model.id}>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setExpandedModelId(expandedModelId === model.id ? null : model.id)}
+                                                                className="flex items-center gap-1.5 text-xs text-admin-text hover:text-admin-blue"
+                                                            >
+                                                                <Icon name={expandedModelId === model.id ? 'chevron-down' : 'chevron-right'} />
+                                                                {model.name}
+                                                                {model.has_model_specific_faults && (
+                                                                    <span className="text-admin-text3">({model.fixable_faults.length} own faults)</span>
+                                                                )}
+                                                            </button>
+                                                            <button type="button" onClick={() => removeModel(model.id)} className="text-admin-text3 hover:text-admin-red" aria-label={`Remove ${model.name}`}>
+                                                                <Icon name="x" />
+                                                            </button>
+                                                        </div>
+                                                        {expandedModelId === model.id && <ModelFaultsEditor model={model} deviceTypeLabel={deviceType.label} />}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
                                     <form onSubmit={(e) => addModel(e, brand)} className="flex items-center gap-1.5 mt-2">
                                         <input
@@ -318,37 +422,8 @@ function DeviceTypeCard({ deviceType }: { deviceType: DeviceType }) {
                 </div>
 
                 <div>
-                    <div className="text-xs font-semibold text-admin-text2 mb-1.5">Fixable problems</div>
-                    {deviceType.problem_tags.length === 0 ? (
-                        <p className="text-xs text-admin-text3">No problem tags yet.</p>
-                    ) : (
-                        <ul className="flex flex-col gap-1">
-                            {deviceType.problem_tags.map((tag) => (
-                                <li key={tag.id}>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setExpandedTagId(expandedTagId === tag.id ? null : tag.id)}
-                                            className="flex items-center gap-1.5 text-xs text-admin-text hover:text-admin-blue"
-                                        >
-                                            <Icon name={expandedTagId === tag.id ? 'chevron-down' : 'chevron-right'} />
-                                            {tag.label}
-                                            <span className="text-admin-text3">({tag.suggested_parts.length})</span>
-                                        </button>
-                                        <button type="button" onClick={() => removeProblem(tag.id)} className="text-admin-text3 hover:text-admin-red" aria-label={`Remove ${tag.label}`}>
-                                            <Icon name="x" />
-                                        </button>
-                                    </div>
-                                    <ProblemTagCommissionInput problemTag={tag} />
-                                    {expandedTagId === tag.id && <SuggestedPartsEditor problemTag={tag} />}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <form onSubmit={addProblem} className="flex items-center gap-1.5 mt-2">
-                        <input value={newProblem} onChange={(e) => setNewProblem(e.target.value)} placeholder="Add a problem tag…" className={`${inputClass} min-w-0 flex-1`} />
-                        <AdminButton type="submit" variant="neutral">Add</AdminButton>
-                    </form>
+                    <div className="text-xs font-semibold text-admin-text2 mb-1.5">Fixable problems (default — applies to any model with no overrides of its own)</div>
+                    <ProblemTagList tags={deviceType.problem_tags} scope={{ device_type_id: deviceType.id }} addPlaceholder="Add a problem tag…" />
                 </div>
             </div>
         </div>

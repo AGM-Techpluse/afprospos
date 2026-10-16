@@ -13,28 +13,33 @@ use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceTypeRequest;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Repair\Application\Commands\AttachSuggestedPartCommand;
 use Domain\Repair\Application\Commands\CreateDeviceBrandCommand;
+use Domain\Repair\Application\Commands\CreateDeviceModelCommand;
 use Domain\Repair\Application\Commands\CreateDeviceProblemTagCommand;
 use Domain\Repair\Application\Commands\CreateDeviceTypeCommand;
 use Domain\Repair\Application\Commands\DeleteDeviceBrandCommand;
+use Domain\Repair\Application\Commands\DeleteDeviceModelCommand;
 use Domain\Repair\Application\Commands\DeleteDeviceProblemTagCommand;
 use Domain\Repair\Application\Commands\DeleteDeviceTypeCommand;
 use Domain\Repair\Application\Commands\DetachSuggestedPartCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceBrandCommand;
+use Domain\Repair\Application\Commands\UpdateDeviceModelCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceProblemTagCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceTypeCommand;
 use Domain\Repair\Application\Handlers\AttachSuggestedPartHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceBrandHandler;
+use Domain\Repair\Application\Handlers\CreateDeviceModelHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceProblemTagHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceTypeHandler;
 use Domain\Repair\Application\Handlers\DeleteDeviceBrandHandler;
+use Domain\Repair\Application\Handlers\DeleteDeviceModelHandler;
 use Domain\Repair\Application\Handlers\DeleteDeviceProblemTagHandler;
 use Domain\Repair\Application\Handlers\DeleteDeviceTypeHandler;
 use Domain\Repair\Application\Handlers\DetachSuggestedPartHandler;
 use Domain\Repair\Application\Handlers\UpdateDeviceBrandHandler;
+use Domain\Repair\Application\Handlers\UpdateDeviceModelHandler;
 use Domain\Repair\Application\Handlers\UpdateDeviceProblemTagHandler;
 use Domain\Repair\Application\Handlers\UpdateDeviceTypeHandler;
 use Domain\Repair\Application\Queries\DeviceCatalogQuery;
-use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceModelRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -56,6 +61,9 @@ final class DeviceCatalogController
         private readonly CreateDeviceBrandHandler $createDeviceBrand,
         private readonly UpdateDeviceBrandHandler $updateDeviceBrand,
         private readonly DeleteDeviceBrandHandler $deleteDeviceBrand,
+        private readonly CreateDeviceModelHandler $createDeviceModel,
+        private readonly UpdateDeviceModelHandler $updateDeviceModel,
+        private readonly DeleteDeviceModelHandler $deleteDeviceModel,
         private readonly CreateDeviceProblemTagHandler $createProblemTag,
         private readonly UpdateDeviceProblemTagHandler $updateProblemTag,
         private readonly DeleteDeviceProblemTagHandler $deleteProblemTag,
@@ -161,13 +169,14 @@ final class DeviceCatalogController
 
     public function storeModel(SaveDeviceModelRequest $request): RedirectResponse
     {
-        DeviceModelRecord::query()->firstOrCreate(
-            [
-                'device_brand_id' => $request->integer('device_brand_id'),
-                'name' => $request->string('name')->toString(),
-            ],
-            ['sort_order' => $request->integer('sort_order', 0)],
-        );
+        $actor = app(ActorContext::class);
+
+        $this->createDeviceModel->handle(new CreateDeviceModelCommand(
+            deviceBrandId: $request->integer('device_brand_id'),
+            name: $request->string('name')->toString(),
+            sortOrder: $request->integer('sort_order', 0),
+            createdByStaffId: $actor->staffId->value,
+        ));
 
         $this->flashSuccess('Device model created');
 
@@ -176,11 +185,15 @@ final class DeviceCatalogController
 
     public function updateModel(SaveDeviceModelRequest $request, int $model): RedirectResponse
     {
-        DeviceModelRecord::query()->findOrFail($model)->update([
-            'device_brand_id' => $request->integer('device_brand_id'),
-            'name' => $request->string('name')->toString(),
-            'sort_order' => $request->integer('sort_order', 0),
-        ]);
+        $actor = app(ActorContext::class);
+
+        $this->updateDeviceModel->handle(new UpdateDeviceModelCommand(
+            deviceModelId: $model,
+            deviceBrandId: $request->integer('device_brand_id'),
+            name: $request->string('name')->toString(),
+            sortOrder: $request->integer('sort_order', 0),
+            updatedByStaffId: $actor->staffId->value,
+        ));
 
         $this->flashSuccess('Device model updated');
 
@@ -189,7 +202,9 @@ final class DeviceCatalogController
 
     public function destroyModel(int $model): RedirectResponse
     {
-        DeviceModelRecord::query()->findOrFail($model)->delete();
+        $actor = app(ActorContext::class);
+
+        $this->deleteDeviceModel->handle(new DeleteDeviceModelCommand($model, $actor->staffId->value));
 
         $this->flashSuccess('Device model deleted');
 
@@ -201,7 +216,8 @@ final class DeviceCatalogController
         $actor = app(ActorContext::class);
 
         $this->createProblemTag->handle(new CreateDeviceProblemTagCommand(
-            deviceTypeId: $request->integer('device_type_id'),
+            deviceTypeId: $request->filled('device_type_id') ? $request->integer('device_type_id') : null,
+            deviceModelId: $request->filled('device_model_id') ? $request->integer('device_model_id') : null,
             label: $request->string('label')->toString(),
             sortOrder: $request->integer('sort_order', 0),
             createdByStaffId: $actor->staffId->value,

@@ -24,4 +24,7 @@ interface RepairJobRepository
      * @return int[]
      */
     public function findExpirableAuthorizationIds(int $limit): array;
+
+    /** diagnosis_case_id isn't on the RepairJob aggregate itself — a narrow read, not a full entity round-trip, for callers that only need the link back to the originating diagnosis case. */
+    public function findDiagnosisCaseId(RepairJobId $id): ?int;
 }

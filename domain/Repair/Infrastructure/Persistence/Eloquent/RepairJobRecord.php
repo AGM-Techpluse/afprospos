@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $walk_in_email
  * @property string $device_make
  * @property string $device_model
+ * @property int|null $device_model_id
  * @property string|null $reported_issue
  * @property string|null $device_imei_serial
  * @property string $device_lock_type
@@ -54,6 +55,7 @@ final class RepairJobRecord extends Model
         'walk_in_email',
         'device_make',
         'device_model',
+        'device_model_id',
         'reported_issue',
         'device_imei_serial',
         'device_lock_type',

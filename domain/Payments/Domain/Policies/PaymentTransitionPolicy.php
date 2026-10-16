@@ -20,8 +20,9 @@ final class PaymentTransitionPolicy
     private const TRANSITIONS = [
         'pending' => ['confirmed', 'payment_pending_confirmation', 'exception'],
         'payment_pending_confirmation' => ['confirmed', 'exception', 'disputed'],
-        'confirmed' => ['disputed', 'refunded'],
-        'disputed' => ['confirmed', 'refunded', 'exception'],
+        'confirmed' => ['disputed', 'refunded', 'partially_refunded'],
+        'disputed' => ['confirmed', 'refunded', 'partially_refunded', 'exception'],
+        'partially_refunded' => ['refunded', 'partially_refunded'],
         'refunded' => [],
         'exception' => [],
     ];
