@@ -9,6 +9,7 @@ import AdminPagination from '../../../../Components/Admin/AdminPagination';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import Icon from '../../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
+import ProductImage from '../../../../Components/ProductImage';
 
 type ProductRow = {
     id: number;
@@ -16,6 +17,7 @@ type ProductRow = {
     brand: string;
     model: string;
     category: string;
+    image_url: string | null;
     is_serialized: boolean;
     cost_price_minor: number;
     selling_price_minor: number;
@@ -38,6 +40,11 @@ function formatNaira(minor: number): string {
 }
 
 const COLUMNS: DataTableColumn<ProductRow>[] = [
+    {
+        key: 'image',
+        label: '',
+        render: (row) => <ProductImage src={row.image_url} alt={`${row.brand} ${row.model}`} aspect="square" category={row.category} className="w-10" />,
+    },
     { key: 'sku_code', label: 'SKU' },
     { key: 'brand', label: 'Brand' },
     { key: 'model', label: 'Model' },

@@ -43,7 +43,7 @@ final class SalesCheckout
         private readonly ?string $walkInName,
         private readonly ?string $walkInPhone,
         private readonly ?string $walkInEmail,
-        private readonly StaffId $cashierStaffId,
+        private ?StaffId $cashierStaffId,
         private string $status,
         private DateTimeImmutable $reservationExpiresAt,
         array $items,
@@ -56,7 +56,8 @@ final class SalesCheckout
         $this->adjustments = $adjustments;
     }
 
-    public static function open(ShopId $shopId, ?CustomerId $customerId, StaffId $cashierStaffId, DateTimeImmutable $reservationExpiresAt, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null): self
+    /** `$cashierStaffId` is null for a customer- or guest-originated checkout (the storefront cart/reservation flow) — no cashier rang it up. */
+    public static function open(ShopId $shopId, ?CustomerId $customerId, ?StaffId $cashierStaffId, DateTimeImmutable $reservationExpiresAt, ?string $walkInName = null, ?string $walkInPhone = null, ?string $walkInEmail = null): self
     {
         return new self(null, $shopId, $customerId, $walkInName, $walkInPhone, $walkInEmail, $cashierStaffId, 'open', $reservationExpiresAt, [], [], 0, 0, 0);
     }
@@ -69,7 +70,7 @@ final class SalesCheckout
         CheckoutId $id,
         ShopId $shopId,
         ?CustomerId $customerId,
-        StaffId $cashierStaffId,
+        ?StaffId $cashierStaffId,
         string $status,
         DateTimeImmutable $reservationExpiresAt,
         array $items,
@@ -152,6 +153,20 @@ final class SalesCheckout
         $this->status = 'cancelled';
     }
 
+    /** A till claims a cashier-less, customer-originated cart (the storefront self-service flow) instead of leaving it to expire unclaimed once the customer walks in to pay/collect in person. */
+    public function assignCashier(StaffId $staffId): void
+    {
+        $this->assertOpen();
+        $this->cashierStaffId = $staffId;
+    }
+
+    /** Keeps a customer's self-service cart alive while they're actively shopping — a POS checkout never calls this, it's done once at the till. */
+    public function renewReservation(DateTimeImmutable $newExpiresAt): void
+    {
+        $this->assertOpen();
+        $this->reservationExpiresAt = $newExpiresAt;
+    }
+
     /** Used only by the expiry worker, which already verifies status='open' via its own query before calling this. */
     public function markExpired(): void
     {
@@ -223,7 +238,7 @@ final class SalesCheckout
         return $this->walkInEmail;
     }
 
-    public function cashierStaffId(): StaffId
+    public function cashierStaffId(): ?StaffId
     {
         return $this->cashierStaffId;
     }

@@ -7,6 +7,7 @@ namespace Domain\Sales\Application\Queries;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 
 /** Redisplays the live cart after every add/remove/discount action (Admin Checkout.tsx). */
 final class CheckoutDetailQuery
@@ -50,6 +51,19 @@ final class CheckoutDetailQuery
         return $checkout !== null ? $this->toArray($checkout) : null;
     }
 
+    /** The customer's own self-service cart (storefront) — at most one open checkout per customer, same invariant as `findOpenForCashier`. */
+    public function findOpenForCustomer(int $customerId): ?array
+    {
+        $checkout = SalesCheckoutRecord::query()
+            ->with(['items', 'adjustments'])
+            ->where('customer_id', $customerId)
+            ->where('status', 'open')
+            ->latest('id')
+            ->first();
+
+        return $checkout !== null ? $this->toArray($checkout) : null;
+    }
+
     /** @return array<string, mixed> */
     private function toArray(SalesCheckoutRecord $checkout): array
     {
@@ -58,6 +72,7 @@ final class CheckoutDetailQuery
         return [
             'id' => $checkout->id,
             'shop_id' => $checkout->shop_id,
+            'shop_name' => ShopRecord::query()->whereKey($checkout->shop_id)->value('name'),
             'customer_id' => $checkout->customer_id,
             'customer_name' => $customer['name'] ?? null,
             'walk_in_name' => $checkout->walk_in_name,
@@ -78,6 +93,7 @@ final class CheckoutDetailQuery
                     'sku_code' => $sku['sku_code'] ?? null,
                     'product_name' => $sku['product_name'] ?? null,
                     'variant_label' => $sku['variant_label'] ?? null,
+                    'image_url' => $sku['image_url'] ?? null,
                     'inventory_item_id' => $item->inventory_item_id,
                     'quantity' => $item->quantity,
                     'unit_price_minor' => $item->unit_price_minor,

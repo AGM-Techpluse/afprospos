@@ -47,6 +47,7 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
             'variant_label' => $this->variantLabel($sku),
             'is_commissionable' => (bool) $sku->is_commissionable,
             'commission_amount_minor' => $sku->commission_amount_minor,
+            'image_url' => $this->imageUrl($sku),
         ])->all();
     }
 
@@ -115,7 +116,13 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
             'variant_label' => $this->variantLabel($sku),
             'is_commissionable' => (bool) $sku->is_commissionable,
             'commission_amount_minor' => $sku->commission_amount_minor,
+            'image_url' => $this->imageUrl($sku),
         ];
+    }
+
+    private function imageUrl(SkuRecord $sku): ?string
+    {
+        return $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null;
     }
 
     private function available(SkuRecord $sku, int $shopId): int

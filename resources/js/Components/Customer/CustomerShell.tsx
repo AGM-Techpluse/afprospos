@@ -22,21 +22,25 @@ interface NavItem {
     enabled: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-    { key: 'home', label: 'Home', icon: 'house-door-fill', iconBg: 'bg-customer-blue', href: '/customer/dashboard', enabled: true },
-    { key: 'repairs', label: 'Repairs', icon: 'tools', iconBg: 'bg-customer-green', href: '/customer/repairs', enabled: true },
-    { key: 'orders', label: 'Orders', icon: 'bag-check', iconBg: 'bg-customer-yellow-text', href: '/customer/orders', enabled: true },
-    { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', iconBg: 'bg-customer-red', href: '/customer/warranty/claims', enabled: true },
-    { key: 'shops', label: 'Shops', icon: 'shop', iconBg: 'bg-customer-card-lime-text', href: '/customer/dashboard', enabled: false },
-    { key: 'profile', label: 'Profile', icon: 'person', iconBg: 'bg-gray-500', href: '/customer/profile', enabled: true },
-];
+/** `shops` is the one item whose `enabled` isn't a fixed "coming soon" — it tracks the storefront feature flag (STOREFRONT_ENABLED), so switching the storefront off also makes its own nav entry render inert instead of linking to a route that now 404s. */
+function buildNavItems(storefrontEnabled: boolean): NavItem[] {
+    return [
+        { key: 'home', label: 'Home', icon: 'house-door-fill', iconBg: 'bg-customer-blue', href: '/customer/dashboard', enabled: true },
+        { key: 'repairs', label: 'Repairs', icon: 'tools', iconBg: 'bg-customer-green', href: '/customer/repairs', enabled: true },
+        { key: 'orders', label: 'Orders', icon: 'bag-check', iconBg: 'bg-customer-yellow-text', href: '/customer/orders', enabled: true },
+        { key: 'warranty', label: 'Warranty', icon: 'shield-exclamation', iconBg: 'bg-customer-red', href: '/customer/warranty/claims', enabled: true },
+        { key: 'shops', label: 'Shop', icon: 'shop', iconBg: 'bg-customer-card-lime-text', href: '/shop', enabled: storefrontEnabled },
+        { key: 'profile', label: 'Profile', icon: 'person', iconBg: 'bg-gray-500', href: '/customer/profile', enabled: true },
+    ];
+}
 
 export default function CustomerShell({ children }: CustomerShellProps) {
-    const { app_name, app_logo, auth } = usePage().props as any;
+    const { app_name, app_logo, auth, storefrontEnabled } = usePage().props as any;
     const currentUrl = usePage().url;
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const customerName: string = auth?.customer?.name ?? 'there';
     const avatarUrl: string | null = auth?.customer?.avatar_url ?? null;
+    const navItems = buildNavItems(Boolean(storefrontEnabled));
 
     useFlashToast();
 
@@ -59,18 +63,20 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                     bg-white border-r border-gray-100
                     rounded-r-customer-drawer sm:rounded-none
                     z-50 sm:z-auto
-                    flex flex-col p-3 sm:p-4
+                    flex flex-col p-4 sm:p-5
                     transition-transform duration-220
                     ${isDrawerOpen ? 'translate-x-0 shadow-customer-strong' : '-translate-x-full sm:translate-x-0'}
                 `}
             >
-                <div className="flex items-center gap-2 px-2 pb-6">
+                <div className="flex items-center gap-2 px-2 pt-4 pb-6">
                     <img src={app_logo} alt={app_name} className="h-6 w-6" />
                     <span className="font-customer-display font-extrabold text-customer-base text-customer-text">{app_name}</span>
                 </div>
 
-                <nav className="flex-1 flex flex-col gap-2 justify-start pt-4">
-                    {NAV_ITEMS.map((item) => {
+                <div className="border-b border-gray-100 -mx-4 sm:-mx-5" />
+
+                <nav className="flex-1 flex flex-col gap-2 justify-start pt-4 overflow-y-auto">
+                    {navItems.map((item) => {
                         const isActive = item.enabled && currentUrl === item.href;
 
                         return item.enabled ? (

@@ -25,4 +25,10 @@ final class CustomerRecordFactory extends Factory
             'status' => 'active',
         ];
     }
+
+    /** A walk-in record — no password, can never authenticate. */
+    public function walkIn(): self
+    {
+        return $this->state(fn (): array => ['password' => null]);
+    }
 }

@@ -135,53 +135,197 @@ final class DeviceCatalogQuery
             ->all();
     }
 
-    /** @return array<int, array<string, mixed>> */
-    public function full(int $shopId): array
+    /**
+     * Cheap grid-card shape for the Types index — counts only, no
+     * brand/model/fault detail, so this stays fast regardless of catalog size.
+     *
+     * @return array<int, array{id:int, label:string, icon:string, sort_order:int, brand_count:int, model_count:int}>
+     */
+    public function typesSummary(): array
     {
-        $brandsByType = DeviceBrandRecord::query()->orderBy('sort_order')->get()->groupBy('device_type_id');
-        $modelsByBrand = DeviceModelRecord::query()->orderBy('sort_order')->get()->groupBy('device_brand_id');
-        [$tagsByType, $tagsByModel] = $this->problemTagsByTypeAndModel();
+        $brandCountsByType = DeviceBrandRecord::query()
+            ->selectRaw('device_type_id, count(*) as aggregate')
+            ->groupBy('device_type_id')
+            ->pluck('aggregate', 'device_type_id');
 
-        $allTagIds = $tagsByType->flatten()->pluck('id')->merge($tagsByModel->flatten()->pluck('id'))->all();
+        $modelCountsByType = DeviceModelRecord::query()
+            ->join('device_brands', 'device_brands.id', '=', 'device_models.device_brand_id')
+            ->selectRaw('device_brands.device_type_id, count(*) as aggregate')
+            ->groupBy('device_brands.device_type_id')
+            ->pluck('aggregate', 'device_type_id');
+
+        return DeviceTypeRecord::query()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(static fn (DeviceTypeRecord $type): array => [
+                'id' => $type->id,
+                'label' => $type->label,
+                'icon' => $type->icon,
+                'sort_order' => $type->sort_order,
+                'brand_count' => (int) ($brandCountsByType[$type->id] ?? 0),
+                'model_count' => (int) ($modelCountsByType[$type->id] ?? 0),
+            ])->all();
+    }
+
+    /**
+     * One type's brands (with their own model counts, not full model
+     * detail) plus the type's own default/fallback fixable faults —
+     * backs the Type show page.
+     *
+     * @return array{id:int, label:string, icon:string, sort_order:int, brands: array<int, array{id:int, name:string, sort_order:int, model_count:int}>, problem_tags: array<int, array<string, mixed>>}|null
+     */
+    public function typeDetail(int $typeId, ?int $shopId): ?array
+    {
+        $type = DeviceTypeRecord::query()->find($typeId);
+
+        if ($type === null) {
+            return null;
+        }
+
+        $brands = DeviceBrandRecord::query()->where('device_type_id', $typeId)->withCount('models')->orderBy('sort_order')->get();
+        $typeTags = DeviceProblemTagRecord::query()->where('device_type_id', $typeId)->whereNull('device_model_id')->orderBy('sort_order')->get();
+        $suggestedByTag = DeviceProblemSuggestedSkuRecord::query()
+            ->whereIn('device_problem_tag_id', $typeTags->pluck('id'))
+            ->get()
+            ->groupBy('device_problem_tag_id');
+
+        return [
+            'id' => $type->id,
+            'label' => $type->label,
+            'icon' => $type->icon,
+            'sort_order' => $type->sort_order,
+            'brands' => $brands->map(static fn (DeviceBrandRecord $brand): array => [
+                'id' => $brand->id,
+                'name' => $brand->name,
+                'sort_order' => $brand->sort_order,
+                'model_count' => $brand->models_count,
+            ])->values()->all(),
+            'problem_tags' => $this->mapTagsForSettings($typeTags, $suggestedByTag, $shopId),
+        ];
+    }
+
+    /**
+     * One brand's parent type (for the breadcrumb/fallback label) and its
+     * models, each already carrying its own effective fixable-fault list
+     * — backs the Brand show page where models and their fault/commission
+     * editors live together.
+     *
+     * @return array{id:int, name:string, sort_order:int, device_type: array{id:int, label:string}, models: array<int, array<string, mixed>>}|null
+     */
+    public function brandDetail(int $brandId, ?int $shopId): ?array
+    {
+        $brand = DeviceBrandRecord::query()->find($brandId);
+
+        if ($brand === null) {
+            return null;
+        }
+
+        $type = DeviceTypeRecord::query()->findOrFail($brand->device_type_id);
+        $models = DeviceModelRecord::query()->where('device_brand_id', $brandId)->orderBy('sort_order')->get();
+        $typeTags = DeviceProblemTagRecord::query()->where('device_type_id', $type->id)->whereNull('device_model_id')->orderBy('sort_order')->get();
+        $tagsByModel = DeviceProblemTagRecord::query()
+            ->whereIn('device_model_id', $models->pluck('id'))
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy('device_model_id');
+
+        $allTagIds = $typeTags->pluck('id')->merge($tagsByModel->flatten()->pluck('id'))->all();
         $suggestedByTag = DeviceProblemSuggestedSkuRecord::query()
             ->whereIn('device_problem_tag_id', $allTagIds)
             ->get()
             ->groupBy('device_problem_tag_id');
 
-        return DeviceTypeRecord::query()
-            ->orderBy('sort_order')
-            ->get()
-            ->map(function (DeviceTypeRecord $type) use ($brandsByType, $modelsByBrand, $tagsByType, $tagsByModel, $suggestedByTag, $shopId): array {
-                $typeTags = $tagsByType->get($type->id) ?? collect();
+        return [
+            'id' => $brand->id,
+            'name' => $brand->name,
+            'sort_order' => $brand->sort_order,
+            'device_type' => ['id' => $type->id, 'label' => $type->label],
+            'models' => $models->map(function (DeviceModelRecord $model) use ($typeTags, $tagsByModel, $suggestedByTag, $shopId): array {
+                $modelTags = $tagsByModel->get($model->id) ?? collect();
 
                 return [
-                    'id' => $type->id,
-                    'label' => $type->label,
-                    'icon' => $type->icon,
-                    'sort_order' => $type->sort_order,
-                    'brands' => ($brandsByType->get($type->id) ?? collect())
-                        ->map(function (DeviceBrandRecord $brand) use ($modelsByBrand, $typeTags, $tagsByModel, $suggestedByTag, $shopId): array {
-                            return [
-                                'id' => $brand->id,
-                                'name' => $brand->name,
-                                'sort_order' => $brand->sort_order,
-                                'models' => ($modelsByBrand->get($brand->id) ?? collect())
-                                    ->map(function (DeviceModelRecord $model) use ($typeTags, $tagsByModel, $suggestedByTag, $shopId): array {
-                                        $modelTags = $tagsByModel->get($model->id) ?? collect();
-
-                                        return [
-                                            'id' => $model->id,
-                                            'name' => $model->name,
-                                            'sort_order' => $model->sort_order,
-                                            'has_model_specific_faults' => $modelTags->isNotEmpty(),
-                                            'fixable_faults' => $this->mapTagsForSettings($modelTags->isNotEmpty() ? $modelTags : $typeTags, $suggestedByTag, $shopId),
-                                        ];
-                                    })->values()->all(),
-                            ];
-                        })->values()->all(),
-                    'problem_tags' => $this->mapTagsForSettings($typeTags, $suggestedByTag, $shopId),
+                    'id' => $model->id,
+                    'name' => $model->name,
+                    'sort_order' => $model->sort_order,
+                    'has_model_specific_faults' => $modelTags->isNotEmpty(),
+                    'fixable_faults' => $this->mapTagsForSettings($modelTags->isNotEmpty() ? $modelTags : $typeTags, $suggestedByTag, $shopId),
                 ];
-            })->all();
+            })->values()->all(),
+        ];
+    }
+
+    /**
+     * System-wide fault search — deliberately ignores device scope
+     * entirely (no schema change needed for a true "generic" fault
+     * concept): a technician picking a revealed fault during diagnosis
+     * may want a fault that recurs across many devices, not just this
+     * one. Each row is annotated with its own device type/model label so
+     * duplicates ("Battery drain" on three different phones) are
+     * distinguishable in the results.
+     *
+     * @return array<int, array{id:int, label:string, device_type_label:string, device_model_label:?string}>
+     */
+    public function searchFaults(?string $term, int $limit = 30): array
+    {
+        return DeviceProblemTagRecord::query()
+            ->with(['deviceType', 'deviceModel'])
+            ->when($term !== null && $term !== '', fn ($query) => $query->where('label', 'like', "%{$term}%"))
+            ->orderBy('label')
+            ->limit($limit)
+            ->get()
+            ->map(static fn (DeviceProblemTagRecord $tag): array => [
+                'id' => $tag->id,
+                'label' => $tag->label,
+                'device_type_label' => $tag->deviceType->label,
+                'device_model_label' => $tag->deviceModel?->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * Device-specific fault search for a repair's "actually fixed"
+     * picker — same model-specific-falling-back-to-type-level scoping as
+     * fixableFaultsForModel(), narrowed by a search term, carrying each
+     * fault's catalog commission so the picker can pre-fill it.
+     *
+     * @return array<int, array{id:int, label:string, commission_amount_minor:?int}>
+     */
+    public function searchFaultsForModel(int $deviceModelId, ?string $term, int $limit = 30): array
+    {
+        $model = DeviceModelRecord::query()->find($deviceModelId);
+
+        if ($model === null) {
+            return [];
+        }
+
+        $brand = DeviceBrandRecord::query()->find($model->device_brand_id);
+
+        if ($brand === null) {
+            return [];
+        }
+
+        $modelTags = DeviceProblemTagRecord::query()
+            ->where('device_model_id', $deviceModelId)
+            ->when($term !== null && $term !== '', fn ($query) => $query->where('label', 'like', "%{$term}%"))
+            ->orderBy('label')
+            ->limit($limit)
+            ->get();
+
+        $tags = $modelTags->isNotEmpty()
+            ? $modelTags
+            : DeviceProblemTagRecord::query()
+                ->whereNull('device_model_id')
+                ->where('device_type_id', $brand->device_type_id)
+                ->when($term !== null && $term !== '', fn ($query) => $query->where('label', 'like', "%{$term}%"))
+                ->orderBy('label')
+                ->limit($limit)
+                ->get();
+
+        return $tags->map(static fn (DeviceProblemTagRecord $tag): array => [
+            'id' => $tag->id,
+            'label' => $tag->label,
+            'commission_amount_minor' => $tag->commission_amount_minor,
+        ])->values()->all();
     }
 
     /** @return array{0: Collection<int, Collection<int, DeviceProblemTagRecord>>, 1: Collection<int, Collection<int, DeviceProblemTagRecord>>} */
@@ -196,7 +340,7 @@ final class DeviceCatalogQuery
     }
 
     /** @param  Collection<int, DeviceProblemTagRecord>  $tags */
-    private function mapTagsForSettings(Collection $tags, Collection $suggestedByTag, int $shopId): array
+    private function mapTagsForSettings(Collection $tags, Collection $suggestedByTag, ?int $shopId): array
     {
         return $tags->map(function (DeviceProblemTagRecord $tag) use ($suggestedByTag, $shopId): array {
             return [
@@ -204,7 +348,7 @@ final class DeviceCatalogQuery
                 'label' => $tag->label,
                 'sort_order' => $tag->sort_order,
                 'commission_amount_minor' => $tag->commission_amount_minor,
-                'suggested_parts' => ($suggestedByTag->get($tag->id) ?? collect())
+                'suggested_parts' => $shopId === null ? [] : ($suggestedByTag->get($tag->id) ?? collect())
                     ->map(function (DeviceProblemSuggestedSkuRecord $suggested) use ($shopId): array {
                         $sku = $this->catalog->find($suggested->sku_id, $shopId);
 

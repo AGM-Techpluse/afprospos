@@ -22,6 +22,7 @@ export type PartReservationRow = {
     sku_code: string | null;
     product_name: string | null;
     quantity: number;
+    unit_price_minor: number;
     status: string;
 };
 
@@ -193,6 +194,7 @@ export default function PartsReservationPicker({
                                     <div className="text-xs text-admin-text3 flex items-center gap-1.5 mt-0.5">
                                         {reservation.sku_code && <span>{reservation.sku_code} ·</span>}
                                         {reservation.inventory_item_id ? 'Serialized unit' : `Qty ${reservation.quantity}`}
+                                        <span>· {formatNaira(reservation.unit_price_minor * reservation.quantity)}</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">

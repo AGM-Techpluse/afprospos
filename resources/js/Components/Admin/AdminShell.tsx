@@ -54,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'commission', label: 'Commission', icon: 'cash-coin', href: '/admin/commission', activeMatch: '/admin/commission' },
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
+            { key: 'customers', label: 'Customers', icon: 'person-lines-fill', href: '/admin/customers' },
             { key: 'settings', label: 'Settings', icon: 'gear', href: '/admin/settings/device-catalog', activeMatch: '/admin/settings' },
             { key: 'warranty-policies', label: 'Warranty policies', icon: 'shield-check', href: '/admin/warranty/policies' },
         ],

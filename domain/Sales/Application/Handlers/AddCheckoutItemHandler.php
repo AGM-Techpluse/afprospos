@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Domain\Sales\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ReserveInventoryCommand;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
 use Domain\Sales\Application\Commands\AddCheckoutItemCommand;
+use Domain\Sales\Domain\Entities\SalesCheckout;
 use Domain\Sales\Domain\Entities\SalesCheckoutItem;
 use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
@@ -58,14 +60,27 @@ final class AddCheckoutItemHandler
                 sourceId: $command->checkoutId,
             ));
 
-            $item = SalesCheckoutItem::create(
-                $command->skuId,
-                $result->inventoryItemIds[0] ?? null,
-                $command->quantity,
-                new Money($sku['selling_price_minor']),
-            );
+            // A non-serialized SKU already on this checkout gets its quantity bumped instead of a duplicate line — standard "add to cart" behavior. A serialized SKU never merges: each line reserves one specific physical unit, so a second add is genuinely a second, distinct unit.
+            $existingItem = $sku['is_serialized'] ? null : $this->findNonSerializedLine($checkout, $command->skuId);
 
-            $checkout->addItem($item);
+            if ($existingItem !== null) {
+                $checkout->changeItemQuantity($existingItem->id(), $existingItem->quantity() + $command->quantity);
+            } else {
+                $item = SalesCheckoutItem::create(
+                    $command->skuId,
+                    $result->inventoryItemIds[0] ?? null,
+                    $command->quantity,
+                    new Money($sku['selling_price_minor']),
+                );
+
+                $checkout->addItem($item);
+            }
+
+            // A customer-originated cart (no cashier) is browsed over time, not rung up at a till — keep its reservation alive while they're still shopping.
+            if ($checkout->cashierStaffId() === null) {
+                $checkout->renewReservation(CarbonImmutable::now()->addHours((int) config('afprospos.customer_cart_reservation_hours')));
+            }
+
             $this->checkouts->save($checkout);
 
             $this->audit->record(
@@ -79,5 +94,16 @@ final class AddCheckoutItemHandler
                 afterState: ['sku_id' => $command->skuId, 'quantity' => $command->quantity, 'inventory_item_ids' => $result->inventoryItemIds],
             );
         });
+    }
+
+    private function findNonSerializedLine(SalesCheckout $checkout, int $skuId): ?SalesCheckoutItem
+    {
+        foreach ($checkout->items() as $item) {
+            if ($item->skuId() === $skuId && $item->inventoryItemId() === null) {
+                return $item;
+            }
+        }
+
+        return null;
     }
 }

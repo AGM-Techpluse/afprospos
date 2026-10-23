@@ -7,6 +7,7 @@ namespace Domain\Repair\Application\Handlers;
 use App\Support\Transactions\Atomic;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ReserveInventoryCommand;
+use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Domain\Entities\RepairPartReservation;
@@ -22,6 +23,7 @@ final class ReserveRepairPartsHandler
         private readonly RepairJobRepository $repairJobs,
         private readonly RepairPartReservationRepository $reservations,
         private readonly InventoryReservationService $inventory,
+        private readonly InventoryCatalogQuery $catalog,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -42,8 +44,10 @@ final class ReserveRepairPartsHandler
             ));
 
             $inventoryItemId = $result->inventoryItemIds[0] ?? null;
+            $sku = $this->catalog->find($command->skuId, $job->shopId()->value);
+            $unitPriceMinor = $sku['selling_price_minor'] ?? 0;
 
-            $reservation = RepairPartReservation::reserve($jobId, $inventoryItemId, $command->skuId, $command->quantity);
+            $reservation = RepairPartReservation::reserve($jobId, $inventoryItemId, $command->skuId, $command->quantity, $unitPriceMinor);
             $id = $this->reservations->save($reservation);
 
             $this->audit->record(
@@ -59,6 +63,7 @@ final class ReserveRepairPartsHandler
                     'sku_id' => $command->skuId,
                     'quantity' => $command->quantity,
                     'inventory_item_id' => $inventoryItemId,
+                    'unit_price_minor' => $unitPriceMinor,
                 ],
             );
         });

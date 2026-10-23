@@ -48,6 +48,8 @@ export default function RepairReceipt({ repair, shop }: { repair: Repair; shop: 
     const { app_name } = usePage().props as { app_name?: string };
     const shopName = app_name ?? 'AfProsPos';
     const totalPaidMinor = repair.down_payment_paid_minor + repair.final_payment_paid_minor + (repair.diagnosis_fee?.paid ? repair.diagnosis_fee.amount_minor : 0);
+    // Quick-check faults are for internal record-keeping only — ticking one during a quick check isn't meant to appear on the customer-facing receipt the way an actually-diagnosed (or custom) fault is.
+    const receiptFaults = repair.fixed_faults.filter((fault) => fault.common_component_id === null);
     const paymentLabel = repair.final_payment_method
         ? (PAYMENT_METHOD_LABELS[repair.final_payment_method] ?? repair.final_payment_method.replace(/_/g, ' '))
         : null;
@@ -109,10 +111,10 @@ export default function RepairReceipt({ repair, shop }: { repair: Repair; shop: 
 
                     <div className="border-t border-dashed border-admin-border-strong my-3" />
 
-                    {repair.fixed_faults.length > 0 ? (
+                    {receiptFaults.length > 0 ? (
                         <>
                             <div className="text-xs font-semibold text-admin-text2 mb-1.5">Faults fixed</div>
-                            {repair.fixed_faults.map((fault) => (
+                            {receiptFaults.map((fault) => (
                                 <div key={fault.id} className="flex items-center justify-between gap-2 text-sm mb-1">
                                     <span className="truncate">{fault.label}</span>
                                     <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />

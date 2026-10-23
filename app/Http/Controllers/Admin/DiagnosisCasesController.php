@@ -10,33 +10,39 @@ use App\Http\Requests\Admin\Repairs\CreateDiagnosisCaseRequest;
 use App\Http\Requests\Admin\Repairs\CreateRepairFromDiagnosisRequest;
 use App\Http\Requests\Admin\Repairs\SaveDiagnosisCaseResultRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
+use Domain\Identity\Application\Contracts\CustomerDirectoryService;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Payments\Application\Commands\InitiatePaymentCommand;
 use Domain\Payments\Application\Contracts\PaymentInitiationService;
 use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
+use Domain\Repair\Application\Commands\AddRevealedFaultCommand;
 use Domain\Repair\Application\Commands\AssignDiagnosisTechnicianCommand;
 use Domain\Repair\Application\Commands\AssignTechnicianCommand;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Application\Commands\SetDiagnosisFeeCommand;
+use Domain\Repair\Application\Handlers\AddRevealedFaultHandler;
 use Domain\Repair\Application\Handlers\AssignDiagnosisTechnicianHandler;
 use Domain\Repair\Application\Handlers\AssignTechnicianHandler;
 use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
 use Domain\Repair\Application\Handlers\SetDiagnosisFeeHandler;
 use Domain\Repair\Application\Queries\CommonComponentCatalogQuery;
 use Domain\Repair\Application\Queries\DeviceCatalogQuery;
-use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCasePhotoRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobPhotoRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -49,6 +55,7 @@ final class DiagnosisCasesController
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ShopDirectoryQuery $shops,
         private readonly CustomerDirectoryQuery $customers,
+        private readonly CustomerDirectoryService $customerDirectory,
         private readonly StaffDirectoryQuery $staff,
         private readonly DeviceCatalogQuery $deviceCatalog,
         private readonly CommonComponentCatalogQuery $commonComponents,
@@ -56,9 +63,42 @@ final class DiagnosisCasesController
         private readonly AssignTechnicianHandler $assignTechnician,
         private readonly SetDiagnosisFeeHandler $setDiagnosisFee,
         private readonly AssignDiagnosisTechnicianHandler $assignDiagnosisTechnician,
+        private readonly AddRevealedFaultHandler $addRevealedFault,
         private readonly PaymentInitiationService $paymentInitiation,
         private readonly PaymentTransactionLookup $paymentLookup,
     ) {}
+
+    /** System-wide — ignores device scope entirely, so a fault that recurs across many devices is findable regardless of which case opened it. */
+    public function searchFaults(Request $request): JsonResponse
+    {
+        $term = $request->string('q')->toString();
+
+        return response()->json([
+            'results' => $this->deviceCatalog->searchFaults($term !== '' ? $term : null),
+        ]);
+    }
+
+    /** A technician-typed "unique revealed fault" not yet in the catalog — joins it (type-level, scoped to this case's own device type) so it's findable from a future case too. */
+    public function addRevealedFault(Request $request, int $diagnosisCase): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $case = DiagnosisCaseRecord::query()->findOrFail($diagnosisCase);
+        abort_unless($actor->canAccessShop($case->shop_id), 403);
+
+        $label = trim($request->string('label')->toString());
+
+        if ($label === '') {
+            throw ValidationException::withMessages(['label' => 'A label is required.']);
+        }
+
+        $result = $this->addRevealedFault->handle(new AddRevealedFaultCommand(
+            diagnosisCaseId: $diagnosisCase,
+            label: $label,
+            addedByStaffId: $actor->staffId->value,
+        ));
+
+        return response()->json(['fault' => $result]);
+    }
 
     public function index(Request $request): Response
     {
@@ -137,12 +177,21 @@ final class DiagnosisCasesController
         $shopId = $request->integer('shop_id');
         abort_unless($actor->canAccessShop($shopId), 403);
 
+        $walkInName = $request->string('walk_in_name')->toString() ?: null;
+        $walkInPhone = $request->string('walk_in_phone')->toString() ?: null;
+        $walkInEmail = $request->string('walk_in_email')->toString() ?: null;
+
+        // A walk-in's contact details become a real (passwordless) customer record too — purely so they're findable on a later visit; this case's own customer_id is left exactly as given, never silently repointed at the new record.
+        if (! $request->filled('customer_id') && $walkInName !== null && $walkInPhone !== null) {
+            $this->customerDirectory->findOrCreateWalkIn($walkInName, $walkInPhone, $walkInEmail);
+        }
+
         $case = DiagnosisCaseRecord::query()->create([
             'shop_id' => $shopId,
             'customer_id' => $request->integer('customer_id') ?: null,
-            'walk_in_name' => $request->string('walk_in_name')->toString() ?: null,
-            'walk_in_phone' => $request->string('walk_in_phone')->toString() ?: null,
-            'walk_in_email' => $request->string('walk_in_email')->toString() ?: null,
+            'walk_in_name' => $walkInName,
+            'walk_in_phone' => $walkInPhone,
+            'walk_in_email' => $walkInEmail,
             'device_model_id' => $request->integer('device_model_id') ?: null,
             'diagnosis_technician_staff_id' => $request->integer('diagnosis_technician_staff_id') ?: null,
             'created_by_staff_id' => $actor->staffId->value,
@@ -169,6 +218,16 @@ final class DiagnosisCasesController
             ]);
         }
 
+        // Captured at intake, alongside the reported issue — so the case starts with a picture of the device, not just a description of it.
+        if ($request->hasFile('photo')) {
+            DiagnosisCasePhotoRecord::query()->create([
+                'diagnosis_case_id' => $case->id,
+                'path' => $request->file('photo')->store('diagnosis-cases', 'public'),
+                'caption' => null,
+                'uploaded_by_staff_id' => $actor->staffId->value,
+            ]);
+        }
+
         $this->flashSuccess('Diagnosis case created');
 
         return redirect()->route('admin.diagnosis-cases.show', ['diagnosisCase' => $case->id]);
@@ -184,7 +243,6 @@ final class DiagnosisCasesController
             'diagnosisCase' => $this->detail($case, $actor),
             'shop' => $this->shops->find($case->shop_id),
             'technicians' => $this->technicians($case->shop_id),
-            'faultCatalog' => $this->faultCatalog($case->device_model_id),
             'relatedRepairs' => $this->relatedRepairs($case->id),
         ]);
     }
@@ -375,6 +433,16 @@ final class DiagnosisCasesController
             }
         }
 
+        // Same stored file, no re-upload — so a photo captured at diagnosis intake keeps appearing on the resulting repair job's own gallery.
+        foreach (DiagnosisCasePhotoRecord::query()->where('diagnosis_case_id', $case->id)->get() as $photo) {
+            RepairJobPhotoRecord::query()->create([
+                'repair_job_id' => $repairId,
+                'path' => $photo->path,
+                'caption' => $photo->caption,
+                'uploaded_by_staff_id' => $photo->uploaded_by_staff_id,
+            ]);
+        }
+
         $case->update(['status' => 'called_up']);
         $this->flashSuccess('Repair work order created from diagnosis');
 
@@ -464,6 +532,15 @@ final class DiagnosisCasesController
                     'label' => $fault->label_snapshot,
                     'notes' => $fault->notes,
                 ])->all(),
+            'photos' => DiagnosisCasePhotoRecord::query()
+                ->where('diagnosis_case_id', $case->id)
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(static fn (DiagnosisCasePhotoRecord $photo): array => [
+                    'id' => $photo->id,
+                    'url' => Storage::disk('public')->url($photo->path),
+                    'caption' => $photo->caption,
+                ])->all(),
         ];
     }
 
@@ -483,27 +560,6 @@ final class DiagnosisCasesController
         $transaction = $this->paymentLookup->latestTransactionForPurpose('diagnosis_case', $case->id, 'repair_diagnosis_fee');
 
         return ($transaction['status'] ?? null) === 'confirmed' ? $transaction['method'] : null;
-    }
-
-    /**
-     * Scoped to the case's own device model (model-specific tags, falling
-     * back to the model's device type's tags) — legacy cases saved before
-     * model selection was required fall back to the full flat catalog so
-     * they aren't left with no fault options at all.
-     *
-     * @return array<int, array{id:int, label:string}>
-     */
-    private function faultCatalog(?int $deviceModelId): array
-    {
-        if ($deviceModelId !== null) {
-            return $this->deviceCatalog->fixableFaultsForModel($deviceModelId);
-        }
-
-        return DeviceProblemTagRecord::query()
-            ->orderBy('label')
-            ->get()
-            ->map(static fn (DeviceProblemTagRecord $tag): array => ['id' => $tag->id, 'label' => $tag->label])
-            ->all();
     }
 
     /** @return array<int, array{id:int, name:string}> */

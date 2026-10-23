@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from '../../Components/Icons/Icon';
 import AdminEmptyState from '../../Components/Admin/AdminEmptyState';
 import AdminSelect from '../../Components/Admin/Forms/AdminSelect';
+import ProductImage from '../../Components/ProductImage';
 import { formatNaira } from '../../lib/money';
 
 export type ProductSearchResult = {
@@ -13,6 +14,7 @@ export type ProductSearchResult = {
     available: number;
     /** What tells this unit apart from a sibling variant of the same product, e.g. "Black · 128GB". Empty when the product has no variants. */
     variant_label: string;
+    image_url: string | null;
 };
 
 interface ProductSearchProps {
@@ -145,13 +147,16 @@ export default function ProductSearch({ shopId, categories, brands, onAdd, inlin
                     {results.map((result) => (
                         <li key={result.sku_id} className="border border-admin-border rounded-admin-card p-3">
                             <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <div className="text-sm font-medium text-admin-text truncate">{result.product_name}</div>
-                                    {result.variant_label && (
-                                        <div className="text-xs font-medium text-admin-blue truncate">{result.variant_label}</div>
-                                    )}
-                                    <div className="text-xs text-admin-text3">
-                                        {result.sku_code} · {result.available} available
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <ProductImage src={result.image_url} alt={result.product_name} aspect="square" className="w-12 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-medium text-admin-text truncate">{result.product_name}</div>
+                                        {result.variant_label && (
+                                            <div className="text-xs font-medium text-admin-blue truncate">{result.variant_label}</div>
+                                        )}
+                                        <div className="text-xs text-admin-text3">
+                                            {result.sku_code} · {result.available} available
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">

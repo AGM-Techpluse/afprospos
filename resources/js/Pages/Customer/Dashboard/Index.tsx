@@ -31,7 +31,7 @@ interface DashboardProps {
 
 /** documentation/UI-ref piggyvest-UI-1.jpeg — each card gets its own tint from the existing customer color tokens (no new colors invented), rotating since there's no brand-color-per-feature the way PiggyVest's Savings products have one. Border is the same token at full saturation (vs. the soft/pastel fill), which reads as "the same color, just darker" without inventing a new shade. `track-repair` has a real destination (this dashboard IS the tracker); the rest are flows that don't exist yet. */
 const QUICK_ACTIONS: CustomerQuickAction[] = [
-    { key: 'buy-phone', label: 'Buy a phone', icon: 'bag-check', bg: 'bg-customer-blue-soft', text: 'text-customer-blue', border: 'border-customer-blue/40' },
+    { key: 'buy-phone', label: 'Buy a phone', icon: 'bag-check', bg: 'bg-customer-blue-soft', text: 'text-customer-blue', border: 'border-customer-blue/40', href: '/shop' },
     { key: 'request-repair', label: 'Request a repair', icon: 'tools', bg: 'bg-customer-green-soft', text: 'text-customer-green', border: 'border-customer-green/40' },
     { key: 'track-repair', label: 'Track a repair', icon: 'search', bg: 'bg-customer-yellow-soft', text: 'text-customer-yellow-text', border: 'border-customer-yellow-text/40', href: '/customer/repairs' },
     { key: 'find-shop', label: 'Find a shop', icon: 'shop', bg: 'bg-customer-red-soft', text: 'text-customer-red', border: 'border-customer-red/40' },

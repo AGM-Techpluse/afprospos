@@ -9,8 +9,9 @@ import AdminBadge from '../../../Components/Admin/AdminBadge';
 import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
 import PatternLockPad from '../../../Features/Repairs/PatternLockPad';
 import RepairPhotoGallery, { RepairPhoto } from '../../../Features/Repairs/RepairPhotoGallery';
-import PartsReservationPicker, { PartReservationRow } from '../../../Features/Repairs/PartsReservationPicker';
+import { PartReservationRow } from '../../../Features/Repairs/PartsReservationPicker';
 import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
+import FaultPicker, { FaultSearchResult } from '../../../Features/Repairs/FaultPicker';
 import { formatNaira } from '../../../lib/money';
 
 type RepairDetail = {
@@ -50,8 +51,8 @@ type RepairDetail = {
     reopened_from_repair_job_id: number | null;
     diagnosis_case: { id: number; status: string; outcome: string | null } | null;
     revealed_faults: { id: number; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null }[];
-    fixed_faults: { id: number; diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null }[];
-    part_reservations: (PartReservationRow & { unit_price_minor: number | null })[];
+    fixed_faults: { id: number; diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null; commission_amount_minor: number | null }[];
+    part_reservations: PartReservationRow[];
     down_payment_required_minor: number | null;
     down_payment_paid_minor: number;
     final_payment_paid_minor: number;
@@ -92,6 +93,10 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 const CLOSED_STATUSES = ['completed', 'unrepairable', 'expired_cancelled'];
+/** Mirrors RepairJob::assertPartsReservable()'s exact status gate. */
+const PARTS_RESERVABLE_STATUSES = ['diagnosing', 'awaiting_authorization', 'awaiting_parts', 'in_progress'];
+/** Mirrors RepairJob::setDeviceLock()'s exact status gate — editable up through active work, locked once the device is ready for or past handover. */
+const DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED = ['handover', 'completed', 'cancelled', 'unrepairable', 'expired_cancelled'];
 
 export default function RepairShow({ repair, shop, shops, technicians, canApprovePayment, canAuthorize, canTransferRepair }: RepairShowProps) {
     const confirm = useConfirm();
@@ -127,13 +132,19 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
     const [agreementNote, setAgreementNote] = useState('');
     const [requireDownPayment, setRequireDownPayment] = useState(false);
     const [downPaymentMethod, setDownPaymentMethod] = useState('cash');
-    const [fixedFaultIds, setFixedFaultIds] = useState<number[]>(
-        repair.fixed_faults.map((fixedFault) => fixedFault.diagnosis_case_fault_id).filter((id): id is number => id !== null),
+    type SelectedFixedFault = { device_problem_tag_id: number; label: string; commission_naira: string };
+    const [selectedFixedFaults, setSelectedFixedFaults] = useState<SelectedFixedFault[]>(
+        repair.fixed_faults
+            .filter((fault): fault is typeof fault & { device_problem_tag_id: number } => fault.device_problem_tag_id !== null)
+            .map((fault) => ({
+                device_problem_tag_id: fault.device_problem_tag_id,
+                label: fault.label,
+                commission_naira: fault.commission_amount_minor != null ? String(fault.commission_amount_minor / 100) : '',
+            })),
     );
     const [customFixedFault, setCustomFixedFault] = useState('');
-    const [customFixedFaults, setCustomFixedFaults] = useState<string[]>(
-        repair.fixed_faults.filter((fixedFault) => fixedFault.diagnosis_case_fault_id === null).map((fixedFault) => fixedFault.label),
-    );
+    const [customFixedFaultCommissionNaira, setCustomFixedFaultCommissionNaira] = useState('');
+    const [addingCustomFixedFault, setAddingCustomFixedFault] = useState(false);
 
     function post(url: string, data: Record<string, string> = {}) {
         setProcessing(true);
@@ -214,42 +225,70 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         e.preventDefault();
         setProcessing(true);
 
-        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string };
+        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string; commission_amount_minor: number | null };
 
         router.post(
             `/admin/repairs/${repair.id}/complete`,
             {
                 resolution_notes: resolutionNotes,
-                fixed_faults: repair.revealed_faults
-                    .filter((fault) => fixedFaultIds.includes(fault.id))
-                    .map((fault): FixedFaultPayload => ({
-                        diagnosis_case_fault_id: fault.id,
-                        device_problem_tag_id: fault.device_problem_tag_id,
-                        common_component_id: fault.common_component_id,
-                        label: fault.label,
-                        notes: '',
-                    }))
-                    .concat(customFixedFaults.map((label): FixedFaultPayload => ({
-                        diagnosis_case_fault_id: null,
-                        device_problem_tag_id: null,
-                        common_component_id: null,
-                        label,
-                        notes: '',
-                    }))),
+                fixed_faults: selectedFixedFaults.map((fault): FixedFaultPayload => ({
+                    diagnosis_case_fault_id: null,
+                    device_problem_tag_id: fault.device_problem_tag_id,
+                    common_component_id: null,
+                    label: fault.label,
+                    notes: '',
+                    commission_amount_minor: fault.commission_naira.trim() !== '' ? Math.round(parseFloat(fault.commission_naira) * 100) : null,
+                })),
             },
             { onFinish: () => setProcessing(false) },
         );
     }
 
-    function toggleFixedFault(faultId: number) {
-        setFixedFaultIds((current) => (current.includes(faultId) ? current.filter((id) => id !== faultId) : [...current, faultId]));
+    function addSelectedFixedFault(fault: { id: number; label: string; commission_amount_minor?: number | null }) {
+        setSelectedFixedFaults((current) => {
+            if (current.some((f) => f.device_problem_tag_id === fault.id)) return current;
+            return [...current, {
+                device_problem_tag_id: fault.id,
+                label: fault.label,
+                commission_naira: fault.commission_amount_minor != null ? String(fault.commission_amount_minor / 100) : '',
+            }];
+        });
     }
 
-    function addCustomFixedFault() {
+    function removeSelectedFixedFault(deviceProblemTagId: number) {
+        setSelectedFixedFaults((current) => current.filter((f) => f.device_problem_tag_id !== deviceProblemTagId));
+    }
+
+    function updateSelectedFixedFaultCommission(deviceProblemTagId: number, commissionNaira: string) {
+        setSelectedFixedFaults((current) => current.map((f) => (f.device_problem_tag_id === deviceProblemTagId ? { ...f, commission_naira: commissionNaira } : f)));
+    }
+
+    /** For a fault the catalog doesn't have recorded yet — joins it (scoped to this repair's own device model) with the commission set here, then selects it, same as picking an existing one. */
+    function addNewDiscoveredFixedFault() {
         const label = customFixedFault.trim();
-        if (label === '' || customFixedFaults.includes(label)) return;
-        setCustomFixedFaults((current) => [...current, label]);
-        setCustomFixedFault('');
+        if (label === '') return;
+
+        setAddingCustomFixedFault(true);
+        fetch(`/admin/repairs/${repair.id}/faults`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? ''),
+            },
+            body: JSON.stringify({
+                label,
+                commission_amount_minor: customFixedFaultCommissionNaira.trim() !== '' ? Math.round(parseFloat(customFixedFaultCommissionNaira) * 100) : undefined,
+            }),
+        })
+            .then((response) => response.json())
+            .then((json: { fault: { id: number; label: string; commission_amount_minor: number | null } }) => {
+                addSelectedFixedFault(json.fault);
+                setCustomFixedFault('');
+                setCustomFixedFaultCommissionNaira('');
+            })
+            .finally(() => setAddingCustomFixedFault(false));
     }
 
     /** QC pass, not testable, or fail. A fail follows the shop's configured policy (return to diagnosis, or cancel). */
@@ -401,7 +440,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                     <div className="py-2.5 border-b border-admin-border">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-sm text-admin-text2">Device lock</span>
-                            {!editingLock && (
+                            {!editingLock && !DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED.includes(repair.repair_status) && (
                                 <button type="button" onClick={() => setEditingLock(true)} className="text-xs font-semibold text-admin-blue">
                                     {repair.device_lock_present ? 'Edit' : 'Add'}
                                 </button>
@@ -453,6 +492,25 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             <ul className="flex flex-col gap-1 text-sm text-admin-text">
                                 {repair.part_reservations
                                     .filter((p) => p.status === 'reserved')
+                                    .map((p) => (
+                                        <li key={p.id} className="flex justify-between gap-3">
+                                            <span className="min-w-0 truncate">
+                                                {p.product_name ?? p.sku_code ?? `SKU ${p.sku_id}`} × {p.quantity}
+                                            </span>
+                                            <span className="shrink-0 font-semibold">
+                                                {p.unit_price_minor !== null ? formatNaira(p.unit_price_minor * p.quantity) : '—'}
+                                            </span>
+                                        </li>
+                                    ))}
+                            </ul>
+                        </div>
+                    )}
+                    {repair.part_reservations.some((p) => p.status === 'installed') && (
+                        <div className="py-3 border-b border-admin-border">
+                            <div className="text-sm text-admin-text2 mb-2">Parts installed</div>
+                            <ul className="flex flex-col gap-1 text-sm text-admin-text">
+                                {repair.part_reservations
+                                    .filter((p) => p.status === 'installed')
                                     .map((p) => (
                                         <li key={p.id} className="flex justify-between gap-3">
                                             <span className="min-w-0 truncate">
@@ -605,13 +663,15 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             )}
                         </div>
                     )}
-{false && repair.repair_status === 'diagnosing' && (
+{PARTS_RESERVABLE_STATUSES.includes(repair.repair_status) && (
                         <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
-                            <span className="text-xs font-semibold text-admin-text">Parts to set aside</span>
+                            <span className="text-xs font-semibold text-admin-text">Parts</span>
                             <span className="text-xs text-admin-text2">
-                                Reserve the parts this repair needs now, so the manager can price them into the quote.
+                                Reserve the parts this repair needs, so the manager can price them into the quote.
                             </span>
-                            <PartsReservationPicker repairId={repair.id} reservations={repair.part_reservations} compact />
+                            <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${repair.id}/parts`)}>
+                                Manage parts
+                            </AdminButton>
                         </div>
                     )}
 
@@ -812,26 +872,45 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                     {repair.repair_status === 'in_progress' && (
                         <>
                             <form onSubmit={completeRepair} className="flex flex-col gap-2">
-                                {repair.revealed_faults.length > 0 && (
-                                    <div className="flex flex-col gap-1.5">
-                                        <span className="text-xs font-semibold text-admin-text">Actually fixed faults</span>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-admin-text">Actually fixed faults</span>
+                                    <p className="text-[11px] text-admin-text3 -mt-1">This device's own fixable faults — pick what was actually fixed, and adjust the commission per fault if needed.</p>
+                                    <FaultPicker
+                                        searchUrl={`/admin/repairs/${repair.id}/faults/search`}
+                                        onSelect={addSelectedFixedFault}
+                                        excludeLabels={selectedFixedFaults.map((fault) => fault.label)}
+                                    />
+                                    {selectedFixedFaults.length > 0 && (
                                         <div className="flex flex-col gap-1.5 rounded-admin-button border border-admin-border p-2">
-                                            {repair.revealed_faults.map((fault) => (
-                                                <label key={fault.id} className="flex items-center gap-2 text-xs text-admin-text">
+                                            {selectedFixedFaults.map((fault) => (
+                                                <div key={fault.device_problem_tag_id} className="flex items-center gap-2 text-xs text-admin-text">
+                                                    <span className="flex-1 min-w-0 truncate">{fault.label}</span>
+                                                    <span className="text-admin-text3">₦</span>
                                                     <input
-                                                        type="checkbox"
-                                                        checked={fixedFaultIds.includes(fault.id)}
-                                                        onChange={() => toggleFixedFault(fault.id)}
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={fault.commission_naira}
+                                                        onChange={(e) => updateSelectedFixedFaultCommission(fault.device_problem_tag_id, e.target.value)}
+                                                        placeholder="0"
+                                                        className="w-20 border border-admin-border-strong rounded-admin-button px-1.5 py-1 text-xs"
                                                     />
-                                                    <span>{fault.label}</span>
-                                                    <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
-                                                </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeSelectedFixedFault(fault.device_problem_tag_id)}
+                                                        className="text-admin-text3 hover:text-admin-red shrink-0"
+                                                        aria-label={`Remove ${fault.label}`}
+                                                    >
+                                                        x
+                                                    </button>
+                                                </div>
                                             ))}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-xs font-semibold text-admin-text">Add newly discovered fixed fault</span>
+                                    <p className="text-[11px] text-admin-text3 -mt-1">Only for a fault this device's catalog doesn't already have recorded.</p>
                                     <div className="flex gap-2">
                                         <input
                                             value={customFixedFault}
@@ -839,24 +918,26 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             placeholder="e.g. loose display connector"
                                             className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                         />
-                                        <AdminButton type="button" variant="neutral" onClick={addCustomFixedFault} disabled={customFixedFault.trim() === ''}>
+                                        <span className="self-center text-admin-text3 text-xs">₦</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={customFixedFaultCommissionNaira}
+                                            onChange={(e) => setCustomFixedFaultCommissionNaira(e.target.value)}
+                                            placeholder="Commission"
+                                            className="w-24 border border-admin-border-strong rounded-admin-button px-1.5 py-1.5 text-xs"
+                                        />
+                                        <AdminButton
+                                            type="button"
+                                            variant="neutral"
+                                            isLoading={addingCustomFixedFault}
+                                            onClick={addNewDiscoveredFixedFault}
+                                            disabled={customFixedFault.trim() === ''}
+                                        >
                                             Add
                                         </AdminButton>
                                     </div>
-                                    {customFixedFaults.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {customFixedFaults.map((fault) => (
-                                                <button
-                                                    key={fault}
-                                                    type="button"
-                                                    onClick={() => setCustomFixedFaults((current) => current.filter((item) => item !== fault))}
-                                                    className="bg-admin-green-soft text-admin-green-text rounded-admin-badge px-2 py-1 text-xs font-semibold"
-                                                >
-                                                    {fault} x
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                                 <label className="text-xs font-semibold text-admin-text">Resolution notes (optional)</label>
                                 <textarea

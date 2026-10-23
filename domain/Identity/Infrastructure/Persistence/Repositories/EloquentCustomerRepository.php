@@ -77,6 +77,11 @@ final class EloquentCustomerRepository implements CustomerRepository
     {
         $record = CustomerRecord::query()->findOrFail($id->value);
 
+        // A walk-in row has no password at all — never let Hash::check() near a null hash, whatever its exact behavior would be.
+        if ($record->password === null) {
+            return false;
+        }
+
         return Hash::check($plainPassword, $record->password);
     }
 
@@ -95,6 +100,30 @@ final class EloquentCustomerRepository implements CustomerRepository
         return new CustomerId($record->id);
     }
 
+    public function createWalkIn(string $name, string $phone, ?string $email): CustomerId
+    {
+        $record = CustomerRecord::query()->create([
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email,
+            'password' => null,
+            'notification_preferences' => ['whatsapp' => true, 'email' => true, 'in_app' => true],
+            'marketing_opt_out' => false,
+            'status' => 'active',
+        ]);
+
+        return new CustomerId($record->id);
+    }
+
+    public function claimWalkIn(CustomerId $id, string $name, ?string $email, string $plainPassword): void
+    {
+        CustomerRecord::query()->findOrFail($id->value)->update([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($plainPassword),
+        ]);
+    }
+
     private function toDomain(CustomerRecord $record): CustomerAccount
     {
         return CustomerAccount::reconstitute(
@@ -103,6 +132,7 @@ final class EloquentCustomerRepository implements CustomerRepository
             phone: $record->phone,
             email: $record->email,
             status: $record->status,
+            isRegistered: $record->password !== null,
         );
     }
 }

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../../Components/Icons/Icon';
+import IconPicker from '../../Components/Icons/IconPicker';
 
 type DeviceProblemTag = { id: number; label: string };
 type DeviceModel = { id: number; name: string; fixable_faults: DeviceProblemTag[]; has_model_specific_faults: boolean };
@@ -26,8 +27,8 @@ function QuickAddDeviceType({ onAdded }: { onAdded: () => void }) {
         if (!label.trim()) return;
         router.post(
             '/admin/settings/device-catalog/types',
-            { label: label.trim(), icon: icon.trim() || 'device-hdd' },
-            { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: () => { setLabel(''); setOpen(false); onAdded(); } },
+            { label: label.trim(), icon: icon || 'device-hdd' },
+            { preserveScroll: true, preserveState: true, showProgress: false, onSuccess: () => { setLabel(''); setIcon('device-hdd'); setOpen(false); onAdded(); } },
         );
     }
 
@@ -46,7 +47,7 @@ function QuickAddDeviceType({ onAdded }: { onAdded: () => void }) {
 
     return (
         <form onSubmit={submit} className="col-span-2 flex items-center gap-2 bg-admin-surface border border-admin-border rounded-admin-card p-3">
-            <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="icon" className={`${quickAddInputClass} w-24`} />
+            <IconPicker value={icon} onChange={setIcon} compact />
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Drones" autoFocus className={quickAddInputClass} />
             <button type="submit" className="text-xs font-semibold text-admin-blue px-2">Add</button>
             <button type="button" onClick={() => setOpen(false)} className="text-xs text-admin-text3 px-1">Cancel</button>

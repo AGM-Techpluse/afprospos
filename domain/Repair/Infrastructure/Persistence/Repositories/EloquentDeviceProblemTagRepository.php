@@ -43,6 +43,21 @@ final class EloquentDeviceProblemTagRepository implements DeviceProblemTagReposi
         DeviceProblemTagRecord::query()->whereKey($id->value)->delete();
     }
 
+    public function findByScopeAndLabel(DeviceTypeId $deviceTypeId, ?DeviceModelId $deviceModelId, string $label): ?DeviceProblemTag
+    {
+        $record = DeviceProblemTagRecord::query()
+            ->where('device_type_id', $deviceTypeId->value)
+            ->when(
+                $deviceModelId !== null,
+                fn ($query) => $query->where('device_model_id', $deviceModelId->value),
+                fn ($query) => $query->whereNull('device_model_id'),
+            )
+            ->where('label', $label)
+            ->first();
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
     private function toDomain(DeviceProblemTagRecord $record): DeviceProblemTag
     {
         return DeviceProblemTag::reconstitute(

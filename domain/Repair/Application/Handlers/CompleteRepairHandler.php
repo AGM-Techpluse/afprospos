@@ -9,6 +9,7 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Commission\Application\Commands\RecordCommissionEarnedCommand;
 use Domain\Commission\Application\Contracts\CommissionRecordingService;
 use Domain\Repair\Application\Commands\CompleteRepairCommand;
+use Domain\Repair\Application\Services\ReleaseRepairPartsService;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
@@ -26,6 +27,7 @@ final class CompleteRepairHandler
 {
     public function __construct(
         private readonly RepairJobRepository $repairJobs,
+        private readonly ReleaseRepairPartsService $releaseParts,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
         private readonly CommissionRecordingService $commission,
@@ -40,6 +42,9 @@ final class CompleteRepairHandler
             $job->complete($command->resolutionNotes);
             $this->repairJobs->save($job);
 
+            // A part reserved but never marked installed was never actually used — release it back to Inventory now rather than leaving that stock silently locked forever (same policy TransferRepairJobHandler already applies on transfer/cancel).
+            $this->releaseParts->releaseOutstanding($jobId, $job->shopId()->value);
+
             RepairFixedFaultRecord::query()->where('repair_job_id', $jobId->value)->delete();
             foreach ($command->fixedFaults as $fault) {
                 $label = trim((string) ($fault['label'] ?? ''));
@@ -47,23 +52,27 @@ final class CompleteRepairHandler
                     continue;
                 }
 
+                $deviceProblemTagId = isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null;
+                $commonComponentId = isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null;
+
+                // The picker always sends the amount it actually credited (even 0 for a non-commissionable fault) — a fault submitted without the key at all (e.g. a quick-check-sourced one the picker never touches) falls back to a fresh catalog lookup, same as before this change.
+                $commissionAmountMinor = array_key_exists('commission_amount_minor', $fault) && $fault['commission_amount_minor'] !== null
+                    ? (int) $fault['commission_amount_minor']
+                    : $this->catalogCommissionAmount($deviceProblemTagId, $commonComponentId);
+
                 RepairFixedFaultRecord::query()->create([
                     'repair_job_id' => $jobId->value,
                     'diagnosis_case_fault_id' => isset($fault['diagnosis_case_fault_id']) ? (int) $fault['diagnosis_case_fault_id'] : null,
-                    'device_problem_tag_id' => isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
-                    'common_component_id' => isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
+                    'device_problem_tag_id' => $deviceProblemTagId,
+                    'common_component_id' => $commonComponentId,
                     'label_snapshot' => $label,
                     'notes' => isset($fault['notes']) && trim((string) $fault['notes']) !== '' ? trim((string) $fault['notes']) : null,
+                    'commission_amount_minor' => $commissionAmountMinor,
                     'recorded_by_staff_id' => $command->completedByStaffId,
                 ]);
 
-                if (($fault['device_problem_tag_id'] ?? null) || ($fault['common_component_id'] ?? null)) {
-                    $this->creditFaultFixCommission(
-                        $job,
-                        $jobId,
-                        isset($fault['device_problem_tag_id']) ? (int) $fault['device_problem_tag_id'] : null,
-                        isset($fault['common_component_id']) ? (int) $fault['common_component_id'] : null,
-                    );
+                if (($deviceProblemTagId !== null || $commonComponentId !== null) && $commissionAmountMinor !== null) {
+                    $this->creditFaultFixCommission($job, $jobId, $commissionAmountMinor);
                 }
             }
 
@@ -80,15 +89,12 @@ final class CompleteRepairHandler
         });
     }
 
-    /** No technician assigned, or the tag/component carries no commission amount, simply earns nothing — this is a silent skip, not an error. A catalog-diagnosed fault takes priority if a fixed fault somehow carried both ids. */
-    private function creditFaultFixCommission(RepairJob $job, RepairJobId $jobId, ?int $deviceProblemTagId, ?int $commonComponentId): void
+    /** No technician assigned, or the amount is non-positive, simply earns nothing — this is a silent skip, not an error. */
+    private function creditFaultFixCommission(RepairJob $job, RepairJobId $jobId, int $amountMinor): void
     {
         $technicianId = $job->technicianStaffId();
-        $amountMinor = $deviceProblemTagId !== null
-            ? DeviceProblemTagRecord::query()->find($deviceProblemTagId)?->commission_amount_minor
-            : CommonComponentRecord::query()->find($commonComponentId)?->commission_amount_minor;
 
-        if ($technicianId === null || $amountMinor === null || $amountMinor <= 0) {
+        if ($technicianId === null || $amountMinor <= 0) {
             return;
         }
 
@@ -99,5 +105,19 @@ final class CompleteRepairHandler
             amountMinor: $amountMinor,
             shopId: $job->shopId()->value,
         ));
+    }
+
+    /** Fallback only — a fault submitted without its own commission_amount_minor (e.g. a quick-check-sourced one the new device-specific picker never touches). A catalog-diagnosed tag takes priority if a fault somehow carried both ids. */
+    private function catalogCommissionAmount(?int $deviceProblemTagId, ?int $commonComponentId): ?int
+    {
+        if ($deviceProblemTagId !== null) {
+            return DeviceProblemTagRecord::query()->find($deviceProblemTagId)?->commission_amount_minor;
+        }
+
+        if ($commonComponentId !== null) {
+            return CommonComponentRecord::query()->find($commonComponentId)?->commission_amount_minor;
+        }
+
+        return null;
     }
 }

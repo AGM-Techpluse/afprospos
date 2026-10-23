@@ -95,6 +95,29 @@ class DeviceLockVisibilityTest extends TestCase
             ->where('repair.device_lock_value', null));
     }
 
+    public function test_the_device_lock_cannot_be_changed_once_the_repair_reaches_handover(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $job = RepairJobRecord::factory()->create([
+            'shop_id' => $shop->id,
+            'repair_status' => 'handover',
+            'device_lock_type' => 'code',
+            'device_lock_value' => '7890',
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->post("/admin/repairs/{$job->id}/device-lock", [
+            'device_lock_type' => 'code',
+            'device_lock_value' => '0000',
+        ]);
+
+        $response->assertSessionHasErrors();
+        $this->assertSame('code', $job->fresh()->device_lock_type);
+    }
+
     public function test_the_raw_database_value_is_not_the_plaintext_code(): void
     {
         $job = RepairJobRecord::factory()->create([

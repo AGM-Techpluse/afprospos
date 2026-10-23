@@ -39,6 +39,13 @@ final class EloquentDeviceTypeRepository implements DeviceTypeRepository
         DeviceTypeRecord::query()->whereKey($id->value)->delete();
     }
 
+    public function findByLabel(string $label): ?DeviceType
+    {
+        $record = DeviceTypeRecord::query()->where('label', $label)->first();
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
     private function toDomain(DeviceTypeRecord $record): DeviceType
     {
         return DeviceType::reconstitute(new DeviceTypeId($record->id), $record->label, $record->icon, $record->sort_order);

@@ -91,7 +91,7 @@ interface CommonComponentManagerProps {
     components: CommonComponent[];
 }
 
-/** Flat CRUD for the quick-check component catalog offered at diagnosis-case intake — device-type-agnostic, so no nesting, unlike DeviceCatalogManager's Type->Brand->ProblemTag tree. Backs Admin/Settings/CommonComponents/Index.tsx. */
+/** Flat CRUD for the quick-check component catalog offered at diagnosis-case intake — device-type-agnostic, so no nesting, unlike the Device Catalog's Type->Brand->Model->ProblemTag tree. Backs Admin/Settings/CommonComponents/Index.tsx. */
 export default function CommonComponentManager({ components }: CommonComponentManagerProps) {
     const [newLabel, setNewLabel] = useState('');
 

@@ -45,7 +45,7 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
                 'walk_in_name' => $checkout->walkInName(),
                 'walk_in_phone' => $checkout->walkInPhone(),
                 'walk_in_email' => $checkout->walkInEmail(),
-                'cashier_staff_id' => $checkout->cashierStaffId()->value,
+                'cashier_staff_id' => $checkout->cashierStaffId()?->value,
                 'status' => $checkout->status(),
                 'reservation_expires_at' => $checkout->reservationExpiresAt(),
                 'subtotal_minor' => $checkout->subtotalMinor(),
@@ -55,7 +55,9 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
         } else {
             $record = SalesCheckoutRecord::query()->findOrFail($checkout->id()->value);
             $record->update([
+                'cashier_staff_id' => $checkout->cashierStaffId()?->value,
                 'status' => $checkout->status(),
+                'reservation_expires_at' => $checkout->reservationExpiresAt(),
                 'subtotal_minor' => $checkout->subtotalMinor(),
                 'discount_minor' => $checkout->discountMinor(),
                 'total_minor' => $checkout->totalMinor(),
@@ -72,6 +74,17 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
     {
         $id = SalesCheckoutRecord::query()
             ->where('cashier_staff_id', $cashierStaffId->value)
+            ->where('status', 'open')
+            ->latest('id')
+            ->value('id');
+
+        return $id !== null ? new CheckoutId($id) : null;
+    }
+
+    public function findOpenIdForCustomer(CustomerId $customerId): ?CheckoutId
+    {
+        $id = SalesCheckoutRecord::query()
+            ->where('customer_id', $customerId->value)
             ->where('status', 'open')
             ->latest('id')
             ->value('id');
@@ -154,7 +167,7 @@ final class EloquentSalesCheckoutRepository implements SalesCheckoutRepository
             new CheckoutId($record->id),
             new ShopId($record->shop_id),
             $record->customer_id !== null ? new CustomerId($record->customer_id) : null,
-            new StaffId($record->cashier_staff_id),
+            $record->cashier_staff_id !== null ? new StaffId($record->cashier_staff_id) : null,
             $record->status,
             $record->reservation_expires_at->toDateTimeImmutable(),
             $items,

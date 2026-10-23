@@ -6,6 +6,7 @@ namespace Domain\Repair\Domain\Repositories;
 
 use Domain\Repair\Domain\Entities\DeviceBrand;
 use Domain\Repair\Domain\ValueObjects\DeviceBrandId;
+use Domain\Repair\Domain\ValueObjects\DeviceTypeId;
 
 interface DeviceBrandRepository
 {
@@ -14,4 +15,7 @@ interface DeviceBrandRepository
     public function save(DeviceBrand $deviceBrand): DeviceBrandId;
 
     public function delete(DeviceBrandId $id): void;
+
+    /** Backs bulk-import idempotency — a repeat import must reuse an existing brand by (type, name), not create a duplicate. */
+    public function findByTypeAndName(DeviceTypeId $deviceTypeId, string $name): ?DeviceBrand;
 }

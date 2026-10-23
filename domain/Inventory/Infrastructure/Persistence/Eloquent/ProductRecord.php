@@ -21,7 +21,7 @@ final class ProductRecord extends Model
 
     protected $table = 'inventory_products';
 
-    protected $fillable = ['brand', 'model', 'category', 'image_path', 'unit', 'purpose', 'supplier_id'];
+    protected $fillable = ['brand', 'model', 'category', 'image_path', 'description', 'unit', 'purpose', 'supplier_id'];
 
     public function skus(): HasMany
     {

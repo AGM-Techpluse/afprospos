@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Sales\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ReleaseInventoryCommand;
 use Domain\Inventory\Application\Commands\ReserveInventoryCommand;
@@ -67,6 +68,11 @@ final class UpdateCheckoutItemQuantityHandler
             }
 
             $checkout->changeItemQuantity($itemId, $command->quantity);
+
+            if ($checkout->cashierStaffId() === null) {
+                $checkout->renewReservation(CarbonImmutable::now()->addHours((int) config('afprospos.customer_cart_reservation_hours')));
+            }
+
             $this->checkouts->save($checkout);
 
             $this->audit->record(

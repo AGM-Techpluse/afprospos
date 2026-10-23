@@ -14,4 +14,7 @@ interface DeviceTypeRepository
     public function save(DeviceType $deviceType): DeviceTypeId;
 
     public function delete(DeviceTypeId $id): void;
+
+    /** Backs bulk-import idempotency — a repeat import must reuse an existing type by label, not create a duplicate. */
+    public function findByLabel(string $label): ?DeviceType;
 }

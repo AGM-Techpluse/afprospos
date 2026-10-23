@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $inventory_item_id
  * @property int $sku_id
  * @property int $quantity
+ * @property int $unit_price_minor
  * @property string $status
  */
 final class RepairPartReservationRecord extends Model
@@ -27,6 +28,7 @@ final class RepairPartReservationRecord extends Model
         'inventory_item_id',
         'sku_id',
         'quantity',
+        'unit_price_minor',
         'status',
     ];
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Sales\Infrastructure\Laravel;
 
 use Domain\Sales\Application\Contracts\CheckoutDiscountService;
+use Domain\Sales\Application\Contracts\CheckoutLookup;
 use Domain\Sales\Application\Contracts\SaleLookup;
 use Domain\Sales\Application\Contracts\ShopSalesReader;
 use Domain\Sales\Domain\Repositories\SaleRepository;
@@ -21,6 +22,7 @@ final class SalesServiceProvider extends ServiceProvider
         $this->app->bind(SalesCheckoutRepository::class, EloquentSalesCheckoutRepository::class);
         $this->app->bind(SaleRepository::class, EloquentSaleRepository::class);
         $this->app->bind(SaleLookup::class, EloquentSaleLookup::class);
+        $this->app->bind(CheckoutLookup::class, EloquentCheckoutLookup::class);
         $this->app->bind(CheckoutDiscountService::class, HandlerBackedCheckoutDiscountService::class);
     }
 }

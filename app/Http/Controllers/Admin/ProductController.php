@@ -8,15 +8,19 @@ use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\AddProductVariantRequest;
 use App\Http\Requests\Admin\CreateProductRequest;
 use App\Http\Requests\Admin\CreateProductWithVariantsRequest;
+use App\Http\Requests\Admin\UpdateProductDescriptionRequest;
 use App\Http\Requests\Admin\UpdateSkuCommissionRequest;
+use App\Support\Images\ProductImageProcessor;
 use Domain\Inventory\Application\Commands\AddProductVariantCommand;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
 use Domain\Inventory\Application\Commands\CreateProductWithVariantsCommand;
+use Domain\Inventory\Application\Commands\UpdateProductDescriptionCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuCommissionCommand;
 use Domain\Inventory\Application\DTOs\VariantInput;
 use Domain\Inventory\Application\Handlers\AddProductVariantHandler;
 use Domain\Inventory\Application\Handlers\CreateProductHandler;
 use Domain\Inventory\Application\Handlers\CreateProductWithVariantsHandler;
+use Domain\Inventory\Application\Handlers\UpdateProductDescriptionHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuCommissionHandler;
 use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Application\Queries\ProductCatalogQuery;
@@ -47,6 +51,8 @@ final class ProductController
         private readonly AddProductVariantHandler $addVariant,
         private readonly InventoryMasterListQuery $masterLists,
         private readonly UpdateSkuCommissionHandler $updateSkuCommission,
+        private readonly UpdateProductDescriptionHandler $updateProductDescription,
+        private readonly ProductImageProcessor $images,
     ) {}
 
     public function index(Request $request): Response
@@ -140,7 +146,7 @@ final class ProductController
         abort_unless($actor->canAccessShop($shop['id']), 403);
 
         $imagePath = $request->hasFile('product_image')
-            ? $request->file('product_image')->store('inventory/products', 'public')
+            ? $this->images->store($request->file('product_image'), 'inventory/products')
             : null;
 
         try {
@@ -197,7 +203,7 @@ final class ProductController
         abort_unless($actor->canAccessShop($shop['id']), 403);
 
         $imagePath = $request->hasFile('product_image')
-            ? $request->file('product_image')->store('inventory/products', 'public')
+            ? $this->images->store($request->file('product_image'), 'inventory/products')
             : null;
 
         try {
@@ -281,6 +287,25 @@ final class ProductController
         $this->flashSuccess('Variant added');
 
         return redirect()->route('admin.inventory.products.show', $skuId->value);
+    }
+
+    /** `$product` is actually a Sku id here, matching `show()`/`image()` above — description lives on the parent Product, resolved via the Sku's own `product_id`. */
+    public function updateDescription(UpdateProductDescriptionRequest $request, int $product): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $sku = $this->catalog->find($product);
+
+        abort_if($sku === null, 404);
+
+        $this->updateProductDescription->handle(new UpdateProductDescriptionCommand(
+            productId: $sku['product_id'],
+            description: $request->string('description')->toString() ?: null,
+            updatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Description updated');
+
+        return redirect()->back();
     }
 
     public function updateCommission(UpdateSkuCommissionRequest $request, int $sku): RedirectResponse

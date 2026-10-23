@@ -40,6 +40,16 @@ final class EloquentDeviceBrandRepository implements DeviceBrandRepository
         DeviceBrandRecord::query()->whereKey($id->value)->delete();
     }
 
+    public function findByTypeAndName(DeviceTypeId $deviceTypeId, string $name): ?DeviceBrand
+    {
+        $record = DeviceBrandRecord::query()
+            ->where('device_type_id', $deviceTypeId->value)
+            ->where('name', $name)
+            ->first();
+
+        return $record !== null ? $this->toDomain($record) : null;
+    }
+
     private function toDomain(DeviceBrandRecord $record): DeviceBrand
     {
         return DeviceBrand::reconstitute(

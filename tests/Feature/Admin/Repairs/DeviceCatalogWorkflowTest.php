@@ -59,9 +59,17 @@ class DeviceCatalogWorkflowTest extends TestCase
         $indexResponse->assertInertia(fn ($page) => $page
             ->component('Admin/Settings/DeviceCatalog/Index')
             ->where('deviceTypes.0.label', 'Smartphones')
-            ->where('deviceTypes.0.brands.0.name', 'Apple')
-            ->where('deviceTypes.0.problem_tags.0.label', 'Screen')
-            ->where('deviceTypes.0.problem_tags.0.suggested_parts.0.sku_id', $sku->id));
+            ->where('deviceTypes.0.brand_count', 1)
+            ->where('deviceTypes.0.model_count', 0));
+
+        $typeShowResponse = $this->actingAs($owner, 'staff')->get("/admin/settings/device-catalog/types/{$typeId}");
+        $typeShowResponse->assertOk();
+        $typeShowResponse->assertInertia(fn ($page) => $page
+            ->component('Admin/Settings/DeviceCatalog/Show')
+            ->where('deviceType.label', 'Smartphones')
+            ->where('deviceType.brands.0.name', 'Apple')
+            ->where('deviceType.problem_tags.0.label', 'Screen')
+            ->where('deviceType.problem_tags.0.suggested_parts.0.sku_id', $sku->id));
 
         $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceTypeCreated']);
         $this->assertDatabaseHas('audit_logs', ['module' => 'Repair', 'event_type' => 'DeviceBrandCreated']);
@@ -142,10 +150,14 @@ class DeviceCatalogWorkflowTest extends TestCase
             'label' => 'Screen (Pro-specific)',
         ]);
 
-        $response = $this->actingAs($owner, 'staff')->get('/admin/settings/device-catalog');
+        $response = $this->actingAs($owner, 'staff')->get("/admin/settings/device-catalog/brands/{$brandId}");
         $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Admin/Settings/DeviceCatalog/Brand')
+            ->where('deviceBrand.name', 'Apple')
+            ->where('deviceBrand.device_type.label', 'Smartphones'));
 
-        $models = collect($response->viewData('page')['props']['deviceTypes'][0]['brands'][0]['models'])->keyBy('id');
+        $models = collect($response->viewData('page')['props']['deviceBrand']['models'])->keyBy('id');
         $overridden = $models[$overriddenModelId];
         $bare = $models[$bareModelId];
 

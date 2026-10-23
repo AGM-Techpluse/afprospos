@@ -10,6 +10,7 @@ use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\RepairsController;
 use App\Http\Controllers\Customer\ReturnRequestController;
+use App\Http\Controllers\Customer\ShopController;
 use App\Http\Controllers\Customer\WarrantyClaimController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,18 @@ Route::prefix('customer')
             Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
             Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar.upload');
             Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar'])->name('profile.avatar.remove');
+
+            Route::middleware('storefront.enabled')->group(function (): void {
+                Route::get('/cart', [ShopController::class, 'cart'])->name('cart.show');
+                Route::post('/cart/items', [ShopController::class, 'addItem'])->name('cart.items.store');
+                Route::patch('/cart/items/{item}', [ShopController::class, 'updateItemQuantity'])
+                    ->whereNumber('item')
+                    ->name('cart.items.update');
+                Route::delete('/cart/items/{item}', [ShopController::class, 'removeItem'])
+                    ->whereNumber('item')
+                    ->name('cart.items.destroy');
+                Route::post('/cart/cancel', [ShopController::class, 'cancelCart'])->name('cart.cancel');
+            });
 
             Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
             Route::get('/orders/checkouts/{checkout}', [OrdersController::class, 'showCheckout'])

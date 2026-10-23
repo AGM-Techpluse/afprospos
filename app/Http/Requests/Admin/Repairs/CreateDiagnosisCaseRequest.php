@@ -36,6 +36,7 @@ final class CreateDiagnosisCaseRequest extends FormRequest
             'device_imei_serial' => ['nullable', 'string', 'max:50'],
             'device_lock_type' => ['nullable', Rule::in(['none', 'code', 'pattern'])],
             'device_lock_value' => ['nullable', 'required_unless:device_lock_type,none', 'string', 'max:100'],
+            'photo' => ['nullable', 'image', 'max:8192'],
             'revealed_faults' => ['nullable', 'array'],
             'revealed_faults.*.device_problem_tag_id' => ['nullable', 'integer', 'exists:device_problem_tags,id'],
             'revealed_faults.*.common_component_id' => ['nullable', 'integer', 'exists:common_components,id'],

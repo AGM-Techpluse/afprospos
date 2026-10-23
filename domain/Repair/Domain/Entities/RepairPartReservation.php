@@ -22,12 +22,13 @@ final class RepairPartReservation
         private readonly ?int $inventoryItemId,
         private readonly int $skuId,
         private readonly int $quantity,
+        private readonly int $unitPriceMinor,
         private string $status,
     ) {}
 
-    public static function reserve(RepairJobId $repairJobId, ?int $inventoryItemId, int $skuId, int $quantity): self
+    public static function reserve(RepairJobId $repairJobId, ?int $inventoryItemId, int $skuId, int $quantity, int $unitPriceMinor): self
     {
-        return new self(null, $repairJobId, $inventoryItemId, $skuId, $quantity, 'reserved');
+        return new self(null, $repairJobId, $inventoryItemId, $skuId, $quantity, $unitPriceMinor, 'reserved');
     }
 
     public static function reconstitute(
@@ -36,9 +37,10 @@ final class RepairPartReservation
         ?int $inventoryItemId,
         int $skuId,
         int $quantity,
+        int $unitPriceMinor,
         string $status,
     ): self {
-        return new self($id, $repairJobId, $inventoryItemId, $skuId, $quantity, $status);
+        return new self($id, $repairJobId, $inventoryItemId, $skuId, $quantity, $unitPriceMinor, $status);
     }
 
     public function markInstalled(): void
@@ -82,6 +84,11 @@ final class RepairPartReservation
     public function quantity(): int
     {
         return $this->quantity;
+    }
+
+    public function unitPriceMinor(): int
+    {
+        return $this->unitPriceMinor;
     }
 
     public function status(): string

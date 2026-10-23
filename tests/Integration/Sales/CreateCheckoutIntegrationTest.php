@@ -81,6 +81,40 @@ class CreateCheckoutIntegrationTest extends TestCase
         $this->assertDatabaseHas('sales_checkouts', ['id' => $checkoutId->value, 'subtotal_minor' => 30000, 'total_minor' => 30000]);
     }
 
+    public function test_adding_the_same_non_serialized_sku_twice_merges_into_one_line(): void
+    {
+        $shop = ShopRecord::factory()->create();
+        $staff = StaffRecord::factory()->create();
+        $sku = SkuRecord::factory()->nonSerialized()->create(['selling_price_minor' => 10000]);
+        InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 10, 'reserved' => 0]);
+
+        $checkoutId = app(CreateCheckoutHandler::class)->handle(new CreateCheckoutCommand($shop->id, null, $staff->id));
+
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 1));
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 2));
+
+        $this->assertSame(1, SalesCheckoutItemRecord::query()->where('sales_checkout_id', $checkoutId->value)->count());
+        $this->assertDatabaseHas('sales_checkout_items', ['sales_checkout_id' => $checkoutId->value, 'sku_id' => $sku->id, 'quantity' => 3]);
+        $this->assertDatabaseHas('inventory_stock_levels', ['sku_id' => $sku->id, 'shop_id' => $shop->id, 'reserved' => 3]);
+        $this->assertDatabaseHas('sales_checkouts', ['id' => $checkoutId->value, 'subtotal_minor' => 30000, 'total_minor' => 30000]);
+    }
+
+    public function test_adding_the_same_serialized_sku_twice_reserves_two_distinct_units_as_separate_lines(): void
+    {
+        $shop = ShopRecord::factory()->create();
+        $staff = StaffRecord::factory()->create();
+        $sku = SkuRecord::factory()->create();
+        InventoryItemRecord::factory()->create(['sku_id' => $sku->id, 'current_shop_id' => $shop->id, 'status' => 'available']);
+        InventoryItemRecord::factory()->create(['sku_id' => $sku->id, 'current_shop_id' => $shop->id, 'status' => 'available']);
+
+        $checkoutId = app(CreateCheckoutHandler::class)->handle(new CreateCheckoutCommand($shop->id, null, $staff->id));
+
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 1));
+        app(AddCheckoutItemHandler::class)->handle(new AddCheckoutItemCommand($checkoutId->value, $sku->id, 1));
+
+        $this->assertSame(2, SalesCheckoutItemRecord::query()->where('sales_checkout_id', $checkoutId->value)->count());
+    }
+
     public function test_remove_item_releases_the_reservation_and_recomputes_totals(): void
     {
         $shop = ShopRecord::factory()->create();

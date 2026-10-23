@@ -27,6 +27,7 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
             'name' => $customer->name,
             'email' => $customer->email,
             'phone' => $customer->phone,
+            'is_registered' => $customer->password !== null,
         ])->all();
     }
 
@@ -68,5 +69,37 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
                 ],
             ])
             ->all();
+    }
+
+    public function paginate(?string $search, ?string $registration, int $page, int $perPage = 20): array
+    {
+        $query = CustomerRecord::query()
+            ->when($search !== null && $search !== '', function ($query) use ($search): void {
+                $query->where(function ($inner) use ($search): void {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            })
+            ->when($registration === 'registered', fn ($query) => $query->whereNotNull('password'))
+            ->when($registration === 'walk_in', fn ($query) => $query->whereNull('password'))
+            ->orderByDesc('created_at');
+
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => $paginator->getCollection()->map(static fn (CustomerRecord $customer): array => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'is_registered' => $customer->password !== null,
+                'created_at' => $customer->created_at->toIso8601String(),
+            ])->all(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
     }
 }

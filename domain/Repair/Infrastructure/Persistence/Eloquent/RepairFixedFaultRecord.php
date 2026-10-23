@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $common_component_id
  * @property string $label_snapshot
  * @property string|null $notes
+ * @property int|null $commission_amount_minor
  * @property int|null $recorded_by_staff_id
  */
 final class RepairFixedFaultRecord extends Model
@@ -27,6 +28,7 @@ final class RepairFixedFaultRecord extends Model
         'common_component_id',
         'label_snapshot',
         'notes',
+        'commission_amount_minor',
         'recorded_by_staff_id',
     ];
 }

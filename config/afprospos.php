@@ -38,6 +38,33 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Customer self-service cart reservation window
+    |--------------------------------------------------------------------
+    |
+    | A storefront cart is browsed, not rung up at a till — a 15-minute
+    | POS window is too tight. This window is renewed (not just set once)
+    | on every cart mutation for as long as the customer keeps shopping.
+    |
+    */
+    'customer_cart_reservation_hours' => 24,
+
+    /*
+    |--------------------------------------------------------------------
+    | Public storefront feature flag
+    |--------------------------------------------------------------------
+    |
+    | Switches the public storefront (`/shop`, `/shop/{sku}`, and the
+    | customer self-service cart) on or off from .env alone, no deploy of
+    | route/code changes needed — set STOREFRONT_ENABLED=false to take it
+    | offline (e.g. before it's ready to launch, or during maintenance).
+    | Everything else under /customer (orders, payments, warranty, repairs)
+    | stays reachable either way — only browsing/reserving is gated.
+    |
+    */
+    'storefront_enabled' => env('STOREFRONT_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------
     | Return / refund window
     |--------------------------------------------------------------------
     |
@@ -178,6 +205,7 @@ return [
         'warranty' => ['view', 'create', 'assess', 'resolve', 'approve-refund', 'process-exchange', 'manage'],
         'audit' => ['view'],
         'settings' => ['view', 'edit'],
+        'customers' => ['view'],
     ],
 
     /*
@@ -206,6 +234,7 @@ return [
             'repairs' => ['view', 'progress', 'approve-payment', 'authorize', 'transfer'],
             'collection' => ['view', 'transfer'],
             'sales' => ['view', 'approve-discount'],
+            'customers' => ['view'],
         ],
         'Accountant' => [
             'shops' => ['view'],
@@ -220,6 +249,7 @@ return [
             'payments' => 'full',
             'collection' => ['view', 'override'],
             'warranty' => ['view', 'approve-refund', 'process-exchange'],
+            'customers' => ['view'],
         ],
         'Technician' => [
             // Confirmed with the stakeholder: technicians don't use this
@@ -251,6 +281,7 @@ return [
             'referrals' => ['view'],
             'reports' => ['view'],
             'warranty' => ['view', 'create'],
+            'customers' => ['view'],
         ],
         'Product Staff' => [
             'inventory' => 'full',

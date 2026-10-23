@@ -6,6 +6,7 @@ import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminInput from '../../../Components/Admin/Forms/AdminInput';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import AdminTextarea from '../../../Components/Admin/Forms/AdminTextarea';
+import PhotoDropzone from '../../../Components/PhotoDropzone';
 import CustomerSearch, { CustomerSearchResult } from '../../../Features/Sales/CustomerSearch';
 import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
 import DeviceTypePicker, { DeviceType } from '../../../Features/Repairs/DeviceTypePicker';
@@ -39,6 +40,7 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog,
         device_lock_type: 'none' as DeviceLockType,
         device_lock_value: '',
         revealed_faults: [] as { device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string }[],
+        photo: null as File | null,
     });
 
     function addCommonFaults(components: CommonComponentOption[]) {
@@ -92,6 +94,16 @@ export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog,
                     <AdminInput label="Device model" value={data.device_model} onChange={(e) => setData('device_model', e.target.value)} error={errors.device_model} />
                     <AdminInput label="IMEI / serial number (optional)" value={data.device_imei_serial} onChange={(e) => setData('device_imei_serial', e.target.value)} error={errors.device_imei_serial} />
                     <AdminTextarea label="Reported issue" value={data.reported_issue} onChange={(e) => setData('reported_issue', e.target.value)} error={errors.reported_issue} rows={3} />
+
+                    <label className="block text-xs font-semibold text-admin-text mb-1.5">Photo of the device (optional)</label>
+                    <div className="mb-4">
+                        <PhotoDropzone
+                            file={data.photo}
+                            onSelect={(file) => setData('photo', file)}
+                            error={errors.photo}
+                            label="Select a photo to upload"
+                        />
+                    </div>
                     <DeviceLockInput
                         lockType={data.device_lock_type}
                         lockValue={data.device_lock_value}

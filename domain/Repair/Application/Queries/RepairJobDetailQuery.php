@@ -95,7 +95,7 @@ final class RepairJobDetailQuery
                     'product_name' => $sku['product_name'] ?? null,
                     'quantity' => $reservation->quantity,
                     'status' => $reservation->status,
-                    'unit_price_minor' => $sku['selling_price_minor'] ?? null,
+                    'unit_price_minor' => $reservation->unit_price_minor,
                 ];
             })->all();
 
@@ -163,6 +163,7 @@ final class RepairJobDetailQuery
                 'common_component_id' => $fault->common_component_id,
                 'label' => $fault->label_snapshot,
                 'notes' => $fault->notes,
+                'commission_amount_minor' => $fault->commission_amount_minor,
             ])->all();
 
         return [
@@ -179,6 +180,7 @@ final class RepairJobDetailQuery
             'walk_in_email' => $job->walk_in_email,
             'device_make' => $job->device_make,
             'device_model' => $job->device_model,
+            'device_model_id' => $job->device_model_id,
             'reported_issue' => $job->reported_issue,
             'device_imei_serial' => $job->device_imei_serial,
             'device_lock_type' => $job->device_lock_type,

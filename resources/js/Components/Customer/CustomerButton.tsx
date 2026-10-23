@@ -16,12 +16,13 @@ export default function CustomerButton({
     disabled,
     ...props
 }: CustomerButtonProps) {
-    let baseClass = 'rounded-customer-pill text-customer-button font-bold px-customer-btn-x py-customer-btn-y transition-transform duration-120 active:scale-98 flex items-center justify-center';
+    let baseClass =
+        'rounded-customer-pill text-customer-button font-bold px-customer-btn-x py-customer-btn-y transition-all duration-150 hover:scale-[1.02] active:scale-98 flex items-center justify-center';
     let variantClass = '';
 
     switch (variant) {
         case 'primary':
-            variantClass = 'bg-customer-blue text-white hover:bg-blue-700'; // Need actual hover color if defined
+            variantClass = 'bg-customer-blue text-white hover:bg-blue-700';
             break;
         case 'neutral':
             variantClass = 'bg-customer-divider text-customer-text hover:bg-gray-200';
@@ -36,7 +37,7 @@ export default function CustomerButton({
 
     const isDisabled = disabled || isLoading;
     if (isDisabled) {
-        baseClass += ' opacity-60 cursor-not-allowed active:scale-100';
+        baseClass += ' opacity-60 cursor-not-allowed active:scale-100 hover:scale-100';
     }
 
     return (

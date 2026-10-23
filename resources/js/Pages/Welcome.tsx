@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Link } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import { paletteVars, WelcomePalette } from '../lib/welcomePalette'
 
 export default function Welcome({ palette }: { palette: WelcomePalette }) {
+    const { storefrontEnabled } = usePage().props as unknown as { storefrontEnabled: boolean };
     useEffect(() => {
         // Inject Bootstrap Icons stylesheet
         if (!document.getElementById('bootstrap-icons')) {
@@ -376,7 +377,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                     </div>
                     <nav>
                         <a href="#services">Repairs</a>
-                        <a href="#shop">Shop Devices</a>
+                        {storefrontEnabled && <Link href="/shop">Shop Devices</Link>}
                         <a href="#trade-in">Trade-In</a>
                         <a href="#warranty">Warranty</a>
                     </nav>
@@ -419,7 +420,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                                 Shop the latest devices. All our devices come with a configurable warranty
                                 policy covering specific durations, exclusions, and guaranteed resolution options.
                             </p>
-                            <button className="lp-btn lp-btn-primary">Browse Shop</button>
+                            {storefrontEnabled && <Link href="/shop" className="lp-btn lp-btn-primary">Browse Shop</Link>}
                         </div>
                     </div>
 
@@ -518,7 +519,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                             <h4 className="lp-footer-heading">Services</h4>
                             <ul className="lp-footer-links">
                                 <li><a href="#">Phone Repair</a></li>
-                                <li><a href="#">Shop Devices</a></li>
+                                {storefrontEnabled && <li><Link href="/shop">Shop Devices</Link></li>}
                                 <li><a href="#">Trade-In Program</a></li>
                                 <li><a href="#">Warranty Claims</a></li>
                             </ul>

@@ -21,6 +21,7 @@ type PaymentRow = {
     provider_reference: string | null;
     created_at: string;
     source_label: string;
+    customer_name: string | null;
 };
 
 type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
@@ -60,6 +61,7 @@ const COLUMNS: DataTableColumn<PaymentRow>[] = [
     { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
     { key: 'purpose', label: 'Purpose', render: (row) => PURPOSE_LABEL[row.purpose] ?? row.purpose.replace(/_/g, ' ') },
     { key: 'source_label', label: 'For' },
+    { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? <span className="text-admin-text3">Walk-in</span> },
     { key: 'method', label: 'Method' },
     { key: 'amount_minor', label: 'Amount', render: (row) => formatNaira(row.amount_minor) },
     {
@@ -128,7 +130,7 @@ export default function PaymentsIndex({ payments, filters }: PaymentsIndexProps)
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="method"
                 mobileStatusField="status"
-                mobileDetailFields={['payable_type', 'amount_minor', 'created_at']}
+                mobileDetailFields={['customer_name', 'payable_type', 'amount_minor', 'created_at']}
                 selectable
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}

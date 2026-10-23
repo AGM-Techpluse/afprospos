@@ -7,12 +7,14 @@ namespace Domain\Payments\Application\Queries;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Repair\Application\Contracts\RepairJobLookup;
+use Domain\Sales\Application\Contracts\CheckoutLookup;
 
 /** Backs Admin Payments/Index — the reconciliation/dispute queue, filterable by status/method/payable type. */
 final class PaymentTransactionsQuery
 {
     public function __construct(
         private readonly RepairJobLookup $repairJobs,
+        private readonly CheckoutLookup $checkouts,
         private readonly CustomerDirectoryQuery $customers,
     ) {}
 
@@ -88,6 +90,7 @@ final class PaymentTransactionsQuery
             'provider_reference' => $transaction->provider_reference,
             'created_at' => $transaction->created_at->toIso8601String(),
             'source_label' => $this->describeSource($transaction->payable_type, $transaction->payable_id),
+            'customer_name' => $this->customerName($transaction->payable_type, $transaction->payable_id),
         ];
     }
 
@@ -100,13 +103,33 @@ final class PaymentTransactionsQuery
                 return "Repair #{$payableId}";
             }
 
-            $customerName = $job['customer_id'] !== null
-                ? $this->customers->find($job['customer_id'])['name'] ?? null
-                : null;
-
-            return "Repair #{$payableId} — {$job['device_make']} {$job['device_model']}".($customerName !== null ? " ({$customerName})" : '');
+            return "Repair #{$payableId} — {$job['device_make']} {$job['device_model']}";
         }
 
         return "Sale checkout #{$payableId}";
+    }
+
+    /** A customer column of its own — same identity whether this payment is for a repair or a sale, instead of buried inside the free-text source label (or, for a sale checkout, missing entirely). */
+    private function customerName(string $payableType, int $payableId): ?string
+    {
+        if ($payableType === 'repair_job') {
+            $job = $this->repairJobs->find($payableId);
+
+            if ($job === null) {
+                return null;
+            }
+
+            return $job['customer_id'] !== null ? $this->customers->find($job['customer_id'])['name'] ?? null : null;
+        }
+
+        $checkout = $this->checkouts->find($payableId);
+
+        if ($checkout === null) {
+            return null;
+        }
+
+        return $checkout['customer_id'] !== null
+            ? $this->customers->find($checkout['customer_id'])['name'] ?? null
+            : $checkout['walk_in_name'];
     }
 }

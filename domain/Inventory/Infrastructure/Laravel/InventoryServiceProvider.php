@@ -7,6 +7,7 @@ namespace Domain\Inventory\Infrastructure\Laravel;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Inventory\Application\Contracts\InventoryReservationService;
 use Domain\Inventory\Application\Contracts\ShopStockReader;
+use Domain\Inventory\Application\Contracts\StorefrontCatalogQuery;
 use Domain\Inventory\Domain\Repositories\InventoryItemRepository;
 use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Domain\Repositories\InventoryStockLevelRepository;
@@ -34,5 +35,6 @@ final class InventoryServiceProvider extends ServiceProvider
         $this->app->bind(InventoryTransferRepository::class, EloquentInventoryTransferRepository::class);
         $this->app->bind(InventoryReservationService::class, HandlerBackedInventoryReservationService::class);
         $this->app->bind(InventoryCatalogQuery::class, HandlerBackedInventoryCatalogQuery::class);
+        $this->app->bind(StorefrontCatalogQuery::class, HandlerBackedStorefrontCatalogQuery::class);
     }
 }

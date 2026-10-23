@@ -32,4 +32,9 @@ final class EloquentProductRepository implements ProductRepository
     {
         ProductRecord::query()->whereKey($id->value)->update(['image_path' => $imagePath]);
     }
+
+    public function setDescription(ProductId $id, ?string $description): void
+    {
+        ProductRecord::query()->whereKey($id->value)->update(['description' => $description]);
+    }
 }

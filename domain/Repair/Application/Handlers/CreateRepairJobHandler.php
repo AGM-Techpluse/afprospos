@@ -7,6 +7,7 @@ namespace Domain\Repair\Application\Handlers;
 use App\Support\Transactions\Atomic;
 use Carbon\CarbonImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
+use Domain\Identity\Application\Contracts\CustomerDirectoryService;
 use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Events\RepairCreated;
@@ -30,6 +31,7 @@ final class CreateRepairJobHandler
         private readonly DeviceProblemTagRepository $problemTags,
         private readonly RepairJobProblemTagRepository $jobProblemTags,
         private readonly ShopClassification $shops,
+        private readonly CustomerDirectoryService $customerDirectory,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -38,6 +40,11 @@ final class CreateRepairJobHandler
     {
         if ($this->shops->isWarehouse(new ShopId($command->shopId))) {
             throw WarehouseCannotTakeRepairs::forShop($command->shopId);
+        }
+
+        // A walk-in's contact details become a real (passwordless) customer record too — purely so they're findable on a later visit; this job's own customer_id is left exactly as given, never silently repointed at the new record.
+        if ($command->customerId === null && $command->walkInName !== null && $command->walkInPhone !== null) {
+            $this->customerDirectory->findOrCreateWalkIn($command->walkInName, $command->walkInPhone, $command->walkInEmail);
         }
 
         return $this->atomic->run(function () use ($command): int {

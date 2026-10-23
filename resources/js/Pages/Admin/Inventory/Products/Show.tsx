@@ -6,6 +6,7 @@ import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/Admin
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
+import ProductImage from '../../../../Components/ProductImage';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
@@ -19,6 +20,7 @@ type Sku = {
     model: string;
     category: string;
     image_url: string | null;
+    description: string | null;
     attributes: Record<string, unknown>;
     is_serialized: boolean;
     cost_price_minor: number;
@@ -90,6 +92,17 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
         commissionForm.put(`/admin/inventory/products/${sku.id}/commission`);
     }
 
+    const [editingDescription, setEditingDescription] = useState(false);
+    const descriptionForm = useForm({ description: sku.description ?? '' });
+
+    function submitDescription(e: FormEvent) {
+        e.preventDefault();
+        descriptionForm.put(`/admin/inventory/products/${sku.id}/description`, {
+            preserveScroll: true,
+            onSuccess: () => setEditingDescription(false),
+        });
+    }
+
     function submitReceive(e: FormEvent) {
         e.preventDefault();
 
@@ -117,15 +130,54 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                 backLabel="Back to products"
             />
 
-            {sku.image_url && (
-                <div className="mb-6">
-                    <img
-                        src={sku.image_url}
-                        alt={`${sku.brand} ${sku.model}`}
-                        className="h-40 w-full max-w-sm object-cover rounded-admin-card border border-admin-border"
-                    />
+            <div className="mb-6 grid gap-4 sm:grid-cols-[200px_minmax(0,1fr)] items-start">
+                <ProductImage src={sku.image_url} alt={`${sku.brand} ${sku.model}`} aspect="square" category={sku.category} className="max-w-[200px]" />
+
+                <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-xs font-semibold text-admin-text2">Storefront description</span>
+                        {!editingDescription && (
+                            <button
+                                type="button"
+                                onClick={() => setEditingDescription(true)}
+                                className="text-xs font-semibold text-admin-blue"
+                            >
+                                {sku.description ? 'Edit' : 'Add description'}
+                            </button>
+                        )}
+                    </div>
+
+                    {editingDescription ? (
+                        <form onSubmit={submitDescription} className="flex flex-col gap-2">
+                            <textarea
+                                value={descriptionForm.data.description}
+                                onChange={(e) => descriptionForm.setData('description', e.target.value)}
+                                rows={4}
+                                maxLength={2000}
+                                placeholder="What a customer browsing the storefront should know about this product…"
+                                className="border border-admin-border-strong rounded-admin-button px-2.5 py-1.5 text-sm outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                            />
+                            <div className="flex items-center gap-2">
+                                <AdminButton type="submit" variant="neutral" isLoading={descriptionForm.processing}>Save</AdminButton>
+                                <AdminButton
+                                    type="button"
+                                    variant="neutral"
+                                    onClick={() => {
+                                        descriptionForm.setData('description', sku.description ?? '');
+                                        setEditingDescription(false);
+                                    }}
+                                >
+                                    Cancel
+                                </AdminButton>
+                            </div>
+                        </form>
+                    ) : (
+                        <p className="text-sm text-admin-text2 whitespace-pre-wrap">
+                            {sku.description || 'No description yet — this product will show no copy on the storefront.'}
+                        </p>
+                    )}
                 </div>
-            )}
+            </div>
 
             {/* UI/UX §14C.8's headline stat row — the total across every shop, so "how many of this do we have" has one clear answer regardless of serialized vs. bulk. Per-shop detail is still below, for the breakdown. */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

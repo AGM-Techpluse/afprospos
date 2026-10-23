@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Repairs;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 use Domain\Repair\Application\Commands\CreateDeviceProblemTagCommand;
 use Domain\Repair\Application\Commands\CreateDeviceTypeCommand;
+use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Application\Handlers\CreateDeviceProblemTagHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceTypeHandler;
+use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\CustomerRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
@@ -53,6 +57,36 @@ class RepairsControllerTest extends TestCase
         $showResponse = $this->actingAs($cashier, 'staff')->get("/admin/repairs/{$jobId}");
         $showResponse->assertOk();
         $showResponse->assertInertia(fn ($page) => $page->component('Admin/Repairs/Show')->where('repair.id', $jobId));
+    }
+
+    public function test_repair_detail_shows_the_part_reservations_price_as_snapshotted_not_the_skus_current_price(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        $this->grantShopAccess($cashier, $shop->id);
+
+        $sku = SkuRecord::factory()->nonSerialized()->create(['selling_price_minor' => 1_500_00]);
+        InventoryStockLevelRecord::factory()->create(['sku_id' => $sku->id, 'shop_id' => $shop->id, 'on_hand' => 5, 'reserved' => 0]);
+        $job = RepairJobRecord::factory()->create(['shop_id' => $shop->id, 'repair_status' => 'diagnosing']);
+
+        app(ReserveRepairPartsHandler::class)->handle(new ReserveRepairPartsCommand(
+            repairJobId: $job->id,
+            skuId: $sku->id,
+            quantity: 1,
+            reservedByStaffId: $cashier->id,
+        ));
+
+        $sku->update(['selling_price_minor' => 9_999_00]);
+
+        $this->actingAs($cashier, 'staff')
+            ->get("/admin/repairs/{$job->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Repairs/Show')
+                ->where('repair.part_reservations.0.unit_price_minor', 1_500_00));
     }
 
     public function test_intake_captures_imei_and_snapshots_selected_problem_tags(): void

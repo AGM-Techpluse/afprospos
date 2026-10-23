@@ -30,6 +30,7 @@ use App\Http\Requests\Admin\Repairs\UploadRepairPhotoRequest;
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Repair\Application\Commands\AddFixedFaultToCatalogCommand;
 use Domain\Repair\Application\Commands\AssignTechnicianCommand;
 use Domain\Repair\Application\Commands\AuthorizeRepairCommand;
 use Domain\Repair\Application\Commands\CancelRepairCommand;
@@ -58,6 +59,7 @@ use Domain\Repair\Application\Commands\TransferRepairJobCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceLockCommand;
 use Domain\Repair\Application\Commands\UploadRepairPhotoCommand;
 use Domain\Repair\Application\Contracts\RepairJobLookup;
+use Domain\Repair\Application\Handlers\AddFixedFaultToCatalogHandler;
 use Domain\Repair\Application\Handlers\AssignTechnicianHandler;
 use Domain\Repair\Application\Handlers\AuthorizeRepairHandler;
 use Domain\Repair\Application\Handlers\CancelRepairHandler;
@@ -144,6 +146,7 @@ final class RepairsController
         private readonly RequestDiagnosisFeeHandler $requestDiagnosisFee,
         private readonly SetDiagnosisFeeHandler $setDiagnosisFee,
         private readonly DecideDiagnosisFeeHandler $decideDiagnosisFee,
+        private readonly AddFixedFaultToCatalogHandler $addFixedFaultToCatalog,
     ) {}
 
     public function index(Request $request): Response
@@ -322,12 +325,12 @@ final class RepairsController
         $actor = app(ActorContext::class);
         $this->assertRepairShopAccess($actor, $repair);
 
-        $this->updateDeviceLock->handle(new UpdateDeviceLockCommand(
+        $this->guardTransition(fn () => $this->updateDeviceLock->handle(new UpdateDeviceLockCommand(
             repairJobId: $repair,
             deviceLockType: $request->string('device_lock_type')->toString(),
             deviceLockValue: $request->string('device_lock_value')->toString() ?: null,
             updatedByStaffId: $actor->staffId->value,
-        ));
+        )));
 
         $this->flashSuccess('Device lock updated');
 
@@ -800,6 +803,51 @@ final class RepairsController
         return response()->json([
             'results' => $term !== '' ? $this->catalog->search($term, (int) $data['shop_id']) : [],
         ]);
+    }
+
+    /** Device-specific (this repair's own device model, falling back to its type) — unlike diagnosis's system-wide revealed-fault search, a fixed fault is scoped to the device actually being worked on. */
+    public function searchFaults(Request $request, int $repair): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $data = $this->detail->find($repair);
+        abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
+
+        if ($data['device_model_id'] === null) {
+            return response()->json(['results' => []]);
+        }
+
+        $term = $request->string('q')->toString();
+
+        return response()->json([
+            'results' => $this->deviceCatalog->searchFaultsForModel((int) $data['device_model_id'], $term !== '' ? $term : null),
+        ]);
+    }
+
+    /** A "newly discovered fixed fault" not already in the catalog — joins it (scoped to this repair's own device model) with the commission the technician set, so it's immediately selectable in the picker too. */
+    public function addFixedFaultToCatalog(Request $request, int $repair): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $label = trim($request->string('label')->toString());
+
+        if ($label === '') {
+            throw ValidationException::withMessages(['label' => 'A label is required.']);
+        }
+
+        try {
+            $result = $this->addFixedFaultToCatalog->handle(new AddFixedFaultToCatalogCommand(
+                repairJobId: $repair,
+                label: $label,
+                commissionAmountMinor: $request->filled('commission_amount_minor') ? $request->integer('commission_amount_minor') : null,
+                addedByStaffId: $actor->staffId->value,
+            ));
+        } catch (DomainException $exception) {
+            throw ValidationException::withMessages(['label' => $exception->getMessage()]);
+        }
+
+        return response()->json(['fault' => $result]);
     }
 
     /** BRD RBAC-05: every action on one specific repair is blocked unless the acting staff member (or the Shop Owner, who bypasses scope entirely) was actually granted that repair's shop — the permission string alone only proves they hold the action in general, never that this particular record is theirs to touch. */

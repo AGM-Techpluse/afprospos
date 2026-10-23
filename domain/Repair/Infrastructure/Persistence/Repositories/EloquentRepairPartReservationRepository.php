@@ -35,6 +35,7 @@ final class EloquentRepairPartReservationRepository implements RepairPartReserva
             'inventory_item_id' => $reservation->inventoryItemId(),
             'sku_id' => $reservation->skuId(),
             'quantity' => $reservation->quantity(),
+            'unit_price_minor' => $reservation->unitPriceMinor(),
             'status' => $reservation->status(),
         ];
 
@@ -56,6 +57,7 @@ final class EloquentRepairPartReservationRepository implements RepairPartReserva
             $record->inventory_item_id,
             $record->sku_id,
             $record->quantity,
+            $record->unit_price_minor,
             $record->status,
         );
     }

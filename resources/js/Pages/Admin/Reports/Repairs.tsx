@@ -100,6 +100,7 @@ export default function RepairReports({
                 <ReportMetricCard label="Down payments" valueMinor={report.summary.down_payment_minor} />
                 <ReportMetricCard label="Service charges" valueMinor={report.summary.service_charge_minor} />
                 <ReportMetricCard label="Refund due" valueMinor={report.summary.refund_due_minor} />
+                <ReportMetricCard label="Parts cost" valueMinor={report.summary.parts_cost_minor} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2 mb-4">

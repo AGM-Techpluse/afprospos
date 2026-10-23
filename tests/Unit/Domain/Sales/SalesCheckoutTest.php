@@ -118,4 +118,40 @@ class SalesCheckoutTest extends TestCase
         $this->expectException(CheckoutNotOpen::class);
         $checkout->markExpired();
     }
+
+    public function test_assign_cashier_sets_it_on_an_open_cashier_less_cart(): void
+    {
+        $checkout = SalesCheckout::open(new ShopId(1), null, null, new DateTimeImmutable('+24 hours'));
+        $checkout->assignCashier(new StaffId(7));
+
+        $this->assertSame(7, $checkout->cashierStaffId()->value);
+    }
+
+    public function test_assign_cashier_refuses_when_not_open(): void
+    {
+        $checkout = SalesCheckout::open(new ShopId(1), null, null, new DateTimeImmutable('+24 hours'));
+        $checkout->cancel();
+
+        $this->expectException(CheckoutNotOpen::class);
+        $checkout->assignCashier(new StaffId(7));
+    }
+
+    public function test_renew_reservation_sets_a_new_expiry(): void
+    {
+        $checkout = $this->openCheckout(new DateTimeImmutable('+15 minutes'));
+        $newExpiry = new DateTimeImmutable('+24 hours');
+
+        $checkout->renewReservation($newExpiry);
+
+        $this->assertSame($newExpiry, $checkout->reservationExpiresAt());
+    }
+
+    public function test_renew_reservation_refuses_when_not_open(): void
+    {
+        $checkout = $this->openCheckout();
+        $checkout->cancel();
+
+        $this->expectException(CheckoutNotOpen::class);
+        $checkout->renewReservation(new DateTimeImmutable('+24 hours'));
+    }
 }

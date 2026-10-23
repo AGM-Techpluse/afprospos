@@ -73,11 +73,29 @@ final class DeviceCatalogController
 
     public function index(): Response
     {
-        $actor = app(ActorContext::class);
-
         return Inertia::render('Admin/Settings/DeviceCatalog/Index', [
-            'deviceTypes' => $this->catalog->full($this->resolveShopId($actor)),
+            'deviceTypes' => $this->catalog->typesSummary(),
         ]);
+    }
+
+    public function showType(int $type): Response
+    {
+        $actor = app(ActorContext::class);
+        $data = $this->catalog->typeDetail($type, $this->resolveShopId($actor));
+
+        abort_if($data === null, 404);
+
+        return Inertia::render('Admin/Settings/DeviceCatalog/Show', ['deviceType' => $data]);
+    }
+
+    public function showBrand(int $brand): Response
+    {
+        $actor = app(ActorContext::class);
+        $data = $this->catalog->brandDetail($brand, $this->resolveShopId($actor));
+
+        abort_if($data === null, 404);
+
+        return Inertia::render('Admin/Settings/DeviceCatalog/Brand', ['deviceBrand' => $data]);
     }
 
     public function storeType(SaveDeviceTypeRequest $request): RedirectResponse

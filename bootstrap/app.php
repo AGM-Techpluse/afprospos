@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureStaffIsActive;
+use App\Http\Middleware\EnsureStorefrontEnabled;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolveShopContext;
 use Domain\Shared\Domain\Exceptions\ShopScopeViolation;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'shop.context' => ResolveShopContext::class,
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,
+            'storefront.enabled' => EnsureStorefrontEnabled::class,
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {

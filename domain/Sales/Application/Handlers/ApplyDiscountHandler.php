@@ -10,6 +10,7 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Domain\Entities\SalesCheckoutAdjustment;
 use Domain\Sales\Domain\Events\CheckoutDiscountApplied;
+use Domain\Sales\Domain\Exceptions\DiscountRequiresACashier;
 use Domain\Sales\Domain\Repositories\SalesCheckoutRepository;
 use Domain\Sales\Domain\ValueObjects\CheckoutId;
 use Domain\Shared\Domain\ValueObjects\Money;
@@ -27,6 +28,11 @@ final class ApplyDiscountHandler
     {
         $this->atomic->run(function () use ($command): void {
             $checkout = $this->checkouts->lockForUpdate(new CheckoutId($command->checkoutId));
+            $cashierStaffId = $checkout->cashierStaffId();
+
+            if ($cashierStaffId === null) {
+                throw DiscountRequiresACashier::forCheckout($command->checkoutId);
+            }
 
             $adjustment = SalesCheckoutAdjustment::create($command->type, $command->sourceId, new Money($command->amountMinor));
             $checkout->applyAdjustment($adjustment);
@@ -36,7 +42,7 @@ final class ApplyDiscountHandler
             $this->audit->record(
                 module: 'Sales',
                 eventType: 'CheckoutDiscountApplied',
-                actorStaffId: $checkout->cashierStaffId(),
+                actorStaffId: $cashierStaffId,
                 actorRoleSnapshot: null,
                 subjectType: 'sales_checkout',
                 subjectId: $command->checkoutId,
@@ -48,7 +54,7 @@ final class ApplyDiscountHandler
                 $command->checkoutId,
                 $checkout->shopId()->value,
                 $command->amountMinor,
-                $checkout->cashierStaffId()->value,
+                $cashierStaffId->value,
                 CarbonImmutable::now(),
             ));
         });

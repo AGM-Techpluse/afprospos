@@ -25,7 +25,7 @@ use Illuminate\Notifications\Notifiable;
  * @property array<string, mixed> $notification_preferences
  * @property bool $marketing_opt_out
  * @property string $status
- * @property string $password
+ * @property ?string $password null = a walk-in record with no self-service account; never authenticates
  */
 final class CustomerRecord extends Model implements AuthenticatableContract
 {

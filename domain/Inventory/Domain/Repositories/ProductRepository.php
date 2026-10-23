@@ -16,4 +16,6 @@ interface ProductRepository
     public function findOrCreate(string $brand, string $model, string $category, string $unit = 'pcs', string $purpose = 'sale', ?int $supplierId = null): ProductId;
 
     public function setImagePath(ProductId $id, string $imagePath): void;
+
+    public function setDescription(ProductId $id, ?string $description): void;
 }

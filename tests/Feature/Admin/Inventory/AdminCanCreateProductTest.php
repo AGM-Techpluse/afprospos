@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin\Inventory;
 
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,6 +103,9 @@ class AdminCanCreateProductTest extends TestCase
         $product = ProductRecord::query()->firstOrFail();
 
         $this->assertNotNull($product->image_path);
+        // Re-encoded by ProductImageProcessor on the way in — the upload was .webp, so a stored .jpg proves processing actually ran, not a raw passthrough.
+        $this->assertStringEndsWith('.jpg', $product->image_path);
+        Storage::disk('public')->assertExists($product->image_path);
         Storage::disk('public')->assertExists($product->image_path);
     }
 
@@ -154,5 +158,24 @@ class AdminCanCreateProductTest extends TestCase
 
         $response->assertForbidden();
         $this->assertDatabaseMissing('inventory_products', ['brand' => 'Unauthorized']);
+    }
+
+    public function test_admin_can_set_a_products_storefront_description(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $sku = SkuRecord::factory()->create();
+
+        $response = $this->actingAs($owner, 'staff')->put("/admin/inventory/products/{$sku->id}/description", [
+            'description' => 'A reliable mid-range handset with a great camera.',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('inventory_products', [
+            'id' => $sku->product_id,
+            'description' => 'A reliable mid-range handset with a great camera.',
+        ]);
     }
 }

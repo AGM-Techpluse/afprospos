@@ -9,7 +9,8 @@ final readonly class CreateCheckoutCommand
     public function __construct(
         public int $shopId,
         public ?int $customerId,
-        public int $cashierStaffId,
+        /** Null for a customer self-service cart (the storefront) — no cashier rang it up. */
+        public ?int $cashierStaffId,
         public ?string $walkInName = null,
         public ?string $walkInPhone = null,
         public ?string $walkInEmail = null,

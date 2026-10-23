@@ -27,6 +27,12 @@ interface CustomerRepository
 
     public function create(string $name, string $phone, ?string $email, string $plainPassword): CustomerId;
 
+    /** A walk-in record — no password, can never authenticate (EloquentCustomerRepository::verifyPassword() guards this explicitly). */
+    public function createWalkIn(string $name, string $phone, ?string $email): CustomerId;
+
+    /** Upgrades an existing walk-in row into a real self-service account — the person's own input (name/email) is authoritative here, unlike a walk-in intake's find-or-create which leaves an existing row's details alone. */
+    public function claimWalkIn(CustomerId $id, string $name, ?string $email, string $plainPassword): void;
+
     public function updateProfile(CustomerId $id, string $name, string $phone, ?string $email): void;
 
     public function updateAvatar(CustomerId $id, ?string $avatarPath): void;

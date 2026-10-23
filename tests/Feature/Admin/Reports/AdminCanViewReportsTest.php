@@ -14,6 +14,7 @@ use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceTypeRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairFixedFaultRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPartReservationRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
@@ -297,5 +298,41 @@ class AdminCanViewReportsTest extends TestCase
         $this->assertSame(1, $faultOrigin['Diagnosed']['value']);
         $this->assertSame(1, $faultOrigin['Quick check']['value']);
         $this->assertSame(1, $faultOrigin['Custom']['value']);
+    }
+
+    public function test_repairs_report_only_counts_installed_parts_toward_parts_cost(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create();
+        $repair = RepairJobRecord::factory()->create(['shop_id' => $shop->id]);
+
+        RepairPartReservationRecord::factory()->create([
+            'repair_job_id' => $repair->id,
+            'quantity' => 2,
+            'unit_price_minor' => 100000,
+            'status' => 'installed',
+        ]);
+        RepairPartReservationRecord::factory()->create([
+            'repair_job_id' => $repair->id,
+            'quantity' => 1,
+            'unit_price_minor' => 500000,
+            'status' => 'reserved',
+        ]);
+        RepairPartReservationRecord::factory()->create([
+            'repair_job_id' => $repair->id,
+            'quantity' => 1,
+            'unit_price_minor' => 999999,
+            'status' => 'released',
+        ]);
+
+        $this->actingAs($owner, 'staff')
+            ->get('/admin/reports/repairs?shop_id='.$shop->id)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Reports/Repairs')
+                ->where('report.summary.parts_cost_minor', 200000));
     }
 }

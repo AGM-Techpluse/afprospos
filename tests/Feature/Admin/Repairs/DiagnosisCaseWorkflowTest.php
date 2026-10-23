@@ -16,6 +16,8 @@ use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class DiagnosisCaseWorkflowTest extends TestCase
@@ -620,6 +622,43 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         ])->assertRedirect();
 
         return $repair->id;
+    }
+
+    public function test_a_photo_captured_at_intake_carries_through_to_the_resulting_repairs_own_gallery(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        Storage::fake('public');
+
+        $shop = ShopRecord::factory()->create();
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $this->grantShopAccess($cashier, $shop->id);
+
+        $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
+        $deviceModelId = $this->createDeviceModel($deviceType->id);
+
+        $this->actingAs($cashier, 'staff')->post('/admin/repairs/diagnosis-cases', [
+            'shop_id' => $shop->id,
+            'customer_id' => '',
+            'device_model_id' => $deviceModelId,
+            'device_make' => 'Apple',
+            'device_model' => 'iPhone 15 Pro',
+            'device_lock_type' => 'none',
+            'photo' => UploadedFile::fake()->image('cracked-screen.jpg'),
+        ])->assertRedirect();
+
+        $case = DiagnosisCaseRecord::query()->firstOrFail();
+        $this->assertDatabaseHas('diagnosis_case_photos', ['diagnosis_case_id' => $case->id]);
+
+        DiagnosisCaseFaultRecord::query()->create(['diagnosis_case_id' => $case->id, 'label_snapshot' => 'Cracked screen']);
+        $case->update(['status' => 'diagnosed', 'outcome' => 'repairable']);
+
+        $this->actingAs($cashier, 'staff')
+            ->post("/admin/repairs/diagnosis-cases/{$case->id}/repairs")
+            ->assertRedirect();
+
+        $repair = RepairJobRecord::query()->where('diagnosis_case_id', $case->id)->firstOrFail();
+        $this->assertDatabaseHas('repair_job_photos', ['repair_job_id' => $repair->id]);
     }
 
     private function createDeviceModel(int $deviceTypeId, string $name = 'iPhone 15 Pro'): int

@@ -21,6 +21,7 @@ final class RepairPartReservationRecordFactory extends Factory
             'inventory_item_id' => null,
             'sku_id' => SkuRecord::factory(),
             'quantity' => 1,
+            'unit_price_minor' => 500000,
             'status' => 'reserved',
         ];
     }

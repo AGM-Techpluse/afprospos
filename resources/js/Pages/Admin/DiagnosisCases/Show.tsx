@@ -5,10 +5,10 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
+import FaultPicker, { FaultSearchResult } from '../../../Features/Repairs/FaultPicker';
 import { formatNaira } from '../../../lib/money';
 
 type Technician = { id: number; name: string };
-type FaultCatalogItem = { id: number; label: string };
 type RevealedFault = { id: number; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string | null };
 type DiagnosisCase = {
     id: number;
@@ -34,6 +34,7 @@ type DiagnosisCase = {
     diagnosis_fee_paid: boolean;
     diagnosis_fee_payment_method: string | null;
     revealed_faults: RevealedFault[];
+    photos: { id: number; url: string; caption: string | null }[];
     created_at: string;
 };
 type RelatedRepair = {
@@ -49,7 +50,6 @@ interface Props {
     diagnosisCase: DiagnosisCase;
     shop: { id: number; name: string } | null;
     technicians: Technician[];
-    faultCatalog: FaultCatalogItem[];
     relatedRepairs: RelatedRepair[];
 }
 
@@ -62,11 +62,11 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, faultCatalog, relatedRepairs }: Props) {
+export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, relatedRepairs }: Props) {
     const [technicianId, setTechnicianId] = useState(diagnosisCase.diagnosis_technician_staff_id?.toString() ?? '');
     const [assignedTechnicianId, setAssignedTechnicianId] = useState(diagnosisCase.diagnosis_technician_staff_id?.toString() ?? '');
-    const [selectedFaultId, setSelectedFaultId] = useState('');
     const [customFault, setCustomFault] = useState('');
+    const [addingCustomFault, setAddingCustomFault] = useState(false);
     const [diagnosisSaved, setDiagnosisSaved] = useState(false);
     const [feeMethod, setFeeMethod] = useState('cash');
     const [collectingFee, setCollectingFee] = useState(false);
@@ -115,18 +115,39 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
         setData(field, value as never);
     }
 
-    function addFault() {
-        const catalogFault = faultCatalog.find((fault) => String(fault.id) === selectedFaultId);
-        if (!catalogFault || revealedLabels.has(catalogFault.label)) return;
-        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: catalogFault.id, common_component_id: null, label: catalogFault.label, notes: '' }]);
-        setSelectedFaultId('');
+    function addFaultFromPicker(fault: FaultSearchResult) {
+        if (revealedLabels.has(fault.label)) return;
+        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: fault.id, common_component_id: null, label: fault.label, notes: '' }]);
     }
 
+    /** Joins the catalog (type-level, scoped to this case's own device) so it's searchable from a future case too — see AddRevealedFaultHandler. */
     function addCustomFault() {
         const label = customFault.trim();
         if (label === '' || revealedLabels.has(label)) return;
-        changeDiagnosisField('revealed_faults', [...data.revealed_faults, { device_problem_tag_id: null, common_component_id: null, label, notes: '' }]);
-        setCustomFault('');
+
+        setAddingCustomFault(true);
+        fetch(`/admin/repairs/diagnosis-cases/${diagnosisCase.id}/faults`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                // Laravel's standard SPA CSRF pattern: the XSRF-TOKEN cookie it already sets is echoed back as this header and decrypted server-side — same thing axios does automatically, done by hand since this app has no axios dependency.
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? ''),
+            },
+            body: JSON.stringify({ label }),
+        })
+            .then((response) => response.json())
+            .then((json: { fault: { id: number; label: string } | null }) => {
+                const resolvedLabel = json.fault?.label ?? label;
+                if (revealedLabels.has(resolvedLabel)) return;
+                changeDiagnosisField('revealed_faults', [
+                    ...data.revealed_faults,
+                    { device_problem_tag_id: json.fault?.id ?? null, common_component_id: null, label: resolvedLabel, notes: '' },
+                ]);
+                setCustomFault('');
+            })
+            .finally(() => setAddingCustomFault(false));
     }
 
     function removeFault(label: string) {
@@ -194,6 +215,19 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                         <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
                         <p className="text-sm text-admin-text whitespace-pre-wrap">{diagnosisCase.reported_issue ?? 'No issue recorded'}</p>
                     </div>
+
+                    {diagnosisCase.photos.length > 0 && (
+                        <div className="mb-4 pb-4 border-b border-admin-border">
+                            <div className="text-sm text-admin-text2 mb-2">Photos at intake</div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {diagnosisCase.photos.map((photo) => (
+                                    <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer">
+                                        <img src={photo.url} alt={photo.caption ?? 'Diagnosis photo'} className="w-full aspect-square object-cover rounded-admin-card border border-admin-border" />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <Row label="Customer" value={diagnosisCase.customer_name ?? diagnosisCase.walk_in_name ?? 'Unknown customer'} />
                     {!diagnosisCase.customer_name && (diagnosisCase.walk_in_phone || diagnosisCase.walk_in_email) && (
@@ -270,21 +304,20 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, fa
                         {errors.outcome && <p className="text-xs text-admin-red">{errors.outcome}</p>}
 
                         <label className="text-xs font-semibold text-admin-text">Revealed faults</label>
-                        <div className="flex gap-2">
-                            <select value={selectedFaultId} onChange={(e) => setSelectedFaultId(e.target.value)} className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white">
-                                <option value="">Select fault...</option>
-                                {faultCatalog.map((fault) => <option key={fault.id} value={fault.id}>{fault.label}</option>)}
-                            </select>
-                            <AdminButton type="button" variant="neutral" onClick={addFault} disabled={!selectedFaultId}>Add</AdminButton>
-                        </div>
+                        <p className="text-xs text-admin-text3 -mt-2">Searches every device's faults, not just this one — the same battery/screen issue tends to recur across models.</p>
+                        <FaultPicker
+                            searchUrl="/admin/repairs/diagnosis-cases/faults/search"
+                            onSelect={addFaultFromPicker}
+                            excludeLabels={data.revealed_faults.map((fault) => fault.label)}
+                        />
                         <div className="flex gap-2">
                             <input
                                 value={customFault}
                                 onChange={(e) => setCustomFault(e.target.value)}
-                                placeholder="Add unique revealed fault..."
+                                placeholder="Add unique revealed fault…"
                                 className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm"
                             />
-                            <AdminButton type="button" variant="neutral" onClick={addCustomFault} disabled={customFault.trim() === ''}>Add</AdminButton>
+                            <AdminButton type="button" variant="neutral" isLoading={addingCustomFault} onClick={addCustomFault} disabled={customFault.trim() === ''}>Add</AdminButton>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                             {data.revealed_faults.map((fault) => (

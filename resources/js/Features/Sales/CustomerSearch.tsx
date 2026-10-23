@@ -7,6 +7,7 @@ export type CustomerSearchResult = {
     name: string;
     email: string | null;
     phone: string;
+    is_registered: boolean;
 };
 
 export type WalkInContact = {
@@ -84,7 +85,14 @@ export default function CustomerSearch({ value, onChange, error, disabled = fals
                 <span className="text-xs font-semibold text-admin-text mb-[5px]">Customer</span>
                 <div className="flex items-center justify-between gap-2 border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y bg-white">
                     <div className="min-w-0">
-                        <div className="text-admin-field text-admin-text font-medium truncate">{value.name}</div>
+                        <div className="text-admin-field text-admin-text font-medium truncate flex items-center gap-1.5">
+                            {value.name}
+                            {!value.is_registered && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-admin-text3 bg-admin-hover rounded-admin-badge px-1.5 py-0.5 shrink-0">
+                                    Not yet registered
+                                </span>
+                            )}
+                        </div>
                         {(value.email || value.phone) && (
                             <div className="text-xs text-admin-text3 truncate">{value.email ?? value.phone}</div>
                         )}
@@ -147,7 +155,14 @@ export default function CustomerSearch({ value, onChange, error, disabled = fals
                                         }}
                                         className="w-full text-left px-3 py-2 hover:bg-admin-hover"
                                     >
-                                        <div className="text-sm font-medium text-admin-text truncate">{customer.name}</div>
+                                        <div className="text-sm font-medium text-admin-text truncate flex items-center gap-1.5">
+                                            {customer.name}
+                                            {!customer.is_registered && (
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-admin-text3 bg-admin-hover rounded-admin-badge px-1.5 py-0.5">
+                                                    Not yet registered
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-admin-text3 truncate">{customer.email ?? customer.phone}</div>
                                     </button>
                                 </li>

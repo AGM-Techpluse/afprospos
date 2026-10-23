@@ -25,6 +25,7 @@ interface InventoryCatalogQuery
      *     variant_label: string,
      *     is_commissionable: bool,
      *     commission_amount_minor: int|null,
+     *     image_url: string|null,
      * }>
      */
     public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null): array;
@@ -60,6 +61,7 @@ interface InventoryCatalogQuery
      *     variant_label: string,
      *     is_commissionable: bool,
      *     commission_amount_minor: int|null,
+     *     image_url: string|null,
      * }|null
      */
     public function find(int $skuId, int $shopId): ?array;

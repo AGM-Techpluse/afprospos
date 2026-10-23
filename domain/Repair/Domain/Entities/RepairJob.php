@@ -329,9 +329,20 @@ final class RepairJob
         $this->estimatedCollectionDate = $date;
     }
 
-    /** @param  'none'|'code'|'pattern'  $type */
+    /**
+     * @param  'none'|'code'|'pattern'  $type
+     *
+     * Blocked once the job has reached handover or any closed state — the
+     * technician's work on the device is over by then, so a passcode
+     * changing at that point reads as tampering rather than legitimate
+     * repair work, not just a theoretical risk.
+     */
     public function setDeviceLock(string $type, ?string $value): void
     {
+        if (in_array($this->status, ['handover', 'completed', 'cancelled', 'unrepairable', 'expired_cancelled'], true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'device_lock_update');
+        }
+
         $this->deviceLockType = $type;
         $this->deviceLockValue = $type === 'none' ? null : $value;
     }

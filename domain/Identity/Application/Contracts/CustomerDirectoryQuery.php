@@ -15,7 +15,11 @@ namespace Domain\Identity\Application\Contracts;
 interface CustomerDirectoryQuery
 {
     /**
-     * @return array<int, array{id: int, name: string, email: ?string, phone: string}>
+     * `is_registered` lets a picker (e.g. CustomerSearch.tsx) show a "not
+     * yet registered" hint for a walk-in-only record — false only for a
+     * record with no password, which can never authenticate.
+     *
+     * @return array<int, array{id: int, name: string, email: ?string, phone: string, is_registered: bool}>
      */
     public function search(string $term, int $limit = 10): array;
 
@@ -40,4 +44,15 @@ interface CustomerDirectoryQuery
      * @return array<int, array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool}> keyed by customer id
      */
     public function findMany(array $ids): array;
+
+    /**
+     * Backs the Admin Customer Directory — every customer, registered or
+     * walk-in-only. Deliberately stays within Identity's own data (no
+     * Sales/Repair visit counts) — those live in other modules' tables,
+     * and Identity reading them directly would be the exact cross-module
+     * Eloquent reach-in CPNC forbids.
+     *
+     * @return array{data: array<int, array{id:int, name:string, email:?string, phone:string, is_registered:bool, created_at:string}>, current_page:int, last_page:int, per_page:int, total:int}
+     */
+    public function paginate(?string $search, ?string $registration, int $page, int $perPage = 20): array;
 }

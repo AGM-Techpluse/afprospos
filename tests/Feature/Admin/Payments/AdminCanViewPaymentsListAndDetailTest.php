@@ -7,6 +7,8 @@ namespace Tests\Feature\Admin\Payments;
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Payments\Infrastructure\Persistence\Eloquent\PaymentTransactionRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
+use Domain\Sales\Infrastructure\Persistence\Eloquent\SalesCheckoutRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\CustomerRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,6 +34,28 @@ class AdminCanViewPaymentsListAndDetailTest extends TestCase
         $showResponse = $this->actingAs($accountant, 'staff')->get("/admin/payments/{$transaction->id}");
         $showResponse->assertOk();
         $showResponse->assertInertia(fn ($page) => $page->component('Admin/Payments/Show')->where('payment.id', $transaction->id));
+    }
+
+    public function test_the_list_shows_the_customer_for_both_a_repair_and_a_sale_checkout_payment(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $accountant = StaffRecord::factory()->create();
+        $accountant->assignRole('Accountant');
+
+        $repairCustomer = CustomerRecord::factory()->create(['name' => 'Amina Bello']);
+        $repair = RepairJobRecord::factory()->create(['customer_id' => $repairCustomer->id]);
+        PaymentTransactionRecord::factory()->create(['payable_type' => 'repair_job', 'payable_id' => $repair->id]);
+
+        $checkout = SalesCheckoutRecord::factory()->create(['customer_id' => null, 'walk_in_name' => 'Tunde Walk-in']);
+        PaymentTransactionRecord::factory()->create(['payable_type' => 'sales_checkout', 'payable_id' => $checkout->id]);
+
+        $response = $this->actingAs($accountant, 'staff')->get('/admin/payments');
+
+        $response->assertOk();
+        $names = collect($response->viewData('page')['props']['payments']['data'])->pluck('customer_name');
+        $this->assertTrue($names->contains('Amina Bello'));
+        $this->assertTrue($names->contains('Tunde Walk-in'));
     }
 
     public function test_a_staff_member_without_payments_view_cannot_see_the_list(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Identity\Infrastructure\Laravel;
 
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
+use Domain\Identity\Application\Contracts\CustomerDirectoryService;
 use Domain\Identity\Application\Contracts\CustomerSessionGateway;
 use Domain\Identity\Application\Contracts\StaffLookup;
 use Domain\Identity\Application\Contracts\StaffSessionGateway;
@@ -23,6 +24,7 @@ final class IdentityServiceProvider extends ServiceProvider
         $this->app->bind(StaffSessionGateway::class, LaravelStaffSessionGateway::class);
         $this->app->bind(CustomerSessionGateway::class, LaravelCustomerSessionGateway::class);
         $this->app->bind(CustomerDirectoryQuery::class, EloquentCustomerDirectoryQuery::class);
+        $this->app->bind(CustomerDirectoryService::class, HandlerBackedCustomerDirectoryService::class);
         $this->app->bind(StaffLookup::class, EloquentStaffLookup::class);
     }
 }

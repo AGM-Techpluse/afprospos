@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Domain\Notifications\Application\Queries\CustomerNotificationInboxQuery;
 use Domain\Notifications\Application\Queries\StaffNotificationInboxQuery;
 use Domain\RBAC\Application\Queries\EffectivePermissionsQuery;
+use Domain\Sales\Application\Queries\CheckoutDetailQuery;
 use Domain\Shop\Application\Contracts\ActiveShopSessionStore;
 use Domain\Shop\Application\Handlers\EnsureActiveShopSelectedHandler;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
@@ -21,6 +22,7 @@ class HandleInertiaRequests extends Middleware
         private readonly EnsureActiveShopSelectedHandler $ensureActiveShop,
         private readonly CustomerNotificationInboxQuery $customerNotifications,
         private readonly StaffNotificationInboxQuery $staffNotifications,
+        private readonly CheckoutDetailQuery $checkoutDetail,
     ) {}
 
     /**
@@ -58,6 +60,9 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'app_name' => config('app.name'),
             'app_logo' => asset('logo.jpg'), // Fallback until the database settings module is built
+            // Lets the landing page / nav links hide "Shop" rather than
+            // link to a route that 404s while STOREFRONT_ENABLED=false.
+            'storefrontEnabled' => (bool) config('afprospos.storefront_enabled'),
             'auth' => [
                 'staff' => $staff !== null ? [
                     'name' => $staff->name,
@@ -83,11 +88,50 @@ class HandleInertiaRequests extends Middleware
             // Feeds Admin/NotificationDropdown.tsx on every Admin page. Lazy so
             // Customer requests (no staff session) never pay for the query.
             'staffNotifications' => fn () => $staff !== null ? $this->staffNotifications->forStaff((int) $staff->id) : null,
+            // Feeds Customer/ShopAside.tsx's reserved-items section on every
+            // Customer page. Lazy so Admin requests never pay for the query,
+            // and a logged-in customer with no open cart simply gets null.
+            'cart' => fn () => $customer !== null ? $this->shareCart((int) $customer->id) : null,
             // Set by App\Http\Controllers\Concerns\FlashesToast; consumed by
             // resources/js/hooks/useFlashToast.ts. Lazy so it isn't evaluated
             // (and doesn't get pulled from the session) on requests that
             // don't read it.
             'flash' => fn () => $request->session()->get('flash'),
+        ];
+    }
+
+    /**
+     * A light summary, not the full `CheckoutDetailQuery` shape — this is
+     * evaluated on every Customer page load, so only what the aside
+     * actually renders is carried over.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function shareCart(int $customerId): ?array
+    {
+        $checkout = $this->checkoutDetail->findOpenForCustomer($customerId);
+
+        if ($checkout === null) {
+            return null;
+        }
+
+        return [
+            'id' => $checkout['id'],
+            'shop_id' => $checkout['shop_id'],
+            'shop_name' => $checkout['shop_name'],
+            'item_count' => count($checkout['items']),
+            'subtotal_minor' => $checkout['subtotal_minor'],
+            'total_minor' => $checkout['total_minor'],
+            'reservation_expires_at' => $checkout['reservation_expires_at'],
+            'items' => array_map(static fn (array $item): array => [
+                'id' => $item['id'],
+                'sku_id' => $item['sku_id'],
+                'product_name' => $item['product_name'],
+                'variant_label' => $item['variant_label'],
+                'image_url' => $item['image_url'],
+                'quantity' => $item['quantity'],
+                'unit_price_minor' => $item['unit_price_minor'],
+            ], $checkout['items']),
         ];
     }
 

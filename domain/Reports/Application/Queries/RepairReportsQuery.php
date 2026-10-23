@@ -91,7 +91,24 @@ final class RepairReportsQuery
             'service_charge_minor' => (int) $statuses->service_charge_minor,
             'refund_due_minor' => (int) $statuses->refund_due_minor,
             'earned_minor' => (int) $payments->diagnosis_fee_minor + (int) $payments->final_payment_minor + (int) $statuses->service_charge_minor,
+            'parts_cost_minor' => $this->partsCost($start, $end, $shopId, $restrictToShopIds),
         ];
+    }
+
+    /** Only `installed` parts count — mirrors the "actually fixed, not merely revealed" commission rule: a reserved-but-never-fitted part was never actually a cost. Dated on `updated_at` (when it was fitted), not `created_at` (when merely reserved). */
+    private function partsCost(Carbon $start, Carbon $end, ?int $shopId, ?array $restrictToShopIds): int
+    {
+        return (int) $this->scopeShop(
+            DB::table('repair_parts_reservations')
+                ->join('repair_jobs', 'repair_jobs.id', '=', 'repair_parts_reservations.repair_job_id'),
+            $shopId,
+            $restrictToShopIds,
+            'repair_jobs.shop_id',
+        )
+            ->where('repair_parts_reservations.status', 'installed')
+            ->whereBetween('repair_parts_reservations.updated_at', [$start, $end])
+            ->selectRaw('coalesce(sum(repair_parts_reservations.unit_price_minor * repair_parts_reservations.quantity), 0) as total')
+            ->value('total');
     }
 
     private function statusBreakdown(Carbon $start, Carbon $end, ?int $shopId, ?array $restrictToShopIds): array

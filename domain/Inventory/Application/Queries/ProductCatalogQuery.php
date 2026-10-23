@@ -132,6 +132,7 @@ final class ProductCatalogQuery
             'category' => $sku->product->category,
             'image_path' => $sku->product->image_path,
             'image_url' => $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null,
+            'description' => $sku->product->description,
             'attributes' => $sku->attributes,
             'is_serialized' => $sku->is_serialized,
             'cost_price_minor' => $sku->cost_price_minor,
