@@ -14,6 +14,7 @@ use Domain\Inventory\Application\Handlers\InitiateInventoryTransferHandler;
 use Domain\Inventory\Application\Handlers\ReceiveInventoryTransferHandler;
 use Domain\Inventory\Application\Queries\InventoryTransferQuery;
 use Domain\Inventory\Application\Queries\ProductCatalogQuery;
+use Domain\Inventory\Application\Queries\SerializedUnitsQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotTransferable;
@@ -35,6 +36,7 @@ final class InventoryTransferController
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly StockLevelQuery $stockLevels,
         private readonly ProductCatalogQuery $catalog,
+        private readonly SerializedUnitsQuery $serializedUnits,
         private readonly InitiateInventoryTransferHandler $initiate,
         private readonly ReceiveInventoryTransferHandler $receiveTransfer,
         private readonly CancelInventoryTransferHandler $cancel,
@@ -73,6 +75,36 @@ final class InventoryTransferController
             page: 1,
             perPage: 50,
             category: $request->string('category')->toString() ?: null,
+        );
+
+        return response()->json(['results' => $results['data']]);
+    }
+
+    /**
+     * Backs the "Single serialized unit (IMEI)" picker on Transfers/Create
+     * — a serialized SKU has no quantity, only individual units, so this
+     * searches InventoryItemRecord rows directly (SerializedUnitsQuery,
+     * already built for the Admin "Serialized units" browse page) rather
+     * than requiring staff to already know a raw SKU ID / inventory item
+     * ID. Only `available` units are transferable (InventoryItem::beginTransfer()).
+     */
+    public function searchSerializedUnits(Request $request): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $shopId = $request->integer('from_shop_id') ?: null;
+
+        if ($shopId === null) {
+            return response()->json(['results' => []]);
+        }
+
+        abort_unless($actor->canAccessShop($shopId), 403);
+
+        $results = $this->serializedUnits->paginate(
+            search: $request->string('search')->toString() ?: null,
+            shopId: $shopId,
+            status: 'available',
+            page: 1,
+            perPage: 50,
         );
 
         return response()->json(['results' => $results['data']]);

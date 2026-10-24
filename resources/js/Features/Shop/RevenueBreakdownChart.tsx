@@ -16,7 +16,7 @@ export default function RevenueBreakdownChart({ breakdown }: { breakdown: Revenu
 
     if (total === 0) {
         return (
-            <div className="h-64 w-full min-w-0 flex items-center justify-center">
+            <div className="h-60 w-full min-w-0 flex items-center justify-center">
                 <p className="text-sm text-admin-text3">No confirmed revenue yet.</p>
             </div>
         );
@@ -52,11 +52,11 @@ export default function RevenueBreakdownChart({ breakdown }: { breakdown: Revenu
     };
 
     return (
-        <div className="h-64 w-full min-w-0 flex flex-col items-center justify-center gap-5">
-            <div className="relative h-44 w-44 shrink-0">
+        <div className="w-full min-w-0 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 py-1">
+            <div className="relative h-60 w-60 shrink-0">
                 <Doughnut data={data} options={options} />
             </div>
-            <ul className="w-full max-w-64 space-y-2">
+            <ul className="w-full max-w-xs space-y-3">
                 {breakdown.map((slice, i) => {
                     const percent = Math.round((slice.revenue_minor / total) * 100);
                     return (

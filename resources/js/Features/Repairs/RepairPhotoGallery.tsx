@@ -56,7 +56,7 @@ export default function RepairPhotoGallery({ repairId, photos, disabled = false 
             {photos.length === 0 ? (
                 <AdminEmptyState icon="camera" title="No photos yet" description="Add evidence of the device's condition." />
             ) : (
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                     {photos.map((photo) => (
                         <div key={photo.id} className="relative group">
                             <a href={photo.url} target="_blank" rel="noopener noreferrer">

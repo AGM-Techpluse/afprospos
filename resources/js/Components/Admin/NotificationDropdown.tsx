@@ -1,44 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
-
-interface NotificationRow {
-    id: number;
-    event_type: string;
-    source_id: number;
-    category: string;
-    payload: { shop_id?: number; amount_minor?: number };
-    read_at: string | null;
-    created_at: string;
-}
-
-const TITLES: Record<string, string> = {
-    CheckoutDiscountApplied: 'Checkout adjustment awaiting your approval',
-    RepairPaymentApprovalRequested: 'Repair payment awaiting your approval',
-    RepairDownPaymentApprovalRequested: 'Repair down payment awaiting your approval',
-};
-
-const LINKS: Record<string, (notification: NotificationRow) => string> = {
-    CheckoutDiscountApplied: (n) => `/admin/sales/checkout?checkout=${n.source_id}`,
-    RepairPaymentApprovalRequested: (n) => `/admin/repairs/${n.source_id}`,
-    RepairDownPaymentApprovalRequested: (n) => `/admin/repairs/${n.source_id}`,
-};
-
-function bodyFor(notification: NotificationRow): string {
-    if (notification.event_type === 'CheckoutDiscountApplied') {
-        return 'A discount or trade-in credit needs your approval before the checkout can be paid.';
-    }
-
-    if (notification.event_type === 'RepairPaymentApprovalRequested') {
-        return 'A payment recording request needs your approval.';
-    }
-
-    if (notification.event_type === 'RepairDownPaymentApprovalRequested') {
-        return 'Frontdesk recorded a down payment — it needs your approval.';
-    }
-
-    return 'View details for more information.';
-}
+import { bodyFor, linkFor, NotificationRow, titleFor } from '../../lib/notificationCopy';
 
 /** Bell icon + panel, fed by the `staffNotifications` shared Inertia prop (HandleInertiaRequests) so every Admin page has fresh-enough data without a dedicated fetch. */
 export default function NotificationDropdown() {
@@ -79,7 +42,7 @@ export default function NotificationDropdown() {
      * mark-read has actually finished.
      */
     function openNotification(notification: NotificationRow) {
-        const url = (LINKS[notification.event_type] ?? (() => '/admin/dashboard'))(notification);
+        const url = linkFor(notification);
 
         if (notification.read_at === null) {
             router.post(
@@ -112,7 +75,7 @@ export default function NotificationDropdown() {
             {open && (
                 <div
                     role="menu"
-                    className="absolute right-0 top-full mt-2 w-80 bg-admin-surface rounded-admin-card shadow-lg border border-admin-border p-4 z-50 max-h-96 overflow-y-auto"
+                    className="absolute right-0 top-full mt-2 w-80 bg-admin-surface rounded-admin-card shadow-lg border border-admin-border p-4 z-50 max-h-96 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                     <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold text-admin-text text-sm">Notifications</span>
@@ -132,9 +95,7 @@ export default function NotificationDropdown() {
                                     onClick={() => openNotification(notification)}
                                     className={`block w-full rounded-admin-button px-2 py-2 text-left cursor-pointer ${notification.read_at === null ? 'bg-admin-blue/10' : 'hover:bg-admin-hover'}`}
                                 >
-                                    <p className="text-xs font-semibold text-admin-text">
-                                        {TITLES[notification.event_type] ?? notification.event_type}
-                                    </p>
+                                    <p className="text-xs font-semibold text-admin-text">{titleFor(notification)}</p>
                                     <p className="text-xs text-admin-text2">{bodyFor(notification)}</p>
                                     <p className="text-[10px] text-admin-text3 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
                                 </button>

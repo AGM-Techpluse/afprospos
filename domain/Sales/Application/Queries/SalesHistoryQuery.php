@@ -6,6 +6,7 @@ namespace Domain\Sales\Application\Queries;
 
 use Domain\Identity\Application\Contracts\CustomerDirectoryQuery;
 use Domain\Sales\Infrastructure\Persistence\Eloquent\SaleRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Illuminate\Support\Carbon;
 
 /** Backs Admin Sales/Index — paginated, search/filter per the standing table-pages rule. */
@@ -36,11 +37,13 @@ final class SalesHistoryQuery
         $paginator = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
         $sales = $paginator->getCollection();
         $customers = $this->customers->findMany($sales->pluck('customer_id')->filter()->unique()->all());
+        $shopNames = ShopRecord::query()->whereIn('id', $sales->pluck('shop_id')->unique())->pluck('name', 'id');
 
         return [
             'data' => $sales->map(static fn (SaleRecord $sale): array => [
                 'id' => $sale->id,
                 'shop_id' => $sale->shop_id,
+                'shop_name' => $shopNames->get($sale->shop_id),
                 'customer_id' => $sale->customer_id,
                 'customer_name' => $sale->customer_id !== null ? ($customers[$sale->customer_id]['name'] ?? null) : null,
                 'walk_in_name' => $sale->walk_in_name,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, usePoll } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import AdminAccountMenu from './AdminAccountMenu';
 import NotificationDropdown from './NotificationDropdown';
@@ -7,6 +7,7 @@ import ShopSwitcher from './ShopSwitcher';
 import { AdminToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 import { useFlashToast } from '../../hooks/useFlashToast';
+import { useApprovalAlerts } from '../../hooks/useApprovalAlerts';
 
 interface AdminShellProps {
     children: React.ReactNode;
@@ -166,6 +167,9 @@ export default function AdminShell({ children }: AdminShellProps) {
     const activeKey = useActiveKey(url);
 
     useFlashToast();
+    useApprovalAlerts();
+    // Keeps `staffNotifications` fresh while a manager sits on one page — otherwise it only updates on the next Inertia navigation, and a pending approval could sit unnoticed for however long they stay put.
+    usePoll(20000, { only: ['staffNotifications'] });
 
     useEffect(() => {
         writeStoredCollapsed(collapsed);
@@ -185,7 +189,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                     {!collapsed && <span className="font-semibold text-admin-base truncate">{app_name}</span>}
                 </div>
 
-                <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
+                <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <NavGroups collapsed={collapsed} activeKey={activeKey} />
                 </nav>
 
@@ -215,7 +219,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                                 <Icon name="x-lg" />
                             </button>
                         </div>
-                        <nav className="flex-1 py-4 px-2 overflow-y-auto">
+                        <nav className="flex-1 py-4 px-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <NavGroups collapsed={false} activeKey={activeKey} onNavigate={() => setIsMobileDrawerOpen(false)} />
                         </nav>
                     </aside>

@@ -12,6 +12,7 @@ import { formatNaira } from '../../../lib/money';
 type SaleRow = {
     id: number;
     shop_id: number;
+    shop_name: string | null;
     customer_id: number | null;
     customer_name: string | null;
     walk_in_name: string | null;
@@ -32,6 +33,16 @@ const COLUMNS: DataTableColumn<SaleRow>[] = [
     { key: 'invoice_number', label: 'Invoice' },
     { key: 'created_at', label: 'Date', render: (row) => new Date(row.created_at).toLocaleString() },
     { key: 'customer_id', label: 'Customer', render: (row) => (row.customer_id ? (row.customer_name ?? 'Customer') : row.walk_in_name ?? 'Walk-in') },
+    {
+        key: 'shop_id',
+        label: 'Shop',
+        render: (row) => (
+            <div>
+                <div className="text-admin-text">{row.shop_name ?? `Shop #${row.shop_id}`}</div>
+                <div className="text-[10px] text-admin-text3">#{row.shop_id}</div>
+            </div>
+        ),
+    },
     { key: 'payment_method', label: 'Payment' },
     { key: 'total_minor', label: 'Total', render: (row) => formatNaira(row.total_minor) },
 ];
@@ -78,7 +89,7 @@ export default function SalesIndex({ sales, filters }: SalesIndexProps) {
                 getRowKey={(row) => row.id}
                 mobilePrimaryField="invoice_number"
                 mobileStatusField="payment_method"
-                mobileDetailFields={['created_at', 'customer_id', 'total_minor']}
+                mobileDetailFields={['created_at', 'customer_id', 'shop_id', 'total_minor']}
                 toolbar={
                     <div className="relative flex-1 min-w-[160px] max-w-[260px]">
                         <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-admin-text3 text-xs" />

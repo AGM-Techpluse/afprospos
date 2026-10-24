@@ -53,6 +53,7 @@ final class SerializedUnitsQuery
                 'sku_code' => $item->sku->sku_code,
                 'brand' => $item->sku->product->brand,
                 'model' => $item->sku->product->model,
+                'category' => $item->sku->product->category,
                 'shop_id' => $item->current_shop_id,
                 'condition' => $item->condition,
                 'status' => $item->status,

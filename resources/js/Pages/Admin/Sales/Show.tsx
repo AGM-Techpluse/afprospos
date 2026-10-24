@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import { formatNaira } from '../../../lib/money';
 
@@ -20,6 +21,7 @@ type SaleAdjustment = { type: string; amount_minor: number };
 type Sale = {
     id: number;
     shop_id: number;
+    shop_name: string | null;
     customer_id: number | null;
     customer_name: string | null;
     walk_in_name: string | null;
@@ -51,8 +53,14 @@ export default function SalesShow({ sale }: { sale: Sale }) {
                 }
             />
 
-            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 max-w-2xl">
+            <AdminSectionCard title="Sale details" className="max-w-2xl">
+            <div className="p-6">
                 <dl className="grid grid-cols-2 gap-y-2 text-sm mb-6">
+                    <dt className="text-admin-text2">Shop</dt>
+                    <dd className="text-admin-text text-right">
+                        {sale.shop_name ?? `Shop #${sale.shop_id}`}
+                        <div className="text-[10px] text-admin-text3">#{sale.shop_id}</div>
+                    </dd>
                     <dt className="text-admin-text2">Customer</dt>
                     <dd className="text-admin-text text-right">
                         {sale.customer_id ? (sale.customer_name ?? 'Customer') : sale.walk_in_name ?? 'Walk-in'}
@@ -110,6 +118,7 @@ export default function SalesShow({ sale }: { sale: Sale }) {
                     </div>
                 </div>
             </div>
+            </AdminSectionCard>
         </AdminShell>
     );
 }

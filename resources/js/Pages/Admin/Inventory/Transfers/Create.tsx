@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
-import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
@@ -195,55 +194,163 @@ function BulkTransferPicker({ shops, categories }: { shops: Shop[]; categories: 
     );
 }
 
-/** Single serialized (IMEI-tracked) unit — quantity doesn't apply to an individually-tracked device, so it keeps its own simple form. */
+type SerializedUnitResult = {
+    id: number;
+    imei: string;
+    sku_id: number;
+    sku_code: string;
+    brand: string;
+    model: string;
+    category: string;
+    condition: string;
+    status: string;
+};
+
+/**
+ * Single serialized (IMEI-tracked) unit — quantity doesn't apply to an
+ * individually-tracked device, so this picks exactly one physical unit
+ * rather than a quantity. Mirrors BulkTransferPicker's debounced
+ * search/category UX (search-serialized, SerializedUnitsQuery) instead
+ * of requiring staff to already know the unit's raw database IDs.
+ */
 function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
-    const { data, setData, post, processing, errors } = useForm({
-        sku_id: '',
-        inventory_item_id: '',
-        from_shop_id: shops[0]?.id.toString() ?? '',
-        to_shop_id: shops[1]?.id.toString() ?? shops[0]?.id.toString() ?? '',
-    });
+    const [fromShopId, setFromShopId] = useState(shops[0]?.id.toString() ?? '');
+    const [toShopId, setToShopId] = useState(shops[1]?.id.toString() ?? shops[0]?.id.toString() ?? '');
+    const [term, setTerm] = useState('');
+    const [results, setResults] = useState<SerializedUnitResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [processing, setProcessing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const requestId = useRef(0);
+
+    useEffect(() => {
+        if (!fromShopId) return;
+
+        const currentRequest = ++requestId.current;
+        const timeout = setTimeout(() => {
+            setLoading(true);
+            const params = new URLSearchParams({ from_shop_id: fromShopId });
+            if (term.trim() !== '') params.set('search', term.trim());
+
+            fetch(`/admin/inventory/transfers/search-serialized?${params.toString()}`, { credentials: 'same-origin' })
+                .then((response) => response.json())
+                .then((json: { results: SerializedUnitResult[] }) => {
+                    if (requestId.current === currentRequest) {
+                        setResults(json.results);
+                        setLoading(false);
+                    }
+                })
+                .catch(() => setLoading(false));
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [fromShopId, term]);
+
+    const selected = results.find((row) => row.id === selectedId) ?? null;
 
     function submit(e: FormEvent) {
         e.preventDefault();
-        post('/admin/inventory/transfers');
+        if (!selected) return;
+        setProcessing(true);
+        setError(null);
+
+        router.post(
+            '/admin/inventory/transfers',
+            {
+                sku_id: selected.sku_id,
+                inventory_item_id: selected.id,
+                from_shop_id: fromShopId,
+                to_shop_id: toShopId,
+            },
+            {
+                onFinish: () => setProcessing(false),
+                onError: (errors) => setError(errors.inventory_item_id ?? errors.sku_id ?? 'Could not initiate the transfer.'),
+            },
+        );
     }
 
     return (
-        <form onSubmit={submit} className="max-w-[480px]">
-            <AdminInput
-                label="SKU ID"
-                type="number"
-                value={data.sku_id}
-                onChange={(e) => setData('sku_id', e.target.value)}
-                error={errors.sku_id}
-                required
-            />
-            <AdminInput
-                label="Inventory item ID (IMEI unit)"
-                type="number"
-                value={data.inventory_item_id}
-                onChange={(e) => setData('inventory_item_id', e.target.value)}
-                error={errors.inventory_item_id}
-                required
-            />
-            <AdminSelect label="From shop" value={data.from_shop_id} onChange={(e) => setData('from_shop_id', e.target.value)}>
-                {shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                        {shop.name} ({shop.sku_prefix_code})
-                    </option>
-                ))}
-            </AdminSelect>
-            <AdminSelect label="To shop" value={data.to_shop_id} onChange={(e) => setData('to_shop_id', e.target.value)} error={errors.to_shop_id}>
-                {shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                        {shop.name} ({shop.sku_prefix_code})
-                    </option>
-                ))}
-            </AdminSelect>
-            <AdminButton type="submit" isLoading={processing}>
-                Transfer unit
+        <form onSubmit={submit}>
+            <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                <AdminSelect label="From shop" value={fromShopId} onChange={(e) => { setFromShopId(e.target.value); setSelectedId(null); }}>
+                    {shops.map((shop) => (
+                        <option key={shop.id} value={shop.id}>
+                            {shop.name} ({shop.sku_prefix_code})
+                        </option>
+                    ))}
+                </AdminSelect>
+                <AdminSelect label="To shop" value={toShopId} onChange={(e) => setToShopId(e.target.value)}>
+                    {shops.map((shop) => (
+                        <option key={shop.id} value={shop.id}>
+                            {shop.name} ({shop.sku_prefix_code})
+                        </option>
+                    ))}
+                </AdminSelect>
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-xs font-semibold text-admin-text mb-1.5">Search</label>
+                <div className="relative">
+                    <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text3" />
+                    <input
+                        type="text"
+                        value={term}
+                        onChange={(e) => setTerm(e.target.value)}
+                        placeholder="Search by IMEI, name, brand, or SKU…"
+                        className="w-full border border-admin-border-strong rounded-admin-button pl-9 pr-3 py-2 text-admin-field outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                    />
+                </div>
+            </div>
+
+            <div className="border border-admin-border rounded-admin-card mb-4 max-h-[420px] overflow-y-auto">
+                {loading ? (
+                    <p className="text-sm text-admin-text3 p-4">Searching…</p>
+                ) : results.length === 0 ? (
+                    <AdminEmptyState
+                        icon="upc-scan"
+                        title={fromShopId ? 'No available serialized units at this shop' : 'Pick a from-shop to start'}
+                        description="Try a different search term — units already mid-transfer or sold don't show here."
+                    />
+                ) : (
+                    <table className="w-full text-sm">
+                        <thead className="bg-admin-hover text-xs text-admin-text2 sticky top-0">
+                            <tr>
+                                <th className="w-10 p-3"></th>
+                                <th className="text-left p-3">Product</th>
+                                <th className="text-left p-3">IMEI</th>
+                                <th className="text-left p-3">SKU</th>
+                                <th className="text-left p-3">Condition</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-admin-border">
+                            {results.map((row) => (
+                                <tr
+                                    key={row.id}
+                                    className={`cursor-pointer ${selectedId === row.id ? 'bg-admin-blue/5' : ''}`}
+                                    onClick={() => setSelectedId(row.id)}
+                                >
+                                    <td className="p-3">
+                                        <input type="radio" checked={selectedId === row.id} onChange={() => setSelectedId(row.id)} />
+                                    </td>
+                                    <td className="p-3 text-admin-text">
+                                        {row.brand} {row.model}
+                                    </td>
+                                    <td className="p-3 text-admin-text3 font-mono">{row.imei}</td>
+                                    <td className="p-3 text-admin-text3">{row.sku_code}</td>
+                                    <td className="p-3 text-admin-text3 capitalize">{row.condition}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
+            <AdminButton type="submit" isLoading={processing} disabled={!selected || fromShopId === toShopId}>
+                {selected ? `Transfer ${selected.brand} ${selected.model}` : 'Transfer unit'}
             </AdminButton>
+            {fromShopId === toShopId && <p className="text-xs text-admin-red mt-2">From shop and to shop must be different.</p>}
+            {error && <p className="text-xs text-admin-red mt-2">{error}</p>}
         </form>
     );
 }

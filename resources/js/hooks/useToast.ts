@@ -7,6 +7,8 @@ export interface ToastItem {
     kind: ToastKind;
     title: string;
     message?: string;
+    /** Skips the auto-dismiss timer — stays until the viewer dismisses it. For things easy to miss otherwise (e.g. an approval request), not routine action-confirmation toasts. */
+    sticky?: boolean;
 }
 
 interface ToastContextValue {
@@ -31,7 +33,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const push = useCallback((input: Omit<ToastItem, 'id'>) => {
         const id = crypto.randomUUID();
         setToasts((current) => [...current, { ...input, id }]);
-        window.setTimeout(() => dismiss(id), TOAST_AUTO_DISMISS_MS);
+        if (!input.sticky) {
+            window.setTimeout(() => dismiss(id), TOAST_AUTO_DISMISS_MS);
+        }
     }, [dismiss]);
 
     const contextValue = useMemo(() => ({ toasts, dismiss }), [toasts, dismiss]);

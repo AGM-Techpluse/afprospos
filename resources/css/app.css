@@ -332,3 +332,12 @@
     );
     background-repeat: repeat-x;
 }
+
+/* The page still scrolls normally — this only hides the OS/browser scrollbar track, matching the same treatment applied to the admin sidebar nav and the notification dropdown. */
+html {
+    scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+    display: none;
+}

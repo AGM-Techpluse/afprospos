@@ -301,6 +301,10 @@ Route::prefix('admin')
             ->name('inventory.transfers.search');
 
         Route::middleware('permission:inventory.edit')
+            ->get('/inventory/transfers/search-serialized', [InventoryTransferController::class, 'searchSerializedUnits'])
+            ->name('inventory.transfers.search-serialized');
+
+        Route::middleware('permission:inventory.edit')
             ->post('/inventory/transfers', [InventoryTransferController::class, 'store'])
             ->name('inventory.transfers.store');
 

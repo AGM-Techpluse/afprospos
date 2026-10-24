@@ -8,6 +8,8 @@ use Domain\Notifications\Domain\Entities\NotificationEvent;
 use Domain\Notifications\Domain\Repositories\NotificationEventRepository;
 use Domain\Notifications\Domain\ValueObjects\NotificationEventId;
 use Domain\Notifications\Infrastructure\Persistence\Eloquent\NotificationEventRecord;
+use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
+use Illuminate\Support\Collection;
 
 final class EloquentNotificationEventRepository implements NotificationEventRepository
 {
@@ -88,8 +90,15 @@ final class EloquentNotificationEventRepository implements NotificationEventRepo
             ->limit($limit)
             ->get();
 
+        $shopIds = $records
+            ->map(fn (NotificationEventRecord $record): mixed => $record->payload['shop_id'] ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+        $shopNames = ShopRecord::query()->whereIn('id', $shopIds)->pluck('name', 'id');
+
         return [
-            'data' => $records->map(fn (NotificationEventRecord $record): array => $this->toArray($record))->all(),
+            'data' => $records->map(fn (NotificationEventRecord $record): array => $this->toArray($record, $shopNames))->all(),
             'unread_count' => NotificationEventRecord::query()
                 ->where('recipient_type', 'staff')
                 ->where('recipient_id', $staffId)
@@ -110,15 +119,22 @@ final class EloquentNotificationEventRepository implements NotificationEventRepo
     }
 
     /** @return array<string, mixed> */
-    private function toArray(NotificationEventRecord $record): array
+    /** @param  Collection<int|string, string>  $shopNames */
+    private function toArray(NotificationEventRecord $record, $shopNames = null): array
     {
+        $payload = $record->payload;
+
+        if ($shopNames !== null && isset($payload['shop_id'])) {
+            $payload['shop_name'] = $shopNames->get($payload['shop_id']);
+        }
+
         return [
             'id' => $record->id,
             'event_type' => $record->event_type,
             'source_module' => $record->source_module,
             'source_id' => $record->source_id,
             'category' => $record->category,
-            'payload' => $record->payload,
+            'payload' => $payload,
             'status' => $record->status,
             'read_at' => $record->read_at?->toIso8601String(),
             'created_at' => $record->created_at->toIso8601String(),

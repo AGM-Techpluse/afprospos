@@ -14,6 +14,7 @@ import { PartReservationRow } from '../../../Features/Repairs/PartsReservationPi
 import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
 import FaultPicker, { FaultSearchResult } from '../../../Features/Repairs/FaultPicker';
 import SuggestedPartsForFaults from '../../../Features/Repairs/SuggestedPartsForFaults';
+import Icon from '../../../Components/Icons/Icon';
 import { formatNaira } from '../../../lib/money';
 
 type RepairDetail = {
@@ -152,6 +153,8 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
     const [customFixedFaultCommissionNaira, setCustomFixedFaultCommissionNaira] = useState('');
     const [supplementalAmountNaira, setSupplementalAmountNaira] = useState('');
     const [supplementalReason, setSupplementalReason] = useState('');
+    /** Mobile-only — the Details card collapses into a dropdown under Actions there; desktop always shows it (forced via `lg:block` regardless of this state). */
+    const [detailsExpanded, setDetailsExpanded] = useState(false);
     const [addingCustomFixedFault, setAddingCustomFixedFault] = useState(false);
 
     function post(url: string, data: Record<string, string> = {}) {
@@ -400,8 +403,21 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
             </div>
 
             <div className="py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
-                <AdminSectionCard title="Details">
-                <div className="p-6">
+                <div className="order-2 lg:order-1 min-w-0 flex flex-col gap-6">
+                <AdminSectionCard
+                    title="Details"
+                    action={
+                        <button
+                            type="button"
+                            onClick={() => setDetailsExpanded((current) => !current)}
+                            className="lg:hidden text-admin-text2 p-1 -m-1"
+                            aria-label={detailsExpanded ? 'Collapse details' : 'Expand details'}
+                        >
+                            <Icon name={detailsExpanded ? 'chevron-up' : 'chevron-down'} />
+                        </button>
+                    }
+                >
+                <div className={`p-6 ${detailsExpanded ? 'block' : 'hidden'} lg:block`}>
                     {(repair.reported_issue || repair.problem_tags.length > 0) && (
                         <div className="mb-4 pb-4 border-b border-admin-border">
                             <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
@@ -647,7 +663,14 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 </div>
                 </AdminSectionCard>
 
-                <div className="flex flex-col gap-2">
+                <AdminSectionCard title="Photos">
+                    <div className="p-6">
+                        <RepairPhotoGallery repairId={repair.id} photos={repair.photos} disabled={CLOSED_STATUSES.includes(repair.repair_status)} />
+                    </div>
+                </AdminSectionCard>
+                </div>
+
+                <div className="order-1 lg:order-2 flex flex-col gap-2 lg:sticky lg:top-[calc(var(--a-topbar-height)+1.5rem)]">
                     <h2 className="text-sm font-semibold text-admin-text mb-1">Actions</h2>
 
                     {false && ['diagnosing', 'unrepairable', 'awaiting_authorization', 'payment_overdue', 'cancelled'].includes(repair.repair_status) && (
@@ -1308,14 +1331,6 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                         </p>
                     )}
                 </div>
-            </div>
-
-            <div className="pt-6 max-w-4xl">
-                <AdminSectionCard title="Photos">
-                    <div className="p-6">
-                        <RepairPhotoGallery repairId={repair.id} photos={repair.photos} disabled={CLOSED_STATUSES.includes(repair.repair_status)} />
-                    </div>
-                </AdminSectionCard>
             </div>
             </div>
         </AdminShell>
