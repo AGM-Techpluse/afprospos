@@ -717,6 +717,16 @@ Route::prefix('admin')
             ->whereNumber(['repair', 'approval'])
             ->name('repairs.down-payment-approval.decide');
 
+        Route::middleware('permission:repairs.edit')
+            ->post('/repairs/{repair}/supplemental-quote', [RepairsController::class, 'requestSupplementalQuote'])
+            ->whereNumber('repair')
+            ->name('repairs.supplemental-quote.request');
+
+        Route::middleware('permission:repairs.authorize')
+            ->post('/repairs/{repair}/supplemental-quote/{quote}/decide', [RepairsController::class, 'decideSupplementalQuote'])
+            ->whereNumber(['repair', 'quote'])
+            ->name('repairs.supplemental-quote.decide');
+
         Route::middleware('permission:repairs.view')
             ->get('/repairs/{repair}/parts', [RepairsController::class, 'parts'])
             ->whereNumber('repair')
@@ -731,6 +741,11 @@ Route::prefix('admin')
             ->get('/repairs/{repair}/faults/search', [RepairsController::class, 'searchFaults'])
             ->whereNumber('repair')
             ->name('repairs.faults.search');
+
+        Route::middleware('permission:repairs.view')
+            ->get('/repairs/{repair}/faults/suggested-parts', [RepairsController::class, 'suggestedPartsForFaults'])
+            ->whereNumber('repair')
+            ->name('repairs.faults.suggested-parts');
 
         Route::middleware('permission:repairs.progress')
             ->post('/repairs/{repair}/faults', [RepairsController::class, 'addFixedFaultToCatalog'])

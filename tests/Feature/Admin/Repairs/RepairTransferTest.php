@@ -141,7 +141,7 @@ final class RepairTransferTest extends TestCase
             'target_shop_id' => $targetShop->id,
         ]);
 
-        $response->assertSessionHasErrors('status');
+        $response->assertSessionHas('flash.kind', 'danger');
         $this->assertDatabaseHas('repair_jobs', ['id' => $repair->id, 'shop_id' => $sourceShop->id]);
     }
 }

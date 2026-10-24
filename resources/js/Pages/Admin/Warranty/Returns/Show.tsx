@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
+import AdminSectionCard from '../../../../Components/Admin/AdminSectionCard';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
@@ -123,127 +124,133 @@ export default function ReturnRequestShow({ returnRequest }: ReturnRequestShowPr
                 }
             />
 
-            <div className="flex flex-col gap-6 max-w-2xl">
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    {returnRequest.sale && (
-                        <>
-                            <DetailRow label="Sale" value={returnRequest.sale.invoice_number ?? `#${returnRequest.sale.id}`} />
-                            <DetailRow label="Sale total" value={formatNaira(returnRequest.sale.total_minor)} />
-                            <DetailRow label="Sale payment transaction" value={returnRequest.sale.payment_transaction_id ?? '—'} />
-                        </>
-                    )}
-                    <DetailRow label="Customer phone" value={returnRequest.customer?.phone ?? '—'} />
-                    <DetailRow
-                        label="Return window"
-                        value={
-                            <span className={isExpired ? 'text-admin-red' : undefined}>
-                                {new Date(returnRequest.return_window_expires_at).toLocaleDateString()} {isExpired ? '(expired)' : ''}
-                            </span>
-                        }
-                    />
-                    {returnRequest.denial_reason && <DetailRow label="Denial reason" value={returnRequest.denial_reason} />}
-                    {returnRequest.refund_transaction_id && <DetailRow label="Refund transaction" value={`#${returnRequest.refund_transaction_id}`} />}
-                    {returnRequest.resolution_type === 'exchange' && returnRequest.exchange_checkout_id && (
-                        <DetailRow label="Exchanged into checkout" value={`#${returnRequest.exchange_checkout_id}`} />
-                    )}
-                    <DetailRow label="Requested" value={new Date(returnRequest.created_at).toLocaleString()} />
-                </div>
+            <div className="max-w-2xl">
+                <AdminSectionCard title="Return request">
+                    <div className="divide-y divide-admin-border">
+                        <div className="p-6">
+                            {returnRequest.sale && (
+                                <>
+                                    <DetailRow label="Sale" value={returnRequest.sale.invoice_number ?? `#${returnRequest.sale.id}`} />
+                                    <DetailRow label="Sale total" value={formatNaira(returnRequest.sale.total_minor)} />
+                                    <DetailRow label="Sale payment transaction" value={returnRequest.sale.payment_transaction_id ?? '—'} />
+                                </>
+                            )}
+                            <DetailRow label="Customer phone" value={returnRequest.customer?.phone ?? '—'} />
+                            <DetailRow
+                                label="Return window"
+                                value={
+                                    <span className={isExpired ? 'text-admin-red' : undefined}>
+                                        {new Date(returnRequest.return_window_expires_at).toLocaleDateString()} {isExpired ? '(expired)' : ''}
+                                    </span>
+                                }
+                            />
+                            {returnRequest.denial_reason && <DetailRow label="Denial reason" value={returnRequest.denial_reason} />}
+                            {returnRequest.refund_transaction_id && (
+                                <DetailRow label="Refund transaction" value={`#${returnRequest.refund_transaction_id}`} />
+                            )}
+                            {returnRequest.resolution_type === 'exchange' && returnRequest.exchange_checkout_id && (
+                                <DetailRow label="Exchanged into checkout" value={`#${returnRequest.exchange_checkout_id}`} />
+                            )}
+                            <DetailRow label="Requested" value={new Date(returnRequest.created_at).toLocaleString()} />
+                        </div>
 
-                {canAssess && (
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                        <div className="text-sm font-semibold text-admin-text mb-3">Start assessment</div>
-                        <form onSubmit={assess}>
-                            <AdminButton type="submit" isLoading={processing}>Move to under assessment</AdminButton>
-                        </form>
-                    </div>
-                )}
-
-                {canDecide && (
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                        <div className="text-sm font-semibold text-admin-text mb-3">Decide this return</div>
-                        {isExpired && (
-                            <p className="text-xs text-admin-red mb-3">
-                                This request is past its return window — approving requires the override action below instead.
-                            </p>
+                        {canAssess && (
+                            <div className="p-6">
+                                <div className="text-sm font-semibold text-admin-text mb-3">Start assessment</div>
+                                <form onSubmit={assess}>
+                                    <AdminButton type="submit" isLoading={processing}>Move to under assessment</AdminButton>
+                                </form>
+                            </div>
                         )}
-                        {!isExpired && (
-                            <form onSubmit={approve} className="mb-4">
-                                <AdminButton type="submit" isLoading={processing}>Approve</AdminButton>
-                            </form>
+
+                        {canDecide && (
+                            <div className="p-6">
+                                <div className="text-sm font-semibold text-admin-text mb-3">Decide this return</div>
+                                {isExpired && (
+                                    <p className="text-xs text-admin-red mb-3">
+                                        This request is past its return window — approving requires the override action below instead.
+                                    </p>
+                                )}
+                                {!isExpired && (
+                                    <form onSubmit={approve} className="mb-4">
+                                        <AdminButton type="submit" isLoading={processing}>Approve</AdminButton>
+                                    </form>
+                                )}
+                                <form onSubmit={deny}>
+                                    <AdminTextarea
+                                        label="Denial reason"
+                                        value={reason}
+                                        onChange={(e) => setReason(e.target.value)}
+                                        placeholder="Why is this return being denied?"
+                                        required
+                                    />
+                                    <AdminButton type="submit" variant="warning" isLoading={processing}>Deny</AdminButton>
+                                </form>
+                            </div>
                         )}
-                        <form onSubmit={deny}>
-                            <AdminTextarea
-                                label="Denial reason"
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="Why is this return being denied?"
-                                required
-                            />
-                            <AdminButton type="submit" variant="warning" isLoading={processing}>Deny</AdminButton>
-                        </form>
-                    </div>
-                )}
 
-                {canOverride && (
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                        <div className="text-sm font-semibold text-admin-text mb-1">Administrative override</div>
-                        <p className="text-xs text-admin-text2 mb-3">
-                            WAR-BR-12: approve this denied return anyway (e.g. outside the return window, exceptional case).
-                        </p>
-                        <AdminButton type="button" variant="warning" isLoading={processing} onClick={overrideApprove}>
-                            Approve by override
-                        </AdminButton>
-                    </div>
-                )}
+                        {canOverride && (
+                            <div className="p-6">
+                                <div className="text-sm font-semibold text-admin-text mb-1">Administrative override</div>
+                                <p className="text-xs text-admin-text2 mb-3">
+                                    WAR-BR-12: approve this denied return anyway (e.g. outside the return window, exceptional case).
+                                </p>
+                                <AdminButton type="button" variant="warning" isLoading={processing} onClick={overrideApprove}>
+                                    Approve by override
+                                </AdminButton>
+                            </div>
+                        )}
 
-                {canRefund && (
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                        <div className="text-sm font-semibold text-admin-text mb-3">Process refund</div>
-                        <p className="text-xs text-admin-text2 mb-3">
-                            Requires the separate approve-refund permission (same separation of duties as Warranty Claims).
-                        </p>
-                        <form onSubmit={processRefund}>
-                            <AdminInput
-                                label="Payment transaction ID"
-                                type="number"
-                                min={1}
-                                value={paymentTransactionId}
-                                onChange={(e) => setPaymentTransactionId(e.target.value)}
-                                required
-                            />
-                            <AdminButton type="submit" isLoading={processing}>Process refund</AdminButton>
-                        </form>
-                    </div>
-                )}
+                        {canRefund && (
+                            <div className="p-6">
+                                <div className="text-sm font-semibold text-admin-text mb-3">Process refund</div>
+                                <p className="text-xs text-admin-text2 mb-3">
+                                    Requires the separate approve-refund permission (same separation of duties as Warranty Claims).
+                                </p>
+                                <form onSubmit={processRefund}>
+                                    <AdminInput
+                                        label="Payment transaction ID"
+                                        type="number"
+                                        min={1}
+                                        value={paymentTransactionId}
+                                        onChange={(e) => setPaymentTransactionId(e.target.value)}
+                                        required
+                                    />
+                                    <AdminButton type="submit" isLoading={processing}>Process refund</AdminButton>
+                                </form>
+                            </div>
+                        )}
 
-                {canRefund && (
-                    <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                        <div className="text-sm font-semibold text-admin-text mb-1">Exchange for a different item instead</div>
-                        <p className="text-xs text-admin-text2 mb-3">
-                            The sale's full value ({returnRequest.sale ? formatNaira(returnRequest.sale.total_minor) : '—'}) is applied as
-                            store credit on a new checkout — no cash changes hands, the customer only settles the difference. Start a new
-                            checkout for this customer from Sales / POS first, add the new item(s), then enter that checkout's ID below.
-                        </p>
-                        <AdminButton
-                            type="button"
-                            variant="neutral"
-                            onClick={() => router.visit('/admin/sales/checkout')}
-                        >
-                            Go to Sales / POS
-                        </AdminButton>
-                        <form onSubmit={processExchange} className="mt-4">
-                            <AdminInput
-                                label="New checkout ID"
-                                type="number"
-                                min={1}
-                                value={newCheckoutId}
-                                onChange={(e) => setNewCheckoutId(e.target.value)}
-                                required
-                            />
-                            <AdminButton type="submit" isLoading={processing}>Apply as exchange credit</AdminButton>
-                        </form>
+                        {canRefund && (
+                            <div className="p-6">
+                                <div className="text-sm font-semibold text-admin-text mb-1">Exchange for a different item instead</div>
+                                <p className="text-xs text-admin-text2 mb-3">
+                                    The sale's full value ({returnRequest.sale ? formatNaira(returnRequest.sale.total_minor) : '—'}) is applied as
+                                    store credit on a new checkout — no cash changes hands, the customer only settles the difference. Start a new
+                                    checkout for this customer from Sales / POS first, add the new item(s), then enter that checkout's ID below.
+                                </p>
+                                <AdminButton
+                                    type="button"
+                                    variant="neutral"
+                                    onClick={() => router.visit('/admin/sales/checkout')}
+                                >
+                                    Go to Sales / POS
+                                </AdminButton>
+                                <form onSubmit={processExchange} className="mt-4">
+                                    <AdminInput
+                                        label="New checkout ID"
+                                        type="number"
+                                        min={1}
+                                        value={newCheckoutId}
+                                        onChange={(e) => setNewCheckoutId(e.target.value)}
+                                        required
+                                    />
+                                    <AdminButton type="submit" isLoading={processing}>Apply as exchange credit</AdminButton>
+                                </form>
+                            </div>
+                        )}
                     </div>
-                )}
+                </AdminSectionCard>
             </div>
         </AdminShell>
     );

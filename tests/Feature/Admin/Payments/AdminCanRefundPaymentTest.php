@@ -73,7 +73,7 @@ class AdminCanRefundPaymentTest extends TestCase
             'amount_minor' => 6000,
         ]);
 
-        $response->assertSessionHasErrors('amount_minor');
+        $response->assertSessionHas('flash.kind', 'danger');
         $this->assertDatabaseHas('payments_transactions', ['id' => $transaction->id, 'status' => 'confirmed']);
         $this->assertDatabaseCount('payment_refunds', 0);
     }

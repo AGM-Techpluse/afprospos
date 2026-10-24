@@ -113,9 +113,25 @@ final class DeviceCatalogQuery
         $tagIds = RepairJobProblemTagRecord::query()
             ->where('repair_job_id', $repairJobId)
             ->whereNotNull('device_problem_tag_id')
-            ->pluck('device_problem_tag_id');
+            ->pluck('device_problem_tag_id')
+            ->all();
 
-        if ($tagIds->isEmpty()) {
+        return $this->suggestedPartsForTagIds($tagIds, $shopId);
+    }
+
+    /**
+     * Same suggested-parts lookup as `suggestedPartsForRepair()`, but
+     * keyed directly off whichever fault tag ids the caller already has
+     * in hand — backs the "actually fixed" picker on `Repairs/Show.tsx`,
+     * which has its own locally-selected faults that aren't persisted to
+     * `repair_job_problem_tags` (those are intake-time only).
+     *
+     * @param  int[]  $tagIds
+     * @return array<int, array{sku_id:int, sku_code:?string, product_name:?string}>
+     */
+    public function suggestedPartsForTagIds(array $tagIds, int $shopId): array
+    {
+        if ($tagIds === []) {
             return [];
         }
 

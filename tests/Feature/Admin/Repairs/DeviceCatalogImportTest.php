@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Repairs;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
+use Domain\Repair\Domain\Repositories\DeviceProblemSuggestedPartRepository;
+use Domain\Repair\Domain\ValueObjects\DeviceProblemTagId;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\DeviceProblemTagRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -111,5 +115,64 @@ class DeviceCatalogImportTest extends TestCase
 
         $this->assertDatabaseHas('device_models', ['name' => 'iPhone 15 Pro']);
         $this->assertDatabaseMissing('device_models', ['name' => 'iPhone 16']);
+    }
+
+    public function test_a_fault_row_attaches_its_suggested_parts_by_sku_code(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+
+        $screenSku = SkuRecord::factory()->nonSerialized()->create(['sku_code' => 'IPH15PRO-SCR']);
+        $batterySku = SkuRecord::factory()->nonSerialized()->create(['sku_code' => 'IPH15PRO-BAT']);
+
+        $csv = implode("\n", [
+            'device_type,icon,brand,model,fault_label,commission_amount_minor,suggested_part_skus',
+            'Smartphones,phone,Apple,iPhone 15 Pro,Screen,300000,"IPH15PRO-SCR;IPH15PRO-BAT;UNKNOWN-CODE"',
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/import', [
+            'file' => UploadedFile::fake()->createWithContent('catalog.csv', $csv),
+        ]);
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('results.0.succeeded', true)
+            ->where('results.0.error_message', null));
+
+        $tagId = (int) DeviceProblemTagRecord::query()->where('label', 'Screen')->value('id');
+
+        $suggested = app(DeviceProblemSuggestedPartRepository::class)->forProblemTag(new DeviceProblemTagId($tagId));
+        $suggestedSkuIds = array_column($suggested, 'sku_id');
+
+        $this->assertCount(2, $suggested);
+        $this->assertContains($screenSku->id, $suggestedSkuIds);
+        $this->assertContains($batterySku->id, $suggestedSkuIds);
+    }
+
+    public function test_reimporting_suggested_parts_does_not_duplicate_the_link(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+
+        $sku = SkuRecord::factory()->nonSerialized()->create(['sku_code' => 'IPH15PRO-SCR']);
+
+        $csv = implode("\n", [
+            'device_type,icon,brand,model,fault_label,commission_amount_minor,suggested_part_skus',
+            'Smartphones,phone,Apple,iPhone 15 Pro,Screen,300000,IPH15PRO-SCR',
+        ]);
+
+        $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/import', [
+            'file' => UploadedFile::fake()->createWithContent('catalog.csv', $csv),
+        ])->assertOk();
+
+        $this->actingAs($owner, 'staff')->post('/admin/settings/device-catalog/import', [
+            'file' => UploadedFile::fake()->createWithContent('catalog.csv', $csv),
+        ])->assertOk();
+
+        $this->assertDatabaseCount('device_problem_suggested_skus', 1);
     }
 }

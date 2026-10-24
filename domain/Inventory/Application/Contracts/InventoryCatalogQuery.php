@@ -65,4 +65,14 @@ interface InventoryCatalogQuery
      * }|null
      */
     public function find(int $skuId, int $shopId): ?array;
+
+    /**
+     * A plain SKU-code lookup with no shop context — unlike `find()`,
+     * never needs a per-shop `available` figure (a CSV import resolving
+     * a human-typed code to an id doesn't care about stock), so it
+     * returns just enough to identify the SKU.
+     *
+     * @return array{sku_id: int, sku_code: string, product_name: string}|null
+     */
+    public function findBySkuCode(string $skuCode): ?array;
 }

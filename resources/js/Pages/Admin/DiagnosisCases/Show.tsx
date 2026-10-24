@@ -282,7 +282,7 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, re
                     )}
                 </div>
 
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+                <div>
                     <h2 className="text-base font-semibold text-admin-text mb-4">Actions</h2>
 
                     <form onSubmit={assignTechnician} className="flex flex-col gap-2 pb-4 border-b border-admin-border">

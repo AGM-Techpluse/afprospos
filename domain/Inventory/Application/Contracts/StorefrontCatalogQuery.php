@@ -41,4 +41,7 @@ interface StorefrontCatalogQuery
 
     /** @return string[] */
     public function categories(): array;
+
+    /** The raw on-disk path behind a sellable product's photo, scoped by the same purpose check as find()/list() — used only by the public image-serving route, never put in a payload returned to the frontend (that exposes `image_url` instead). */
+    public function imagePath(int $skuId): ?string;
 }

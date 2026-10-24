@@ -114,7 +114,7 @@ class DeviceLockVisibilityTest extends TestCase
             'device_lock_value' => '0000',
         ]);
 
-        $response->assertSessionHasErrors();
+        $response->assertSessionHas('flash.kind', 'danger');
         $this->assertSame('code', $job->fresh()->device_lock_type);
     }
 

@@ -12,9 +12,11 @@ use Domain\Repair\Application\Commands\RequestRepairPaymentApprovalCommand;
 use Domain\Repair\Domain\Entities\RepairJob;
 use Domain\Repair\Domain\Entities\RepairPaymentApproval;
 use Domain\Repair\Domain\Events\RepairPaymentApprovalRequested;
+use Domain\Repair\Domain\Exceptions\PaymentAmountDoesNotMatchOutstandingBalance;
 use Domain\Repair\Domain\Repositories\RepairDiagnosisFeeRepository;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\Repositories\RepairPaymentApprovalRepository;
+use Domain\Repair\Domain\Repositories\RepairSupplementalQuoteRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\Money;
 use Domain\Shared\Domain\ValueObjects\StaffId;
@@ -25,6 +27,7 @@ final class RequestRepairPaymentApprovalHandler
     public function __construct(
         private readonly RepairJobRepository $repairJobs,
         private readonly RepairPaymentApprovalRepository $approvals,
+        private readonly RepairSupplementalQuoteRepository $supplementalQuotes,
         private readonly RepairDiagnosisFeeRepository $diagnosisFees,
         private readonly PaymentTransactionLookup $payments,
         private readonly AuditWriter $audit,
@@ -40,7 +43,7 @@ final class RequestRepairPaymentApprovalHandler
             $expectedOutstandingMinor = $this->expectedOutstandingMinor($job, $jobId);
 
             if ($command->requestedFinancialStatus === 'fully_paid' && $command->amountMinor !== $expectedOutstandingMinor) {
-                throw new \InvalidArgumentException('Full payment must match the outstanding repair balance.');
+                throw PaymentAmountDoesNotMatchOutstandingBalance::forRepair($command->repairJobId, $expectedOutstandingMinor, $command->amountMinor);
             }
 
             $approval = RepairPaymentApproval::request(
@@ -69,7 +72,7 @@ final class RequestRepairPaymentApprovalHandler
 
     private function expectedOutstandingMinor(RepairJob $job, RepairJobId $jobId): int
     {
-        $quoteTotalMinor = $job->repairCost()?->minor ?? 0;
+        $quoteTotalMinor = ($job->repairCost()?->minor ?? 0) + $this->supplementalQuotes->sumApprovedForJob($jobId);
         $diagnosisFee = $this->diagnosisFees->find($jobId);
         $diagnosisTransaction = $this->payments->latestTransactionForPurpose('repair_job', $jobId->value, 'repair_diagnosis_fee');
         $diagnosisFeePaid = ($diagnosisTransaction['status'] ?? null) === 'confirmed';

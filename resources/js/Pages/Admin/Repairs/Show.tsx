@@ -3,6 +3,7 @@ import { Head, router, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import RepairStatusStepper from '../../../Features/Repairs/RepairStatusStepper';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
@@ -12,6 +13,7 @@ import RepairPhotoGallery, { RepairPhoto } from '../../../Features/Repairs/Repai
 import { PartReservationRow } from '../../../Features/Repairs/PartsReservationPicker';
 import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
 import FaultPicker, { FaultSearchResult } from '../../../Features/Repairs/FaultPicker';
+import SuggestedPartsForFaults from '../../../Features/Repairs/SuggestedPartsForFaults';
 import { formatNaira } from '../../../lib/money';
 
 type RepairDetail = {
@@ -68,6 +70,8 @@ type RepairDetail = {
     collection_case: { id: number; status: string; context: string; collection_deadline_at: string } | null;
     pending_payment_approval: { id: number; requested_financial_status: string; amount_minor: number; method: string } | null;
     pending_down_payment_approval: { id: number; amount_minor: number; method: string } | null;
+    supplemental_quotes: { id: number; amount_minor: number; reason: string; status: string; requested_by_staff_id: number; decided_at: string | null }[];
+    pending_supplemental_quote: { id: number; amount_minor: number; reason: string; requested_by_staff_id: number } | null;
 };
 
 type Technician = { id: number; name: string };
@@ -97,6 +101,8 @@ const CLOSED_STATUSES = ['completed', 'unrepairable', 'expired_cancelled'];
 const PARTS_RESERVABLE_STATUSES = ['diagnosing', 'awaiting_authorization', 'awaiting_parts', 'in_progress'];
 /** Mirrors RepairJob::setDeviceLock()'s exact status gate — editable up through active work, locked once the device is ready for or past handover. */
 const DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED = ['handover', 'completed', 'cancelled', 'unrepairable', 'expired_cancelled'];
+/** Mirrors RepairJob::assertSupplementalQuoteRequestable()'s exact status gate. */
+const SUPPLEMENTAL_QUOTE_REQUESTABLE_STATUSES = ['in_progress', 'awaiting_parts', 'qc_pending', 'handover'];
 
 export default function RepairShow({ repair, shop, shops, technicians, canApprovePayment, canAuthorize, canTransferRepair }: RepairShowProps) {
     const confirm = useConfirm();
@@ -144,6 +150,8 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
     );
     const [customFixedFault, setCustomFixedFault] = useState('');
     const [customFixedFaultCommissionNaira, setCustomFixedFaultCommissionNaira] = useState('');
+    const [supplementalAmountNaira, setSupplementalAmountNaira] = useState('');
+    const [supplementalReason, setSupplementalReason] = useState('');
     const [addingCustomFixedFault, setAddingCustomFixedFault] = useState(false);
 
     function post(url: string, data: Record<string, string> = {}) {
@@ -332,6 +340,18 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         post(`/admin/repairs/${repair.id}/payment-approval/${approvalId}/decide`, { approved: approved ? '1' : '0' });
     }
 
+    function requestSupplementalQuote(e: FormEvent) {
+        e.preventDefault();
+        post(`/admin/repairs/${repair.id}/supplemental-quote`, {
+            amount_minor: String(Math.round(parseFloat(supplementalAmountNaira || '0') * 100)),
+            reason: supplementalReason,
+        });
+    }
+
+    function decideSupplementalQuote(quoteId: number, approved: boolean) {
+        post(`/admin/repairs/${repair.id}/supplemental-quote/${quoteId}/decide`, { approved: approved ? '1' : '0' });
+    }
+
     async function failRepair(e: FormEvent) {
         e.preventDefault();
         post(`/admin/repairs/${repair.id}/fail`, {
@@ -364,7 +384,8 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 description={`${repair.customer_name ?? repair.walk_in_name ?? 'Customer'} — ${repair.repair_status.replace(/_/g, ' ')}`}
             />
 
-            <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div className="divide-y divide-admin-border">
+            <div className="pb-6 flex flex-wrap items-center gap-3">
                 <RepairStatusStepper status={repair.repair_status} />
                 {repair.repair_status === 'completed' && (
                     <AdminBadge status={repair.financial_status === 'fully_paid' ? 'success' : 'warning'}>
@@ -378,8 +399,9 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 )}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
+            <div className="py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
+                <AdminSectionCard title="Details">
+                <div className="p-6">
                     {(repair.reported_issue || repair.problem_tags.length > 0) && (
                         <div className="mb-4 pb-4 border-b border-admin-border">
                             <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
@@ -486,6 +508,21 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                         label="Quote total"
                         value={repair.quote_total_minor !== null ? formatNaira(repair.quote_total_minor) : '—'}
                     />
+                    {repair.supplemental_quotes.some((quote) => quote.status === 'approved') && (
+                        <div className="py-3 border-b border-admin-border">
+                            <div className="text-sm text-admin-text2 mb-2">Supplemental charges (added to the quote above)</div>
+                            <ul className="flex flex-col gap-2 text-sm text-admin-text">
+                                {repair.supplemental_quotes
+                                    .filter((quote) => quote.status === 'approved')
+                                    .map((quote) => (
+                                        <li key={quote.id} className="flex justify-between gap-3">
+                                            <span className="min-w-0">{quote.reason}</span>
+                                            <span className="shrink-0 font-semibold">{formatNaira(quote.amount_minor)}</span>
+                                        </li>
+                                    ))}
+                            </ul>
+                        </div>
+                    )}
                     {repair.part_reservations.some((p) => p.status === 'reserved') && (
                         <div className="py-3 border-b border-admin-border">
                             <div className="text-sm text-admin-text2 mb-2">Parts set aside</div>
@@ -608,8 +645,9 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                     )}
 
                 </div>
+                </AdminSectionCard>
 
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
                     <h2 className="text-sm font-semibold text-admin-text mb-1">Actions</h2>
 
                     {false && ['diagnosing', 'unrepairable', 'awaiting_authorization', 'payment_overdue', 'cancelled'].includes(repair.repair_status) && (
@@ -672,6 +710,70 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${repair.id}/parts`)}>
                                 Manage parts
                             </AdminButton>
+                        </div>
+                    )}
+
+                    {SUPPLEMENTAL_QUOTE_REQUESTABLE_STATUSES.includes(repair.repair_status) && (
+                        <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+                            <span className="text-xs font-semibold text-admin-text">Supplemental quote</span>
+                            {repair.pending_supplemental_quote ? (
+                                <div className="flex flex-col gap-2 text-xs text-admin-text2 bg-ui-warning-soft text-ui-warning-text rounded-admin-button p-2">
+                                    <span>
+                                        {formatNaira(repair.pending_supplemental_quote.amount_minor)} requested — {repair.pending_supplemental_quote.reason}
+                                    </span>
+                                    {canAuthorize && (
+                                        <div className="flex items-center gap-2">
+                                            <AdminButton
+                                                size="sm"
+                                                onClick={() => decideSupplementalQuote(repair.pending_supplemental_quote!.id, true)}
+                                                isLoading={processing}
+                                            >
+                                                Approve
+                                            </AdminButton>
+                                            <AdminButton
+                                                size="sm"
+                                                variant="neutral"
+                                                onClick={() => decideSupplementalQuote(repair.pending_supplemental_quote!.id, false)}
+                                                disabled={processing}
+                                            >
+                                                Reject
+                                            </AdminButton>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <form onSubmit={requestSupplementalQuote} className="flex flex-col gap-2">
+                                    <span className="text-xs text-admin-text2">
+                                        Found more needed to finish this repair than the quote covers? Flag the extra amount here — it needs
+                                        approval before it counts toward the outstanding balance.
+                                    </span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={supplementalAmountNaira}
+                                        onChange={(e) => setSupplementalAmountNaira(e.target.value)}
+                                        placeholder="Additional amount (₦)"
+                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    />
+                                    <textarea
+                                        value={supplementalReason}
+                                        onChange={(e) => setSupplementalReason(e.target.value)}
+                                        rows={2}
+                                        placeholder="Why — e.g. battery, screen and charging port all needed replacing"
+                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    />
+                                    <AdminButton
+                                        type="submit"
+                                        variant="neutral"
+                                        size="sm"
+                                        isLoading={processing}
+                                        disabled={!(parseFloat(supplementalAmountNaira) > 0) || supplementalReason.trim() === ''}
+                                    >
+                                        Request supplemental quote
+                                    </AdminButton>
+                                </form>
+                            )}
                         </div>
                     )}
 
@@ -907,6 +1009,11 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             ))}
                                         </div>
                                     )}
+                                    <SuggestedPartsForFaults
+                                        repairId={repair.id}
+                                        tagIds={selectedFixedFaults.map((fault) => fault.device_problem_tag_id)}
+                                        reservedSkuIds={repair.part_reservations.map((part) => part.sku_id)}
+                                    />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-xs font-semibold text-admin-text">Add newly discovered fixed fault</span>
@@ -1203,8 +1310,13 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 </div>
             </div>
 
-            <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 max-w-4xl mt-6">
-                <RepairPhotoGallery repairId={repair.id} photos={repair.photos} disabled={CLOSED_STATUSES.includes(repair.repair_status)} />
+            <div className="pt-6 max-w-4xl">
+                <AdminSectionCard title="Photos">
+                    <div className="p-6">
+                        <RepairPhotoGallery repairId={repair.id} photos={repair.photos} disabled={CLOSED_STATUSES.includes(repair.repair_status)} />
+                    </div>
+                </AdminSectionCard>
+            </div>
             </div>
         </AdminShell>
     );

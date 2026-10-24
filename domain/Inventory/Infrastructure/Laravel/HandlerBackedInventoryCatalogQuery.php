@@ -120,6 +120,21 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
         ];
     }
 
+    public function findBySkuCode(string $skuCode): ?array
+    {
+        $sku = SkuRecord::query()->with('product')->where('sku_code', $skuCode)->first();
+
+        if ($sku === null) {
+            return null;
+        }
+
+        return [
+            'sku_id' => $sku->id,
+            'sku_code' => $sku->sku_code,
+            'product_name' => trim("{$sku->product->brand} {$sku->product->model}"),
+        ];
+    }
+
     private function imageUrl(SkuRecord $sku): ?string
     {
         return $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null;

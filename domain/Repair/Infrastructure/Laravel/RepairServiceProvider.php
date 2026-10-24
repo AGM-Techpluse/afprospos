@@ -26,6 +26,7 @@ use Domain\Repair\Domain\Repositories\RepairPartReservationRepository;
 use Domain\Repair\Domain\Repositories\RepairPaymentApprovalRepository;
 use Domain\Repair\Domain\Repositories\RepairPhotoRepository;
 use Domain\Repair\Domain\Repositories\RepairQcCheckRepository;
+use Domain\Repair\Domain\Repositories\RepairSupplementalQuoteRepository;
 use Domain\Repair\Infrastructure\Laravel\Listeners\OnCollectionCaseResolved;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentCommonComponentRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentDeviceBrandRepository;
@@ -44,6 +45,7 @@ use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPartRese
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPaymentApprovalRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairPhotoRepository;
 use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairQcCheckRepository;
+use Domain\Repair\Infrastructure\Persistence\Repositories\EloquentRepairSupplementalQuoteRepository;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -60,6 +62,7 @@ final class RepairServiceProvider extends ServiceProvider
         $this->app->bind(RepairPartReservationRepository::class, EloquentRepairPartReservationRepository::class);
         $this->app->bind(RepairPaymentApprovalRepository::class, EloquentRepairPaymentApprovalRepository::class);
         $this->app->bind(RepairDownPaymentApprovalRepository::class, EloquentRepairDownPaymentApprovalRepository::class);
+        $this->app->bind(RepairSupplementalQuoteRepository::class, EloquentRepairSupplementalQuoteRepository::class);
         $this->app->bind(RepairFinancialStatusQuery::class, EloquentRepairFinancialStatusQuery::class);
         $this->app->bind(DeviceTypeRepository::class, EloquentDeviceTypeRepository::class);
         $this->app->bind(DeviceBrandRepository::class, EloquentDeviceBrandRepository::class);

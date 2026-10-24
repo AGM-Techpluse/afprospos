@@ -13,6 +13,7 @@ use App\Http\Requests\Admin\Repairs\CreateRepairJobRequest;
 use App\Http\Requests\Admin\Repairs\DecideDiagnosisFeeRequest;
 use App\Http\Requests\Admin\Repairs\DecideRepairDownPaymentApprovalRequest;
 use App\Http\Requests\Admin\Repairs\DecideRepairPaymentApprovalRequest;
+use App\Http\Requests\Admin\Repairs\DecideSupplementalQuoteRequest;
 use App\Http\Requests\Admin\Repairs\FailRepairRequest;
 use App\Http\Requests\Admin\Repairs\MarkRepairUnrepairableRequest;
 use App\Http\Requests\Admin\Repairs\RecordDiagnosisConclusionRequest;
@@ -21,6 +22,7 @@ use App\Http\Requests\Admin\Repairs\RecordQualityCheckRequest;
 use App\Http\Requests\Admin\Repairs\RequestDiagnosisFeeRequest;
 use App\Http\Requests\Admin\Repairs\RequestRepairDownPaymentApprovalRequest;
 use App\Http\Requests\Admin\Repairs\RequestRepairPaymentApprovalRequest;
+use App\Http\Requests\Admin\Repairs\RequestSupplementalQuoteRequest;
 use App\Http\Requests\Admin\Repairs\ReserveRepairPartsRequest;
 use App\Http\Requests\Admin\Repairs\SetDiagnosisFeeRequest;
 use App\Http\Requests\Admin\Repairs\SetRepairCostRequest;
@@ -39,6 +41,7 @@ use Domain\Repair\Application\Commands\CreateRepairJobCommand;
 use Domain\Repair\Application\Commands\DecideDiagnosisFeeCommand;
 use Domain\Repair\Application\Commands\DecideRepairDownPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\DecideRepairPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\DecideSupplementalQuoteCommand;
 use Domain\Repair\Application\Commands\DeleteRepairPhotoCommand;
 use Domain\Repair\Application\Commands\FailRepairCommand;
 use Domain\Repair\Application\Commands\InstallRepairPartCommand;
@@ -49,6 +52,7 @@ use Domain\Repair\Application\Commands\RecordQualityCheckCommand;
 use Domain\Repair\Application\Commands\RequestDiagnosisFeeCommand;
 use Domain\Repair\Application\Commands\RequestRepairDownPaymentApprovalCommand;
 use Domain\Repair\Application\Commands\RequestRepairPaymentApprovalCommand;
+use Domain\Repair\Application\Commands\RequestSupplementalQuoteCommand;
 use Domain\Repair\Application\Commands\ReserveRepairPartsCommand;
 use Domain\Repair\Application\Commands\ResumeRepairCommand;
 use Domain\Repair\Application\Commands\SendToQuoteCommand;
@@ -68,6 +72,7 @@ use Domain\Repair\Application\Handlers\CreateRepairJobHandler;
 use Domain\Repair\Application\Handlers\DecideDiagnosisFeeHandler;
 use Domain\Repair\Application\Handlers\DecideRepairDownPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\DecideRepairPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\DecideSupplementalQuoteHandler;
 use Domain\Repair\Application\Handlers\DeleteRepairPhotoHandler;
 use Domain\Repair\Application\Handlers\FailRepairHandler;
 use Domain\Repair\Application\Handlers\InstallRepairPartHandler;
@@ -78,6 +83,7 @@ use Domain\Repair\Application\Handlers\RecordQualityCheckHandler;
 use Domain\Repair\Application\Handlers\RequestDiagnosisFeeHandler;
 use Domain\Repair\Application\Handlers\RequestRepairDownPaymentApprovalHandler;
 use Domain\Repair\Application\Handlers\RequestRepairPaymentApprovalHandler;
+use Domain\Repair\Application\Handlers\RequestSupplementalQuoteHandler;
 use Domain\Repair\Application\Handlers\ReserveRepairPartsHandler;
 use Domain\Repair\Application\Handlers\ResumeRepairHandler;
 use Domain\Repair\Application\Handlers\SendToQuoteHandler;
@@ -97,6 +103,7 @@ use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -126,6 +133,8 @@ final class RepairsController
         private readonly TransferRepairJobHandler $transferRepair,
         private readonly RequestRepairDownPaymentApprovalHandler $requestDownPaymentApproval,
         private readonly DecideRepairDownPaymentApprovalHandler $decideDownPaymentApproval,
+        private readonly RequestSupplementalQuoteHandler $requestSupplementalQuote,
+        private readonly DecideSupplementalQuoteHandler $decideSupplementalQuote,
         private readonly ReserveRepairPartsHandler $reserveParts,
         private readonly InstallRepairPartHandler $installPart,
         private readonly StartRepairHandler $startRepair,
@@ -499,6 +508,39 @@ final class RepairsController
         return redirect()->route('admin.repairs.show', ['repair' => $repair]);
     }
 
+    public function requestSupplementalQuote(RequestSupplementalQuoteRequest $request, int $repair): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->requestSupplementalQuote->handle(new RequestSupplementalQuoteCommand(
+            repairJobId: $repair,
+            amountMinor: $request->integer('amount_minor'),
+            reason: $request->string('reason')->toString(),
+            requestedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess('Supplemental quote requested');
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
+    public function decideSupplementalQuote(DecideSupplementalQuoteRequest $request, int $repair, int $quote): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $this->assertRepairShopAccess($actor, $repair);
+
+        $this->guardTransition(fn () => $this->decideSupplementalQuote->handle(new DecideSupplementalQuoteCommand(
+            quoteId: $quote,
+            approved: $request->boolean('approved'),
+            decidedByStaffId: $actor->staffId->value,
+        )));
+
+        $this->flashSuccess($request->boolean('approved') ? 'Supplemental quote approved' : 'Supplemental quote rejected');
+
+        return redirect()->route('admin.repairs.show', ['repair' => $repair]);
+    }
+
     public function parts(int $repair): Response
     {
         $actor = app(ActorContext::class);
@@ -824,6 +866,28 @@ final class RepairsController
         ]);
     }
 
+    /**
+     * Suggested parts for whichever faults the technician has *locally*
+     * marked as "actually fixed" on the completion form — those aren't
+     * persisted anywhere until "Complete repair" is submitted (at which
+     * point the job leaves `in_progress` and parts can no longer be
+     * reserved anyway), so this reads live off the tag ids the frontend
+     * already has in hand rather than any saved repair state.
+     */
+    public function suggestedPartsForFaults(Request $request, int $repair): JsonResponse
+    {
+        $actor = app(ActorContext::class);
+        $data = $this->detail->find($repair);
+        abort_if($data === null, 404);
+        abort_unless($actor->canAccessShop((int) $data['shop_id']), 403);
+
+        $tagIds = array_map('intval', $request->array('tag_ids'));
+
+        return response()->json([
+            'results' => $tagIds !== [] ? $this->deviceCatalog->suggestedPartsForTagIds($tagIds, (int) $data['shop_id']) : [],
+        ]);
+    }
+
     /** A "newly discovered fixed fault" not already in the catalog — joins it (scoped to this repair's own device model) with the commission the technician set, so it's immediately selectable in the picker too. */
     public function addFixedFaultToCatalog(Request $request, int $repair): JsonResponse
     {
@@ -858,13 +922,22 @@ final class RepairsController
         abort_unless($actor->canAccessShop($repair['shop_id']), 403);
     }
 
-    /** An illegal transition (or a mutation attempt on a closed job) surfaces as a friendly validation message, not a 500 — mirrors PaymentController::guardTransition. */
+    /**
+     * An illegal transition (or a mutation attempt on a closed job) surfaces as a toast, not a silent reload.
+     * `ValidationException::withMessages(['status' => ...])` was tried first, but nothing on this page reads
+     * the `errors` prop — every action gated by this method (authorize, complete, fail, QC, transfer, cancel,
+     * payment/down-payment/supplemental-quote decisions) was silently swallowing its own rejection. Throwing
+     * `HttpResponseException` short-circuits the calling action immediately, so the flashed error is the only
+     * thing that happens — no later `flashSuccess()`/redirect in the same method mistakenly still runs.
+     */
     private function guardTransition(callable $action): void
     {
         try {
             $action();
         } catch (DomainException $exception) {
-            throw ValidationException::withMessages(['status' => $exception->getMessage()]);
+            $this->flashError('Could not complete that action', $exception->getMessage());
+
+            throw new HttpResponseException(redirect()->back());
         }
     }
 

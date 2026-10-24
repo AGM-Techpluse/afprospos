@@ -24,7 +24,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class DeviceCatalogImportController
 {
-    private const EXPECTED_HEADER = ['device_type', 'icon', 'brand', 'model', 'fault_label', 'commission_amount_minor'];
+    private const EXPECTED_HEADER = ['device_type', 'icon', 'brand', 'model', 'fault_label', 'commission_amount_minor', 'suggested_part_skus'];
 
     public function __construct(
         private readonly ImportDeviceCatalogHandler $importCatalog,
@@ -43,10 +43,10 @@ final class DeviceCatalogImportController
         return response()->streamDownload(function (): void {
             $handle = fopen('php://output', 'wb');
             fputcsv($handle, self::EXPECTED_HEADER);
-            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone 15 Pro', 'Screen', '300000']);
-            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone 15 Pro', 'Battery', '150000']);
-            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone SE', '', '']);
-            fputcsv($handle, ['Smartphones', 'phone', 'Samsung', '', 'Screen', '100000']);
+            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone 15 Pro', 'Screen', '300000', 'IPH15PRO-SCR']);
+            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone 15 Pro', 'Battery', '150000', 'IPH15PRO-BAT;IPH15PRO-BAT-OEM']);
+            fputcsv($handle, ['Smartphones', 'phone', 'Apple', 'iPhone SE', '', '', '']);
+            fputcsv($handle, ['Smartphones', 'phone', 'Samsung', '', 'Screen', '100000', '']);
             fclose($handle);
         }, 'afprospos-device-catalog-import-template.csv', ['Content-Type' => 'text/csv']);
     }
@@ -123,6 +123,7 @@ final class DeviceCatalogImportController
             $model = trim((string) ($row['model'] ?? ''));
             $faultLabel = trim((string) ($row['fault_label'] ?? ''));
             $commission = trim((string) ($row['commission_amount_minor'] ?? ''));
+            $suggestedSkus = trim((string) ($row['suggested_part_skus'] ?? ''));
 
             $rows[] = new DeviceCatalogImportRow(
                 rowNumber: $rowNumber,
@@ -132,6 +133,7 @@ final class DeviceCatalogImportController
                 modelName: $model !== '' ? $model : null,
                 faultLabel: $faultLabel !== '' ? $faultLabel : null,
                 commissionAmountMinor: $commission !== '' ? (int) $commission : null,
+                suggestedSkuCodes: $suggestedSkus !== '' ? array_values(array_filter(array_map('trim', explode(';', $suggestedSkus)))) : null,
             );
         }
 

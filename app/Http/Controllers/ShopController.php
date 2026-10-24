@@ -6,8 +6,11 @@ namespace App\Http\Controllers;
 
 use Domain\Inventory\Application\Contracts\StorefrontCatalogQuery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response as ResponseFactory;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /** The public storefront — guest-visible, cross-shop product browsing (no auth middleware; cart/checkout live under Customer\ShopController). */
 final class ShopController
@@ -67,6 +70,23 @@ final class ShopController
         return Inertia::render('Shop/Show', [
             'product' => $product,
             'relatedProducts' => $related,
+        ]);
+    }
+
+    /** Public — mirrors Admin\ProductController::image() but goes through the customer-safe, purpose-scoped contract instead of the staff-only catalog, so a guest/customer `<img>` tag never gets redirected to a login page. */
+    public function image(int $sku): HttpResponse
+    {
+        $path = $this->catalog->imagePath($sku);
+
+        abort_if($path === null, 404);
+
+        $disk = Storage::disk('public');
+
+        abort_unless($disk->exists($path), 404);
+
+        return ResponseFactory::make($disk->get($path), 200, [
+            'Content-Type' => $disk->mimeType($path) ?: 'image/jpeg',
+            'Cache-Control' => 'public, max-age=86400',
         ]);
     }
 }

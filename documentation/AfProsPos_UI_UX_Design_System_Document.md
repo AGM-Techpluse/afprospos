@@ -2495,6 +2495,14 @@ List/table card = spans 12 columns, placed below stat cards and charts
 - A stat card's primary number uses `--text-2xl`/`--font-bold` (§4.4/§4.3); its label uses `--text-sm`/`--a-text2` — do not let the number and label compete for the same visual weight.
 - Charts consume the same status/semantic color tokens as everything else (a "completed repairs" trend line uses `--a-green`, not an arbitrary chart-library default palette) — a chart's colors are still subject to the Zero Raw Value Rule (§2.2).
 
+### 14B.8a Dashboard Section Grouping
+
+A dashboard page's top-level regions (an overview block, an analytics block, a recent-activity block, etc.) are each wrapped in `Components/Admin/AdminSectionCard` — one flat, bordered box (`--a-border`, `--a-radius-card`, no shadow, per §6.1) with an **optional** header row (a title plus an optional right-aligned action, e.g. "View all"). A mixed group that's self-describing without a title (e.g. a combined quick-actions-and-stats overview) omits `title` and renders as a plain bordered box with no header chrome — not every section needs a label.
+
+Top-level sections on a dashboard page are siblings inside one `divide-y divide-admin-border` container (the page header included as the first child), rather than separated by margin alone — this produces a single full-width 1px line of the same weight and color as every card's own border between each region, including directly under the page header. Admin intentionally reuses `--a-border` for this rather than introducing a dedicated "divider" token (unlike Customer's `--c-divider`, which is a deliberately softer, distinct value) — Admin's existing `--a-border`/`--a-border2` are already equal-weight by design (see `tokens.css`), so the section divider, the card border, and the list-row divider (`divide-admin-border`) are all visually one consistent line weight/color across the page.
+
+Within a mixed section, related sub-panels that don't each need their own bordered box (e.g. two chart panels, or two recent-activity lists) sit inside the same `AdminSectionCard` separated by `divide-x`/`divide-y divide-admin-border` rather than each getting a separate card — one outer box per logical group, not one box per widget.
+
 ---
 
 # 14C. Page-Level Layout Specifications
@@ -2791,7 +2799,7 @@ This is the technician's and the accountant's single source of truth for one rep
 
 **File:** `Pages/Admin/Dashboard/Index.tsx`
 
-Uses the Dashboard Widget Grid exactly as specified in §14B.8 — stat cards (Open repairs, Today's sales, Pending disputes, Low-stock items) spanning 3 columns each, one or two chart cards below, a "Needs attention" list/table card spanning full width surfacing anything requiring action across modules (disputed payments, awaiting-parts jobs, sync conflicts) rather than requiring the owner to check five separate pages. No new widget shape is introduced here beyond §14B.8's grid — this page is a composition, not a new pattern.
+Uses the Dashboard Widget Grid exactly as specified in §14B.8 — stat cards (Open repairs, Today's sales, Pending disputes, Low-stock items) spanning 3 columns each, one or two chart cards below, a "Needs attention" list/table card spanning full width surfacing anything requiring action across modules (disputed payments, awaiting-parts jobs, sync conflicts) rather than requiring the owner to check five separate pages. No new widget shape is introduced here beyond §14B.8's grid — this page is a composition, not a new pattern. Its top-level regions (overview, analytics, recent activity, login activity) follow §14B.8a's `AdminSectionCard` + `divide-y` grouping — the reference implementation other dashboards (sales, commission) should match.
 
 ## 14C.10 Customer Dashboard / Home
 

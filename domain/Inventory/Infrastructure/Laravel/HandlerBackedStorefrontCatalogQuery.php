@@ -81,6 +81,16 @@ final class HandlerBackedStorefrontCatalogQuery implements StorefrontCatalogQuer
         return $data;
     }
 
+    public function imagePath(int $skuId): ?string
+    {
+        $sku = SkuRecord::query()
+            ->with('product')
+            ->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', ['sale', 'both']))
+            ->find($skuId);
+
+        return $sku?->product->image_path;
+    }
+
     public function categories(): array
     {
         return ProductRecord::query()
@@ -113,7 +123,7 @@ final class HandlerBackedStorefrontCatalogQuery implements StorefrontCatalogQuer
             'model' => $sku->product->model,
             'category' => $sku->product->category,
             'description' => $sku->product->description,
-            'image_url' => $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null,
+            'image_url' => $sku->product->image_path !== null ? route('shop.image', ['sku' => $sku->id]) : null,
             'attributes' => $sku->attributes,
             'is_serialized' => $sku->is_serialized,
             'selling_price_minor' => $sku->selling_price_minor,

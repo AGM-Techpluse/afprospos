@@ -10,6 +10,7 @@ use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Payments\Application\Contracts\PaymentTransactionLookup;
 use Domain\Repair\Application\Commands\FailRepairCommand;
 use Domain\Repair\Domain\Events\RepairFailed;
+use Domain\Repair\Domain\Exceptions\ServiceChargeExceedsDownPayment;
 use Domain\Repair\Domain\Repositories\RepairJobRepository;
 use Domain\Repair\Domain\ValueObjects\RepairJobId;
 use Domain\Shared\Domain\ValueObjects\Money;
@@ -36,7 +37,7 @@ final class FailRepairHandler
             $confirmedDownPaymentMinor = ($downPayment['status'] ?? null) === 'confirmed' ? $downPayment['amount_minor'] : 0;
 
             if ($command->serviceChargeMinor > $confirmedDownPaymentMinor) {
-                throw new \InvalidArgumentException('Service charge cannot be greater than the confirmed down payment.');
+                throw ServiceChargeExceedsDownPayment::forRepair($command->repairJobId, $command->serviceChargeMinor, $confirmedDownPaymentMinor);
             }
 
             $refundDueMinor = max(0, $confirmedDownPaymentMinor - $command->serviceChargeMinor);

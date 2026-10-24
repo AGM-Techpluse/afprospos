@@ -324,6 +324,14 @@ final class RepairJob
         }
     }
 
+    /** A supplemental quote (additional cost discovered mid-repair) may only be raised once work has started and before the job is financially closed — not before authorization (that's what the original quote is for) and not once `completed` (the money's already settled by then). */
+    public function assertSupplementalQuoteRequestable(): void
+    {
+        if (! in_array($this->status, ['in_progress', 'awaiting_parts', 'qc_pending', 'handover'], true)) {
+            throw InvalidRepairTransition::forJob($this->id?->value ?? 0, $this->status, 'in_progress');
+        }
+    }
+
     public function setEstimatedCollectionDate(?DateTimeImmutable $date): void
     {
         $this->estimatedCollectionDate = $date;

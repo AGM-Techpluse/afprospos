@@ -57,7 +57,7 @@ class RepairCostWorkflowTest extends TestCase
             'repair_cost_minor' => 1500000,
         ]);
 
-        $response->assertSessionHasErrors('status');
+        $response->assertSessionHas('flash.kind', 'danger');
         $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_cost_minor' => null]);
     }
 
@@ -104,7 +104,7 @@ class RepairCostWorkflowTest extends TestCase
             'repair_cost_minor' => 2000000,
         ]);
 
-        $response->assertSessionHasErrors('status');
+        $response->assertSessionHas('flash.kind', 'danger');
         $this->assertDatabaseHas('repair_jobs', ['id' => $job->id, 'repair_cost_minor' => 1500000]);
     }
 }

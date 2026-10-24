@@ -2,13 +2,16 @@ import React, { ButtonHTMLAttributes } from 'react';
 import Icon from '../Icons/Icon';
 
 interface AdminButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'neutral' | 'warning' | 'danger' | 'danger-solid';
+    variant?: 'primary' | 'neutral' | 'warning' | 'danger' | 'danger-solid' | 'dark-ghost';
+    /** 'sm' shrinks padding/text for a tight container (e.g. inside a dense card) — same shape/radius/motion as 'md', just smaller. */
+    size?: 'md' | 'sm';
     isLoading?: boolean;
     loadingText?: string;
 }
 
 export default function AdminButton({
     variant = 'primary',
+    size = 'md',
     isLoading = false,
     loadingText = 'Please wait...',
     className = '',
@@ -16,7 +19,9 @@ export default function AdminButton({
     disabled,
     ...props
 }: AdminButtonProps) {
-    let baseClass = 'rounded-admin-button text-admin-button font-semibold px-admin-btn-x py-admin-btn-y transition-transform duration-120 active:scale-98 flex items-center justify-center';
+    let baseClass = `rounded-admin-button font-semibold transition-transform duration-120 active:scale-98 flex items-center justify-center ${
+        size === 'sm' ? 'text-xs px-2.5 py-1.5 gap-1' : 'text-admin-button px-admin-btn-x py-admin-btn-y'
+    }`;
     let variantClass = '';
 
     switch (variant) {
@@ -34,6 +39,10 @@ export default function AdminButton({
             break;
         case 'danger-solid':
             variantClass = 'bg-admin-red text-white hover:bg-red-700';
+            break;
+        case 'dark-ghost':
+            // No text color here on purpose — this variant is used on dark surfaces (e.g. the Inventory health card) where the caller's own semantic color (blue/red) is passed via className instead of being baked in, since the two callers need different colors on the same bg/border treatment.
+            variantClass = 'bg-white/10 border border-white/15 hover:bg-white/15';
             break;
     }
 

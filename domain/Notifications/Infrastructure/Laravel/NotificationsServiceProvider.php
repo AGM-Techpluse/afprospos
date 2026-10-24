@@ -19,6 +19,7 @@ use Domain\Repair\Domain\Events\RepairCompleted;
 use Domain\Repair\Domain\Events\RepairDownPaymentApprovalRequested;
 use Domain\Repair\Domain\Events\RepairPaymentApprovalRequested;
 use Domain\Repair\Domain\Events\RepairReadyForCollection;
+use Domain\Repair\Domain\Events\SupplementalQuoteRequested;
 use Domain\Sales\Domain\Events\CheckoutDiscountApplied;
 use Domain\Sales\Domain\Events\SaleCompleted;
 use Domain\Warranty\Domain\Events\ReturnRequestResolved;
@@ -54,6 +55,7 @@ final class NotificationsServiceProvider extends ServiceProvider
         Event::listen(RepairReadyForCollection::class, Listeners\OnRepairReadyForCollection::class);
         Event::listen(RepairPaymentApprovalRequested::class, Listeners\OnRepairPaymentApprovalRequested::class);
         Event::listen(RepairDownPaymentApprovalRequested::class, Listeners\OnRepairDownPaymentApprovalRequested::class);
+        Event::listen(SupplementalQuoteRequested::class, Listeners\OnSupplementalQuoteRequested::class);
         Event::listen(WarrantyClaimSubmitted::class, Listeners\OnWarrantyClaimSubmitted::class);
         Event::listen(WarrantyClaimResolved::class, Listeners\OnWarrantyClaimResolved::class);
         Event::listen(SaleCompleted::class, Listeners\OnSaleCompleted::class);

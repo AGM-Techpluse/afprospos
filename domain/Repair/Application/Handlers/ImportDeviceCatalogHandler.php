@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Domain\Repair\Application\Handlers;
 
+use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Repair\Application\Commands\AttachSuggestedPartCommand;
 use Domain\Repair\Application\Commands\CreateDeviceBrandCommand;
 use Domain\Repair\Application\Commands\CreateDeviceModelCommand;
 use Domain\Repair\Application\Commands\CreateDeviceProblemTagCommand;
@@ -41,6 +43,8 @@ final class ImportDeviceCatalogHandler
         private readonly CreateDeviceModelHandler $createDeviceModel,
         private readonly CreateDeviceProblemTagHandler $createProblemTag,
         private readonly UpdateDeviceProblemTagHandler $updateProblemTag,
+        private readonly AttachSuggestedPartHandler $attachSuggestedPart,
+        private readonly InventoryCatalogQuery $inventoryCatalog,
     ) {}
 
     /** @return DeviceCatalogImportRowResult[] */
@@ -78,8 +82,21 @@ final class ImportDeviceCatalogHandler
         }
 
         if ($row->faultLabel !== null) {
-            $this->findOrCreateOrUpdateFault($typeId, $modelId !== null ? new DeviceModelId($modelId) : null, $row->faultLabel, $row->commissionAmountMinor, $staffId);
+            $tagId = $this->findOrCreateOrUpdateFault($typeId, $modelId !== null ? new DeviceModelId($modelId) : null, $row->faultLabel, $row->commissionAmountMinor, $staffId);
             $summary .= " ({$row->faultLabel})";
+
+            if ($row->suggestedSkuCodes !== null && $row->suggestedSkuCodes !== []) {
+                [$attachedCount, $unknownCodes] = $this->attachSuggestedParts($tagId, $row->suggestedSkuCodes, $staffId);
+
+                if ($attachedCount > 0) {
+                    $summary .= " [+{$attachedCount} suggested part".($attachedCount === 1 ? '' : 's').']';
+                }
+
+                // A row with unknown SKU codes still succeeds (the fault/commission is real either way) — the warning rides along in the summary rather than the errorMessage field, which the Results page reserves for failed rows.
+                if ($unknownCodes !== []) {
+                    $summary .= ' — unknown SKU code(s): '.implode(', ', $unknownCodes);
+                }
+            }
         }
 
         return new DeviceCatalogImportRowResult($row->rowNumber, true, $summary, null);
@@ -117,12 +134,12 @@ final class ImportDeviceCatalogHandler
         )));
     }
 
-    private function findOrCreateOrUpdateFault(DeviceTypeId $typeId, ?DeviceModelId $modelId, string $label, ?int $commissionAmountMinor, int $staffId): void
+    private function findOrCreateOrUpdateFault(DeviceTypeId $typeId, ?DeviceModelId $modelId, string $label, ?int $commissionAmountMinor, int $staffId): int
     {
         $existing = $this->problemTags->findByScopeAndLabel($typeId, $modelId, $label);
 
         if ($existing === null) {
-            $this->createProblemTag->handle(new CreateDeviceProblemTagCommand(
+            return $this->createProblemTag->handle(new CreateDeviceProblemTagCommand(
                 deviceTypeId: $modelId === null ? $typeId->value : null,
                 deviceModelId: $modelId?->value,
                 label: $label,
@@ -130,8 +147,6 @@ final class ImportDeviceCatalogHandler
                 createdByStaffId: $staffId,
                 commissionAmountMinor: $commissionAmountMinor,
             ));
-
-            return;
         }
 
         if ($commissionAmountMinor !== null) {
@@ -143,5 +158,37 @@ final class ImportDeviceCatalogHandler
                 commissionAmountMinor: $commissionAmountMinor,
             ));
         }
+
+        return $existing->id()->value;
+    }
+
+    /**
+     * @param  string[]  $skuCodes
+     * @return array{0: int, 1: string[]} [attached count, unknown codes]
+     */
+    private function attachSuggestedParts(int $deviceProblemTagId, array $skuCodes, int $staffId): array
+    {
+        $attachedCount = 0;
+        $unknownCodes = [];
+
+        foreach ($skuCodes as $skuCode) {
+            $sku = $this->inventoryCatalog->findBySkuCode($skuCode);
+
+            if ($sku === null) {
+                $unknownCodes[] = $skuCode;
+
+                continue;
+            }
+
+            // Idempotent (DeviceProblemSuggestedPartRepository::attach() is a firstOrCreate) — safe to re-run the same CSV.
+            $this->attachSuggestedPart->handle(new AttachSuggestedPartCommand(
+                deviceProblemTagId: $deviceProblemTagId,
+                skuId: $sku['sku_id'],
+                attachedByStaffId: $staffId,
+            ));
+            $attachedCount++;
+        }
+
+        return [$attachedCount, $unknownCodes];
     }
 }

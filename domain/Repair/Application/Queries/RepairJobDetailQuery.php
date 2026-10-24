@@ -23,6 +23,7 @@ use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPartReservationRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairPaymentApprovalRecord;
+use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairSupplementalQuoteRecord;
 use Illuminate\Support\Facades\Storage;
 
 /** Full detail: job + diagnoses + part reservations + linked collection case (via Collection's published CollectionCaseLookup contract, never its Eloquent directly — CPNC §4.2). */
@@ -111,10 +112,36 @@ final class RepairJobDetailQuery
             ->latest('id')
             ->first();
 
+        $pendingSupplementalQuote = RepairSupplementalQuoteRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        $supplementalQuotes = RepairSupplementalQuoteRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->orderBy('id')
+            ->get()
+            ->map(static fn (RepairSupplementalQuoteRecord $quote): array => [
+                'id' => $quote->id,
+                'amount_minor' => $quote->amount_minor,
+                'reason' => $quote->reason,
+                'status' => $quote->status,
+                'requested_by_staff_id' => $quote->requested_by_staff_id,
+                'decided_at' => $quote->decided_at?->toIso8601String(),
+            ])->all();
+
+        $approvedSupplementalMinor = (int) RepairSupplementalQuoteRecord::query()
+            ->where('repair_job_id', $repairJobId)
+            ->where('status', 'approved')
+            ->sum('amount_minor');
+
         $collectionCase = $this->collectionCases->findLatestBySource('repair_job', $repairJobId);
         $customer = $job->customer_id !== null ? $this->customers->find($job->customer_id) : null;
         $diagnosisFee = $this->diagnosisFee($repairJobId, $job->diagnosis_case_id);
-        $quoteTotalMinor = $job->repair_cost_minor !== null ? $job->repair_cost_minor + ($diagnosisFee['outstanding_minor'] ?? 0) : null;
+        $quoteTotalMinor = $job->repair_cost_minor !== null
+            ? $job->repair_cost_minor + $approvedSupplementalMinor + ($diagnosisFee['outstanding_minor'] ?? 0)
+            : null;
         $downPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_down_payment');
         $finalPaymentPaidMinor = $this->confirmedPaymentMinor($repairJobId, 'repair_final_payment');
         $finalPaymentMethod = $this->confirmedPaymentMethod($repairJobId, 'repair_final_payment');
@@ -229,6 +256,13 @@ final class RepairJobDetailQuery
                 'amount_minor' => $pendingDownPaymentApproval->amount_minor,
                 'method' => $pendingDownPaymentApproval->method,
                 'requested_by_staff_id' => $pendingDownPaymentApproval->requested_by_staff_id,
+            ] : null,
+            'supplemental_quotes' => $supplementalQuotes,
+            'pending_supplemental_quote' => $pendingSupplementalQuote !== null ? [
+                'id' => $pendingSupplementalQuote->id,
+                'amount_minor' => $pendingSupplementalQuote->amount_minor,
+                'reason' => $pendingSupplementalQuote->reason,
+                'requested_by_staff_id' => $pendingSupplementalQuote->requested_by_staff_id,
             ] : null,
             'part_reservations' => $partReservations,
             'collection_case' => $collectionCase,

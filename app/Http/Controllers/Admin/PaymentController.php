@@ -31,6 +31,7 @@ use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
 use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -259,14 +260,19 @@ final class PaymentController
     }
 
     /** An illegal transition (e.g. confirming an already-refunded payment) or an over-amount refund surfaces as a friendly validation message, not a 500. */
+    /** Mirrors RepairsController::guardTransition()'s fix — nothing on this controller's pages reads the `errors` prop, so a thrown ValidationException was a silent no-op. Flashing the error directly is what the toast system actually displays. */
     private function guardTransition(callable $action): void
     {
         try {
             $action();
         } catch (InvalidPaymentStateTransition $exception) {
-            throw ValidationException::withMessages(['status' => $exception->getMessage()]);
+            $this->flashError('Could not complete that action', $exception->getMessage());
+
+            throw new HttpResponseException(redirect()->back());
         } catch (PaymentRefundExceedsRemainingBalance $exception) {
-            throw ValidationException::withMessages(['amount_minor' => $exception->getMessage()]);
+            $this->flashError('Could not complete that action', $exception->getMessage());
+
+            throw new HttpResponseException(redirect()->back());
         }
     }
 }
