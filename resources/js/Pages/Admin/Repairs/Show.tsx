@@ -4,7 +4,9 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminModal from '../../../Components/Admin/AdminModal';
 import RepairStatusStepper from '../../../Features/Repairs/RepairStatusStepper';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import DeviceLockInput, { DeviceLockType } from '../../../Features/Repairs/DeviceLockInput';
@@ -139,22 +141,24 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
     const [agreementNote, setAgreementNote] = useState('');
     const [requireDownPayment, setRequireDownPayment] = useState(false);
     const [downPaymentMethod, setDownPaymentMethod] = useState('cash');
-    type SelectedFixedFault = { device_problem_tag_id: number; label: string; commission_naira: string };
+    /** Commission is a catalog-owned value (set by a manager/owner in Device Catalog) — never editable from here, see CompleteRepairHandler::catalogCommissionAmount(). */
+    type SelectedFixedFault = { device_problem_tag_id: number; label: string; commission_amount_minor: number | null };
     const [selectedFixedFaults, setSelectedFixedFaults] = useState<SelectedFixedFault[]>(
         repair.fixed_faults
             .filter((fault): fault is typeof fault & { device_problem_tag_id: number } => fault.device_problem_tag_id !== null)
             .map((fault) => ({
                 device_problem_tag_id: fault.device_problem_tag_id,
                 label: fault.label,
-                commission_naira: fault.commission_amount_minor != null ? String(fault.commission_amount_minor / 100) : '',
+                commission_amount_minor: fault.commission_amount_minor,
             })),
     );
     const [customFixedFault, setCustomFixedFault] = useState('');
-    const [customFixedFaultCommissionNaira, setCustomFixedFaultCommissionNaira] = useState('');
     const [supplementalAmountNaira, setSupplementalAmountNaira] = useState('');
     const [supplementalReason, setSupplementalReason] = useState('');
     /** Mobile-only — the Details card collapses into a dropdown under Actions there; desktop always shows it (forced via `lg:block` regardless of this state). */
     const [detailsExpanded, setDetailsExpanded] = useState(false);
+    /** Mobile-only — Parts/Assign-technician/Transfer/Cancel are secondary to whatever action matches the repair's current status, so they move behind this modal there instead of adding to an already-dense column. Desktop keeps them inline, unchanged. */
+    const [moreActionsOpen, setMoreActionsOpen] = useState(false);
     const [addingCustomFixedFault, setAddingCustomFixedFault] = useState(false);
 
     function post(url: string, data: Record<string, string> = {}) {
@@ -236,19 +240,21 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         e.preventDefault();
         setProcessing(true);
 
-        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string; commission_amount_minor: number | null };
+        type FixedFaultPayload = { diagnosis_case_fault_id: number | null; device_problem_tag_id: number | null; common_component_id: number | null; label: string; notes: string };
 
         router.post(
             `/admin/repairs/${repair.id}/complete`,
             {
                 resolution_notes: resolutionNotes,
+                // No commission_amount_minor key — the handler always resolves the commission fresh from the
+                // catalog at completion time (CompleteRepairHandler::catalogCommissionAmount()), so a manager's
+                // latest Device Catalog edit always wins over whatever was on screen when the technician opened this page.
                 fixed_faults: selectedFixedFaults.map((fault): FixedFaultPayload => ({
                     diagnosis_case_fault_id: null,
                     device_problem_tag_id: fault.device_problem_tag_id,
                     common_component_id: null,
                     label: fault.label,
                     notes: '',
-                    commission_amount_minor: fault.commission_naira.trim() !== '' ? Math.round(parseFloat(fault.commission_naira) * 100) : null,
                 })),
             },
             { onFinish: () => setProcessing(false) },
@@ -261,7 +267,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
             return [...current, {
                 device_problem_tag_id: fault.id,
                 label: fault.label,
-                commission_naira: fault.commission_amount_minor != null ? String(fault.commission_amount_minor / 100) : '',
+                commission_amount_minor: fault.commission_amount_minor ?? null,
             }];
         });
     }
@@ -270,11 +276,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         setSelectedFixedFaults((current) => current.filter((f) => f.device_problem_tag_id !== deviceProblemTagId));
     }
 
-    function updateSelectedFixedFaultCommission(deviceProblemTagId: number, commissionNaira: string) {
-        setSelectedFixedFaults((current) => current.map((f) => (f.device_problem_tag_id === deviceProblemTagId ? { ...f, commission_naira: commissionNaira } : f)));
-    }
-
-    /** For a fault the catalog doesn't have recorded yet — joins it (scoped to this repair's own device model) with the commission set here, then selects it, same as picking an existing one. */
+    /** For a fault the catalog doesn't have recorded yet — joins it (scoped to this repair's own device model), uncommissioned until a manager sets its commission in Device Catalog, then selects it, same as picking an existing one. */
     function addNewDiscoveredFixedFault() {
         const label = customFixedFault.trim();
         if (label === '') return;
@@ -288,16 +290,12 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 Accept: 'application/json',
                 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? ''),
             },
-            body: JSON.stringify({
-                label,
-                commission_amount_minor: customFixedFaultCommissionNaira.trim() !== '' ? Math.round(parseFloat(customFixedFaultCommissionNaira) * 100) : undefined,
-            }),
+            body: JSON.stringify({ label }),
         })
             .then((response) => response.json())
             .then((json: { fault: { id: number; label: string; commission_amount_minor: number | null } }) => {
                 addSelectedFixedFault(json.fault);
                 setCustomFixedFault('');
-                setCustomFixedFaultCommissionNaira('');
             })
             .finally(() => setAddingCustomFixedFault(false));
     }
@@ -378,6 +376,112 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
         if (confirmed) post(`/admin/repairs/${repair.id}/resume`);
     }
 
+    // Secondary to whatever action matches the repair's current status — always rendered
+    // behind the "More actions" modal (see moreActionsOpen) instead of adding to an
+    // already-dense column.
+    const partsBlock = PARTS_RESERVABLE_STATUSES.includes(repair.repair_status) && (
+        <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+            <span className="text-xs font-semibold text-admin-text">Parts</span>
+            <span className="text-xs text-admin-text2">
+                Reserve the parts this repair needs, so the manager can price them into the quote.
+            </span>
+            <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${repair.id}/parts`)}>
+                Manage parts
+            </AdminButton>
+        </div>
+    );
+
+    const assignTechnicianBlock = !CLOSED_STATUSES.includes(repair.repair_status) && !['received', 'diagnosing', 'qc_pending', 'handover'].includes(repair.repair_status) && (
+        <form onSubmit={assignTechnician} className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
+            <AdminSelect
+                label={repair.technician_staff_id ? 'Reassign technician' : 'Assign technician'}
+                value={technicianId}
+                onChange={(e) => setTechnicianId(e.target.value)}
+            >
+                <option value="">Select a technician…</option>
+                {technicians.map((technician) => (
+                    <option key={technician.id} value={technician.id}>
+                        {technician.name}
+                    </option>
+                ))}
+            </AdminSelect>
+            <AdminButton type="submit" variant="neutral" isLoading={processing} disabled={!technicianId}>
+                {repair.technician_staff_id ? 'Reassign' : 'Assign'}
+            </AdminButton>
+        </form>
+    );
+
+    const transferBlock = canShowRepairTransfer && (
+        <form onSubmit={transferRepair} className="flex flex-col gap-2 border-t border-admin-border pt-3">
+            <label className="text-xs font-semibold text-admin-text">Transfer repair work</label>
+            {transferTargetShops.length === 0 ? (
+                <span className="text-xs text-admin-text2">No other active shop is available for transfer.</span>
+            ) : (
+                <>
+                    <AdminSelect
+                        value={transferShopId}
+                        onChange={(e) => setTransferShopId(e.target.value)}
+                    >
+                        <option value="">Select receiving shop...</option>
+                        {transferTargetShops.map((availableShop) => (
+                            <option key={availableShop.id} value={availableShop.id}>
+                                {availableShop.name}
+                            </option>
+                        ))}
+                    </AdminSelect>
+                    <textarea
+                        value={transferReason}
+                        onChange={(e) => setTransferReason(e.target.value)}
+                        rows={2}
+                        placeholder="Reason (optional)"
+                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                    />
+                    {reservedPartsCount > 0 && (
+                        <label className="flex items-start gap-2 text-xs text-admin-text2">
+                            <input
+                                type="checkbox"
+                                checked={releaseReservedParts}
+                                onChange={(e) => setReleaseReservedParts(e.target.checked)}
+                                className="mt-0.5"
+                            />
+                            <span>
+                                Release {reservedPartsCount} reserved part{reservedPartsCount === 1 ? '' : 's'} back to this shop. Transfer stock separately if the receiving shop also needs those parts.
+                            </span>
+                        </label>
+                    )}
+                    <AdminButton
+                        type="submit"
+                        variant="neutral"
+                        isLoading={processing}
+                        disabled={!transferShopId || (reservedPartsCount > 0 && !releaseReservedParts)}
+                    >
+                        Transfer repair
+                    </AdminButton>
+                </>
+            )}
+        </form>
+    );
+
+    const cancelBlock = ['awaiting_authorization', 'payment_overdue', 'awaiting_parts', 'in_progress', 'qc_pending', 'failed_requires_resolution'].includes(
+        repair.repair_status,
+    ) && (
+        <div className="flex flex-col gap-2 border-t border-admin-border pt-3">
+            <label className="text-xs font-semibold text-admin-text">Cancel repair — reason</label>
+            <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={2}
+                placeholder="e.g. customer declined the quote"
+                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+            />
+            <AdminButton variant="danger" onClick={cancelRepair} disabled={processing || cancelReason.trim() === ''}>
+                Cancel repair
+            </AdminButton>
+        </div>
+    );
+
+    const hasMoreActions = Boolean(partsBlock || assignTechnicianBlock || transferBlock || cancelBlock);
+
     return (
         <AdminShell>
             <Head title={repairWorkLabel} />
@@ -402,7 +506,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 )}
             </div>
 
-            <div className="py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
+            <div className="py-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="order-2 lg:order-1 min-w-0 flex flex-col gap-6">
                 <AdminSectionCard
                     title="Details"
@@ -670,8 +774,25 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                 </AdminSectionCard>
                 </div>
 
-                <div className="order-1 lg:order-2 flex flex-col gap-2 lg:sticky lg:top-[calc(var(--a-topbar-height)+1.5rem)]">
-                    <h2 className="text-sm font-semibold text-admin-text mb-1">Actions</h2>
+                <div className="order-1 lg:order-2 lg:sticky lg:top-[calc(var(--a-topbar-height)+1.5rem)]">
+                <AdminSectionCard title="Actions">
+                <div className="p-6 flex flex-col gap-2">
+
+                    {hasMoreActions && (
+                        <>
+                            <AdminButton type="button" size="sm" className="mb-1" onClick={() => setMoreActionsOpen(true)}>
+                                More actions
+                            </AdminButton>
+                            <AdminModal open={moreActionsOpen} title="More actions" onClose={() => setMoreActionsOpen(false)}>
+                                <div className="flex flex-col gap-2 pb-6">
+                                    {partsBlock}
+                                    {assignTechnicianBlock}
+                                    {transferBlock}
+                                    {cancelBlock}
+                                </div>
+                            </AdminModal>
+                        </>
+                    )}
 
                     {false && ['diagnosing', 'unrepairable', 'awaiting_authorization', 'payment_overdue', 'cancelled'].includes(repair.repair_status) && (
                         <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
@@ -688,7 +809,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                         value={feeNaira}
                                         onChange={(e) => setFeeNaira(e.target.value)}
                                         placeholder="Amount (₦)"
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                     />
                                     <AdminButton type="submit" variant="neutral" isLoading={processing} disabled={!feeNaira || parseFloat(feeNaira) <= 0}>
                                         Set diagnosis fee
@@ -708,15 +829,11 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                     <span className="text-xs text-admin-text2">
                                         {formatNaira(diagnosisFee!.amount_minor)} can be collected now, or it is added to the quote.
                                     </span>
-                                    <select
-                                        value={feeMethod}
-                                        onChange={(e) => setFeeMethod(e.target.value)}
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                    >
+                                    <AdminSelect value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)}>
                                         <option value="cash">Cash</option>
                                         <option value="pos_terminal">POS terminal</option>
                                         <option value="bank_transfer">Bank transfer</option>
-                                    </select>
+                                    </AdminSelect>
                                     <AdminButton type="submit" variant="neutral" isLoading={processing}>
                                         Collect diagnosis fee
                                     </AdminButton>
@@ -724,18 +841,6 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             )}
                         </div>
                     )}
-{PARTS_RESERVABLE_STATUSES.includes(repair.repair_status) && (
-                        <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
-                            <span className="text-xs font-semibold text-admin-text">Parts</span>
-                            <span className="text-xs text-admin-text2">
-                                Reserve the parts this repair needs, so the manager can price them into the quote.
-                            </span>
-                            <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${repair.id}/parts`)}>
-                                Manage parts
-                            </AdminButton>
-                        </div>
-                    )}
-
                     {SUPPLEMENTAL_QUOTE_REQUESTABLE_STATUSES.includes(repair.repair_status) && (
                         <div className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
                             <span className="text-xs font-semibold text-admin-text">Supplemental quote</span>
@@ -777,14 +882,14 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                         value={supplementalAmountNaira}
                                         onChange={(e) => setSupplementalAmountNaira(e.target.value)}
                                         placeholder="Additional amount (₦)"
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                     />
                                     <textarea
                                         value={supplementalReason}
                                         onChange={(e) => setSupplementalReason(e.target.value)}
                                         rows={2}
                                         placeholder="Why — e.g. battery, screen and charging port all needed replacing"
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                     />
                                     <AdminButton
                                         type="submit"
@@ -816,29 +921,6 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                 <span className="text-xs text-admin-text3">Save the diagnosis outcome as repairable first.</span>
                             )}
                         </div>
-                    )}
-
-                    {!CLOSED_STATUSES.includes(repair.repair_status) && !['received', 'diagnosing', 'qc_pending', 'handover'].includes(repair.repair_status) && (
-                        <form onSubmit={assignTechnician} className="flex flex-col gap-2 border-b border-admin-border pb-3 mb-1">
-                            <label className="text-xs font-semibold text-admin-text">
-                                {repair.technician_staff_id ? 'Reassign technician' : 'Assign technician'}
-                            </label>
-                            <select
-                                value={technicianId}
-                                onChange={(e) => setTechnicianId(e.target.value)}
-                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                            >
-                                <option value="">Select a technician…</option>
-                                {technicians.map((technician) => (
-                                    <option key={technician.id} value={technician.id}>
-                                        {technician.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <AdminButton type="submit" variant="neutral" isLoading={processing} disabled={!technicianId}>
-                                {repair.technician_staff_id ? 'Reassign' : 'Assign'}
-                            </AdminButton>
-                        </form>
                     )}
 
 {false && repair.repair_status === 'received' && (
@@ -902,7 +984,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             value={quoteNaira}
                                             onChange={(e) => setQuoteNaira(e.target.value)}
                                             placeholder="Amount (₦)"
-                                            className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                         />
                                         <label className="text-xs text-admin-text2">Diagnosis fee (₦)</label>
                                         <input
@@ -913,7 +995,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             onChange={(e) => setDiagnosisFeeNaira(e.target.value)}
                                             placeholder="Amount (₦)"
                                             disabled={repair.diagnosis_fee?.paid}
-                                            className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs disabled:bg-admin-bg disabled:text-admin-text3"
+                                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs disabled:bg-admin-bg disabled:text-admin-text3"
                                         />
                                         {repair.diagnosis_fee?.paid ? (
                                             <span className="text-xs text-admin-text2">Diagnosis fee already paid, so it is not added to this quote.</span>
@@ -935,17 +1017,13 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                                 placeholder="Down payment (₦)"
                                                 value={downPayment}
                                                 onChange={(e) => setDownPayment(e.target.value)}
-                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                             />
-                                            <select
-                                                value={downPaymentMethod}
-                                                onChange={(e) => setDownPaymentMethod(e.target.value)}
-                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                            >
+                                            <AdminSelect value={downPaymentMethod} onChange={(e) => setDownPaymentMethod(e.target.value)}>
                                                 <option value="cash">Cash</option>
                                                 <option value="pos_terminal">POS terminal</option>
                                                 <option value="bank_transfer">Bank transfer</option>
-                                            </select>
+                                            </AdminSelect>
                                             </>
                                         )}
                                         <label className="flex items-center gap-2 text-xs text-admin-text">
@@ -958,7 +1036,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                                 value={agreementNote}
                                                 onChange={(e) => setAgreementNote(e.target.value)}
                                                 placeholder="What was agreed with the customer"
-                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                             />
                                         )}
                                         <div className="text-sm font-semibold text-admin-text">
@@ -999,7 +1077,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             <form onSubmit={completeRepair} className="flex flex-col gap-2">
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-xs font-semibold text-admin-text">Actually fixed faults</span>
-                                    <p className="text-[11px] text-admin-text3 -mt-1">This device's own fixable faults — pick what was actually fixed, and adjust the commission per fault if needed.</p>
+                                    <p className="text-[11px] text-admin-text3 -mt-1">This device's own fixable faults — pick what was actually fixed. Commission is set in Device Catalog, not here.</p>
                                     <FaultPicker
                                         searchUrl={`/admin/repairs/${repair.id}/faults/search`}
                                         onSelect={addSelectedFixedFault}
@@ -1010,16 +1088,9 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             {selectedFixedFaults.map((fault) => (
                                                 <div key={fault.device_problem_tag_id} className="flex items-center gap-2 text-xs text-admin-text">
                                                     <span className="flex-1 min-w-0 truncate">{fault.label}</span>
-                                                    <span className="text-admin-text3">₦</span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        value={fault.commission_naira}
-                                                        onChange={(e) => updateSelectedFixedFaultCommission(fault.device_problem_tag_id, e.target.value)}
-                                                        placeholder="0"
-                                                        className="w-20 border border-admin-border-strong rounded-admin-button px-1.5 py-1 text-xs"
-                                                    />
+                                                    <span className="text-admin-text3 shrink-0">
+                                                        {fault.commission_amount_minor != null ? formatNaira(fault.commission_amount_minor) : 'No commission set'}
+                                                    </span>
                                                     <button
                                                         type="button"
                                                         onClick={() => removeSelectedFixedFault(fault.device_problem_tag_id)}
@@ -1040,23 +1111,13 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-xs font-semibold text-admin-text">Add newly discovered fixed fault</span>
-                                    <p className="text-[11px] text-admin-text3 -mt-1">Only for a fault this device's catalog doesn't already have recorded.</p>
+                                    <p className="text-[11px] text-admin-text3 -mt-1">Only for a fault this device's catalog doesn't already have recorded. It's added uncommissioned — a manager sets its commission afterward in Device Catalog.</p>
                                     <div className="flex gap-2">
                                         <input
                                             value={customFixedFault}
                                             onChange={(e) => setCustomFixedFault(e.target.value)}
                                             placeholder="e.g. loose display connector"
                                             className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                        />
-                                        <span className="self-center text-admin-text3 text-xs">₦</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={customFixedFaultCommissionNaira}
-                                            onChange={(e) => setCustomFixedFaultCommissionNaira(e.target.value)}
-                                            placeholder="Commission"
-                                            className="w-24 border border-admin-border-strong rounded-admin-button px-1.5 py-1.5 text-xs"
                                         />
                                         <AdminButton
                                             type="button"
@@ -1075,7 +1136,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                     onChange={(e) => setResolutionNotes(e.target.value)}
                                     rows={2}
                                     placeholder="What was actually done — especially useful if no parts were used"
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                 />
                                 <AdminButton type="submit" isLoading={processing}>
                                     Finish work — send to quality check
@@ -1088,7 +1149,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                     value={failReason}
                                     onChange={(e) => setFailReason(e.target.value)}
                                     rows={2}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                 />
                                 {repair.down_payment_paid_minor > 0 && (
                                     <div className="flex flex-col gap-1">
@@ -1101,7 +1162,7 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             value={serviceCharge}
                                             onChange={(e) => setServiceCharge(e.target.value)}
                                             placeholder="0"
-                                            className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                         />
                                         <span className="text-xs text-admin-text2">
                                             Paid down payment: {formatNaira(repair.down_payment_paid_minor)}. Refund due:{' '}
@@ -1139,84 +1200,13 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                 rows={2}
                                 required={qcOutcome !== 'passed'}
                                 placeholder={qcOutcome === 'passed' ? 'Optional' : 'Required for a failed or untestable check'}
-                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                             />
                             <AdminButton type="submit" isLoading={processing}>
                                 Record quality check
                             </AdminButton>
                         </form>
                     )}
-
-                    {canShowRepairTransfer && (
-                        <form onSubmit={transferRepair} className="flex flex-col gap-2 border-t border-admin-border pt-3">
-                            <label className="text-xs font-semibold text-admin-text">Transfer repair work</label>
-                            {transferTargetShops.length === 0 ? (
-                                <span className="text-xs text-admin-text2">No other active shop is available for transfer.</span>
-                            ) : (
-                                <>
-                                    <select
-                                        value={transferShopId}
-                                        onChange={(e) => setTransferShopId(e.target.value)}
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                    >
-                                        <option value="">Select receiving shop...</option>
-                                        {transferTargetShops.map((availableShop) => (
-                                            <option key={availableShop.id} value={availableShop.id}>
-                                                {availableShop.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <textarea
-                                        value={transferReason}
-                                        onChange={(e) => setTransferReason(e.target.value)}
-                                        rows={2}
-                                        placeholder="Reason (optional)"
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                    />
-                                    {reservedPartsCount > 0 && (
-                                        <label className="flex items-start gap-2 text-xs text-admin-text2">
-                                            <input
-                                                type="checkbox"
-                                                checked={releaseReservedParts}
-                                                onChange={(e) => setReleaseReservedParts(e.target.checked)}
-                                                className="mt-0.5"
-                                            />
-                                            <span>
-                                                Release {reservedPartsCount} reserved part{reservedPartsCount === 1 ? '' : 's'} back to this shop. Transfer stock separately if the receiving shop also needs those parts.
-                                            </span>
-                                        </label>
-                                    )}
-                                    <AdminButton
-                                        type="submit"
-                                        variant="neutral"
-                                        isLoading={processing}
-                                        disabled={!transferShopId || (reservedPartsCount > 0 && !releaseReservedParts)}
-                                    >
-                                        Transfer repair
-                                    </AdminButton>
-                                </>
-                            )}
-                        </form>
-                    )}
-
-                    {['awaiting_authorization', 'payment_overdue', 'awaiting_parts', 'in_progress', 'qc_pending', 'failed_requires_resolution'].includes(
-                        repair.repair_status,
-                    ) && (
-                        <div className="flex flex-col gap-2 border-t border-admin-border pt-3">
-                            <label className="text-xs font-semibold text-admin-text">Cancel repair — reason</label>
-                            <textarea
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                rows={2}
-                                placeholder="e.g. customer declined the quote"
-                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                            />
-                            <AdminButton variant="danger" onClick={cancelRepair} disabled={processing || cancelReason.trim() === ''}>
-                                Cancel repair
-                            </AdminButton>
-                        </div>
-                    )}
-
 
                     {repair.repair_status === 'handover' && repair.financial_status === 'fully_paid' && (
                         <div className="flex flex-col gap-2">
@@ -1268,31 +1258,23 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                                             Outstanding balance: {formatNaira(repair.outstanding_balance_minor)}
                                         </span>
                                     )}
-                                    <select
-                                        value={requestedFinancialStatus}
-                                        onChange={(e) => setRequestedFinancialStatus(e.target.value)}
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                    >
+                                    <AdminSelect value={requestedFinancialStatus} onChange={(e) => setRequestedFinancialStatus(e.target.value)}>
                                         <option value="fully_paid">Fully paid</option>
                                         <option value="partially_paid">Partially paid</option>
-                                    </select>
+                                    </AdminSelect>
                                     <input
                                         type="number"
                                         step="0.01"
                                         placeholder="Amount (₦)"
                                         value={requestedAmount}
                                         onChange={(e) => setRequestedAmount(e.target.value)}
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
                                     />
-                                    <select
-                                        value={requestedPaymentMethod}
-                                        onChange={(e) => setRequestedPaymentMethod(e.target.value)}
-                                        className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                    >
+                                    <AdminSelect value={requestedPaymentMethod} onChange={(e) => setRequestedPaymentMethod(e.target.value)}>
                                         <option value="cash">Cash</option>
                                         <option value="pos_terminal">POS terminal</option>
                                         <option value="bank_transfer">Bank transfer</option>
-                                    </select>
+                                    </AdminSelect>
                                     <AdminButton type="submit" isLoading={processing}>
                                         Request approval
                                     </AdminButton>
@@ -1308,16 +1290,11 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             </AdminButton>
 
                             <form onSubmit={markUnrepairable} className="flex flex-col gap-2 border-t border-admin-border pt-3 mt-1">
-                                <label className="text-xs font-semibold text-admin-text">Mark unrepairable — settlement</label>
-                                <select
-                                    value={settlementState}
-                                    onChange={(e) => setSettlementState(e.target.value)}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                >
+                                <AdminSelect label="Mark unrepairable — settlement" value={settlementState} onChange={(e) => setSettlementState(e.target.value)}>
                                     <option value="pending_decision">Pending decision</option>
                                     <option value="refunded">Refunded</option>
                                     <option value="retained">Retained</option>
-                                </select>
+                                </AdminSelect>
                                 <AdminButton type="submit" variant="neutral" isLoading={processing}>
                                     Mark unrepairable
                                 </AdminButton>
@@ -1330,6 +1307,8 @@ export default function RepairShow({ repair, shop, shops, technicians, canApprov
                             {repair.collection_case ? 'See the linked collection case for next steps.' : 'No further actions available.'}
                         </p>
                     )}
+                </div>
+                </AdminSectionCard>
                 </div>
             </div>
             </div>

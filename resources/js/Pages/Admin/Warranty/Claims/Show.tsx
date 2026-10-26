@@ -113,7 +113,7 @@ export default function WarrantyClaimShow({ claim }: WarrantyClaimShowProps) {
                 }
             />
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="flex flex-col gap-6">
                     <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
                         <DetailRow label="Policy" value={claim.warranty_policy?.name ?? '—'} />

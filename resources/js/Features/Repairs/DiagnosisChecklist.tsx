@@ -2,6 +2,7 @@ import { FormEvent } from 'react';
 import { useForm } from '@inertiajs/react';
 import AdminButton from '../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../Components/Admin/AdminEmptyState';
+import AdminSelect from '../../Components/Admin/Forms/AdminSelect';
 
 export type DiagnosisRow = {
     id: number;
@@ -75,20 +76,13 @@ export default function DiagnosisChecklist({ submitUrl, diagnoses, disabled = fa
                             />
                             {errors.component && <p className="text-xs text-admin-red mt-1">{errors.component}</p>}
                         </div>
-                        <div>
-                            <label className="text-xs font-semibold text-admin-text mb-1 block">Condition</label>
-                            <select
-                                value={data.condition}
-                                onChange={(e) => setData('condition', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                            >
-                                {CONDITIONS.map((c) => (
-                                    <option key={c.value} value={c.value}>
-                                        {c.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)}>
+                            {CONDITIONS.map((c) => (
+                                <option key={c.value} value={c.value}>
+                                    {c.label}
+                                </option>
+                            ))}
+                        </AdminSelect>
                     </div>
 
                     <div className="mb-3">

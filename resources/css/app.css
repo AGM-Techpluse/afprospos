@@ -11,6 +11,7 @@
     --font-customer-display: var(--font-customer-display);
     --font-customer-ui: var(--font-customer-ui);
     --font-mono: var(--font-mono);
+    --font-admin-handwriting: var(--font-admin-handwriting);
 
     /* Admin Colors */
     --color-admin-bg: var(--a-bg);

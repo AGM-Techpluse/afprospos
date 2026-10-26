@@ -6,6 +6,7 @@ import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 
 type ShopRow = {
@@ -136,15 +137,11 @@ export default function ShopsIndex({ shops, filters }: ShopsIndexProps) {
                             placeholder="Filter by name or SKU prefix…"
                             className="flex-1 min-w-[160px] max-w-[260px] border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                         />
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                        >
+                        <AdminSelect aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
-                        </select>
+                        </AdminSelect>
                         <div className="flex-1" />
                         <AdminButton type="button" variant="neutral" onClick={refresh} isLoading={refreshing} loadingText="Refreshing…">
                             Refresh

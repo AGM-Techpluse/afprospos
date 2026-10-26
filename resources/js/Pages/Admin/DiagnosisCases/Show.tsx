@@ -2,7 +2,9 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminButton from '../../../Components/Admin/AdminButton';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import FaultOriginBadge from '../../../Features/Repairs/FaultOriginBadge';
 import FaultPicker, { FaultSearchResult } from '../../../Features/Repairs/FaultPicker';
@@ -209,7 +211,84 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, re
                 <Link href={`/admin/repairs/diagnosis-cases/${diagnosisCase.id}/docket`} className="text-sm font-semibold text-admin-blue">Print docket</Link>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] items-start max-w-5xl">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)] items-start max-w-5xl">
+                <AdminSectionCard title="Actions">
+                <div className="p-6">
+                    <form onSubmit={assignTechnician} className="flex flex-col gap-2 pb-4 border-b border-admin-border">
+                        <AdminSelect label="Assign diagnosis technician" value={technicianId} onChange={(e) => setTechnicianId(e.target.value)}>
+                            <option value="">Select technician...</option>
+                            {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}
+                        </AdminSelect>
+                        <AdminButton type="submit" variant="neutral" disabled={!technicianId}>Assign</AdminButton>
+                    </form>
+
+                    <form onSubmit={saveResult} className="flex flex-col gap-3 py-4 border-b border-admin-border">
+                        <AdminSelect label="Diagnosis outcome" value={data.outcome} onChange={(e) => changeDiagnosisField('outcome', e.target.value)} error={errors.outcome}>
+                            <option value="repairable">Repairable</option>
+                            <option value="unrepairable">Unrepairable</option>
+                            <option value="requires_further_assessment">Requires further assessment</option>
+                        </AdminSelect>
+
+                        <label className="text-xs font-semibold text-admin-text">Revealed faults</label>
+                        <p className="text-xs text-admin-text3 -mt-2">Searches every device's faults, not just this one — the same battery/screen issue tends to recur across models.</p>
+                        <FaultPicker
+                            searchUrl="/admin/repairs/diagnosis-cases/faults/search"
+                            onSelect={addFaultFromPicker}
+                            excludeLabels={data.revealed_faults.map((fault) => fault.label)}
+                        />
+                        <div className="flex gap-2">
+                            <input
+                                value={customFault}
+                                onChange={(e) => setCustomFault(e.target.value)}
+                                placeholder="Add unique revealed fault…"
+                                className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm"
+                            />
+                            <AdminButton type="button" isLoading={addingCustomFault} onClick={addCustomFault} disabled={customFault.trim() === ''}>Add</AdminButton>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {data.revealed_faults.map((fault) => (
+                                <button key={fault.label} type="button" onClick={() => removeFault(fault.label)} className="bg-admin-blue-soft text-admin-blue rounded-admin-badge px-2 py-1 text-xs font-semibold">
+                                    {fault.label} x
+                                </button>
+                            ))}
+                        </div>
+
+                        <input type="number" step="0.01" value={data.diagnosis_fee_naira} onChange={(e) => changeDiagnosisField('diagnosis_fee_naira', e.target.value)} placeholder="Diagnosis fee (NGN)" className="w-full border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm" />
+                        <textarea value={data.diagnosis_notes} onChange={(e) => changeDiagnosisField('diagnosis_notes', e.target.value)} rows={3} placeholder="Diagnosis notes" className="w-full border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm" />
+                        <AdminButton type="submit" isLoading={processing} variant={diagnosisSaved ? 'neutral' : 'primary'}>
+                            {diagnosisSaved ? 'Diagnosis saved' : 'Save diagnosis'}
+                        </AdminButton>
+                    </form>
+
+                    {diagnosisCase.diagnosis_fee_minor !== null && !diagnosisCase.diagnosis_fee_paid && diagnosisCase.status === 'diagnosed' && (
+                        <form onSubmit={collectFee} className="flex flex-col gap-2 py-4 border-b border-admin-border">
+                            <AdminSelect label={`Collect diagnosis fee (${formatNaira(diagnosisCase.diagnosis_fee_minor)})`} value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)}>
+                                <option value="cash">Cash</option>
+                                <option value="pos_terminal">POS terminal</option>
+                                <option value="bank_transfer">Bank transfer</option>
+                            </AdminSelect>
+                            <AdminButton type="submit" variant="neutral" isLoading={collectingFee}>
+                                Collect diagnosis fee
+                            </AdminButton>
+                        </form>
+                    )}
+
+                    <div className="flex flex-col gap-2 pt-4">
+                        {openRepair && (
+                            <p className="text-xs text-admin-text3">
+                                An open repair work order already exists: {openRepair.display_label} ({openRepair.status.replace(/_/g, ' ')}).
+                            </p>
+                        )}
+                        <AdminButton onClick={createRepair} disabled={diagnosisCase.status === 'received'}>
+                            {openRepair ? 'Open existing repair work' : hasCompletedRepair ? 'Open new repair work for this diagnosis' : 'Create repair from diagnosis'}
+                        </AdminButton>
+                        <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/diagnosis-cases/${diagnosisCase.id}/docket`)}>
+                            Print docket
+                        </AdminButton>
+                    </div>
+                </div>
+                </AdminSectionCard>
+
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
                     <div className="mb-4 pb-4 border-b border-admin-border">
                         <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
@@ -280,89 +359,6 @@ export default function DiagnosisCaseShow({ diagnosisCase, shop, technicians, re
                             </div>
                         </div>
                     )}
-                </div>
-
-                <div>
-                    <h2 className="text-base font-semibold text-admin-text mb-4">Actions</h2>
-
-                    <form onSubmit={assignTechnician} className="flex flex-col gap-2 pb-4 border-b border-admin-border">
-                        <label className="text-xs font-semibold text-admin-text">Assign diagnosis technician</label>
-                        <select value={technicianId} onChange={(e) => setTechnicianId(e.target.value)} className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white">
-                            <option value="">Select technician...</option>
-                            {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}
-                        </select>
-                        <AdminButton type="submit" variant="neutral" disabled={!technicianId}>Assign</AdminButton>
-                    </form>
-
-                    <form onSubmit={saveResult} className="flex flex-col gap-3 py-4 border-b border-admin-border">
-                        <label className="text-xs font-semibold text-admin-text">Diagnosis outcome</label>
-                        <select value={data.outcome} onChange={(e) => changeDiagnosisField('outcome', e.target.value)} className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white">
-                            <option value="repairable">Repairable</option>
-                            <option value="unrepairable">Unrepairable</option>
-                            <option value="requires_further_assessment">Requires further assessment</option>
-                        </select>
-                        {errors.outcome && <p className="text-xs text-admin-red">{errors.outcome}</p>}
-
-                        <label className="text-xs font-semibold text-admin-text">Revealed faults</label>
-                        <p className="text-xs text-admin-text3 -mt-2">Searches every device's faults, not just this one — the same battery/screen issue tends to recur across models.</p>
-                        <FaultPicker
-                            searchUrl="/admin/repairs/diagnosis-cases/faults/search"
-                            onSelect={addFaultFromPicker}
-                            excludeLabels={data.revealed_faults.map((fault) => fault.label)}
-                        />
-                        <div className="flex gap-2">
-                            <input
-                                value={customFault}
-                                onChange={(e) => setCustomFault(e.target.value)}
-                                placeholder="Add unique revealed fault…"
-                                className="min-w-0 flex-1 border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm"
-                            />
-                            <AdminButton type="button" variant="neutral" isLoading={addingCustomFault} onClick={addCustomFault} disabled={customFault.trim() === ''}>Add</AdminButton>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {data.revealed_faults.map((fault) => (
-                                <button key={fault.label} type="button" onClick={() => removeFault(fault.label)} className="bg-admin-blue-soft text-admin-blue rounded-admin-badge px-2 py-1 text-xs font-semibold">
-                                    {fault.label} x
-                                </button>
-                            ))}
-                        </div>
-
-                        <input type="number" step="0.01" value={data.diagnosis_fee_naira} onChange={(e) => changeDiagnosisField('diagnosis_fee_naira', e.target.value)} placeholder="Diagnosis fee (NGN)" className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm" />
-                        <textarea value={data.diagnosis_notes} onChange={(e) => changeDiagnosisField('diagnosis_notes', e.target.value)} rows={3} placeholder="Diagnosis notes" className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm" />
-                        <AdminButton type="submit" isLoading={processing} variant={diagnosisSaved ? 'neutral' : 'primary'}>
-                            {diagnosisSaved ? 'Diagnosis saved' : 'Save diagnosis'}
-                        </AdminButton>
-                    </form>
-
-                    {diagnosisCase.diagnosis_fee_minor !== null && !diagnosisCase.diagnosis_fee_paid && diagnosisCase.status === 'diagnosed' && (
-                        <form onSubmit={collectFee} className="flex flex-col gap-2 py-4 border-b border-admin-border">
-                            <label className="text-xs font-semibold text-admin-text">
-                                Collect diagnosis fee ({formatNaira(diagnosisCase.diagnosis_fee_minor)})
-                            </label>
-                            <select value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)} className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white">
-                                <option value="cash">Cash</option>
-                                <option value="pos_terminal">POS terminal</option>
-                                <option value="bank_transfer">Bank transfer</option>
-                            </select>
-                            <AdminButton type="submit" variant="neutral" isLoading={collectingFee}>
-                                Collect diagnosis fee
-                            </AdminButton>
-                        </form>
-                    )}
-
-                    <div className="flex flex-col gap-2 pt-4">
-                        {openRepair && (
-                            <p className="text-xs text-admin-text3">
-                                An open repair work order already exists: {openRepair.display_label} ({openRepair.status.replace(/_/g, ' ')}).
-                            </p>
-                        )}
-                        <AdminButton onClick={createRepair} disabled={diagnosisCase.status === 'received'}>
-                            {openRepair ? 'Open existing repair work' : hasCompletedRepair ? 'Open new repair work for this diagnosis' : 'Create repair from diagnosis'}
-                        </AdminButton>
-                        <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/diagnosis-cases/${diagnosisCase.id}/docket`)}>
-                            Print docket
-                        </AdminButton>
-                    </div>
                 </div>
             </div>
         </AdminShell>

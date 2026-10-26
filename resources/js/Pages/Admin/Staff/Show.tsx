@@ -5,6 +5,7 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import Icon from '../../../Components/Icons/Icon';
 
 function RevokeButton({ label, onClick }: { label: string; onClick: () => void }) {
@@ -129,17 +130,18 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         </div>
                         {grantableShops.length > 0 && (
                             <form onSubmit={grantShop} className="flex flex-col sm:flex-row sm:items-center gap-2 pt-3 border-t border-admin-border">
-                                <select
+                                <AdminSelect
                                     value={shopToGrant}
                                     onChange={(e) => setShopToGrant(Number(e.target.value))}
-                                    className="flex-1 min-w-0 border border-admin-border-strong rounded-admin-button text-sm py-1.5 px-2"
+                                    containerClassName="flex-1 min-w-0"
+                                    aria-label="Shop to grant"
                                 >
                                     {grantableShops.map((shop) => (
                                         <option key={shop.id} value={shop.id}>
                                             {shop.name} ({shop.sku_prefix_code})
                                         </option>
                                     ))}
-                                </select>
+                                </AdminSelect>
                                 <AdminButton type="submit" variant="neutral" className="shrink-0">
                                     Grant access
                                 </AdminButton>
@@ -166,17 +168,18 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         </div>
                         {assignableRoles.length > 0 && (
                             <form onSubmit={assignRole} className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-sm pt-4 border-t border-admin-border">
-                                <select
+                                <AdminSelect
                                     value={roleToAssign}
                                     onChange={(e) => setRoleToAssign(e.target.value)}
-                                    className="flex-1 min-w-0 border border-admin-border-strong rounded-admin-button text-sm py-1.5 px-2"
+                                    containerClassName="flex-1 min-w-0"
+                                    aria-label="Role to assign"
                                 >
                                     {assignableRoles.map((role) => (
                                         <option key={role} value={role}>
                                             {role}
                                         </option>
                                     ))}
-                                </select>
+                                </AdminSelect>
                                 <AdminButton type="submit" variant="neutral" className="shrink-0">
                                     Assign role
                                 </AdminButton>

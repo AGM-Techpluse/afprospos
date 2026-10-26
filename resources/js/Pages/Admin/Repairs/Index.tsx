@@ -7,6 +7,7 @@ import AdminBulkActionBar from '../../../Components/Admin/AdminBulkActionBar';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import Icon from '../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 
@@ -148,30 +149,22 @@ export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexPr
                 onSelectionChange={setSelectedIds}
                 toolbar={
                     <>
-                        <select
-                            value={filters.shop_id ?? ''}
-                            onChange={(e) => applyFilters({ shop_id: e.target.value ? Number(e.target.value) : null })}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        <AdminSelect aria-label="Filter by shop" value={filters.shop_id ?? ''} onChange={(e) => applyFilters({ shop_id: e.target.value ? Number(e.target.value) : null })} containerClassName="mb-0">
                             <option value="">All shops</option>
                             {shops.map((shop) => (
                                 <option key={shop.id} value={shop.id}>
                                     {shop.name}
                                 </option>
                             ))}
-                        </select>
-                        <select
-                            value={filters.status}
-                            onChange={(e) => applyFilters({ status: e.target.value })}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by status" value={filters.status} onChange={(e) => applyFilters({ status: e.target.value })} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             {Object.keys(STATUS_BADGE).map((status) => (
                                 <option key={status} value={status}>
                                     {status.replace(/_/g, ' ')}
                                 </option>
                             ))}
-                        </select>
+                        </AdminSelect>
                     </>
                 }
                 renderActions={(row) => (

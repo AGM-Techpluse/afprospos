@@ -5,6 +5,7 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import Icon from '../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 
@@ -116,15 +117,16 @@ export default function CustomersIndex({ customers, filters }: CustomersIndexPro
                                 className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                             />
                         </div>
-                        <select
+                        <AdminSelect
+                            aria-label="Filter by registration status"
                             value={registration}
                             onChange={(e) => setRegistration(e.target.value)}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg"
+                            containerClassName="mb-0"
                         >
                             <option value="">All customers</option>
                             <option value="registered">Registered</option>
                             <option value="walk_in">Not yet registered</option>
-                        </select>
+                        </AdminSelect>
                         <div className="flex-1" />
                         {hasActiveFilters && (
                             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-admin-blue">

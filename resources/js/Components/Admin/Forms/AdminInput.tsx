@@ -37,7 +37,7 @@ const AdminInput = forwardRef<HTMLInputElement, AdminInputProps>(
 
         const displayError = error || internalError;
 
-        let inputBorderClass = 'border-admin-border-strong focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
+        let inputBorderClass = 'border-admin-border-strong hover:border-admin-blue focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
         if (displayError) {
             inputBorderClass = 'border-admin-red focus:border-admin-red focus:ring-admin-red-soft focus:ring-2';
         } else if (success) {

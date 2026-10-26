@@ -6,6 +6,7 @@ import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/Admin
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import Icon from '../../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
@@ -109,29 +110,21 @@ export default function SerializedUnitsIndex({ units, filters, shops }: Serializ
                                 className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                             />
                         </div>
-                        <select
-                            value={shopId ?? ''}
-                            onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                        >
+                        <AdminSelect aria-label="Filter by shop" value={shopId ?? ''} onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)} containerClassName="mb-0">
                             <option value="">All shops</option>
                             {shops.map((shop) => (
                                 <option key={shop.id} value={shop.id}>
                                     {shop.name}
                                 </option>
                             ))}
-                        </select>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                        >
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             <option value="available">Available</option>
                             <option value="reserved">Reserved</option>
                             <option value="transferring">Transferring</option>
                             <option value="sold">Sold</option>
-                        </select>
+                        </AdminSelect>
                     </>
                 }
                 renderActions={(row) => (

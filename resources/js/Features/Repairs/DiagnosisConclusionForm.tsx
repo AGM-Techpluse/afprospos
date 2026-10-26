@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 import { useForm } from '@inertiajs/react';
 import AdminButton from '../../Components/Admin/AdminButton';
+import AdminSelect from '../../Components/Admin/Forms/AdminSelect';
 
 export type DiagnosisConclusionRow = {
     id: number;
@@ -69,22 +70,14 @@ export default function DiagnosisConclusionForm({ submitUrl, conclusions, disabl
                         {errors.root_cause && <p className="text-xs text-admin-red mt-1">{errors.root_cause}</p>}
                     </div>
 
-                    <div className="mb-4">
-                        <label className="text-xs font-semibold text-admin-text mb-1 block">Outcome</label>
-                        <select
-                            value={data.outcome}
-                            onChange={(e) => setData('outcome', e.target.value)}
-                            className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                        >
-                            <option value="">— select —</option>
-                            {OUTCOMES.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.outcome && <p className="text-xs text-admin-red mt-1">{errors.outcome}</p>}
-                    </div>
+                    <AdminSelect label="Outcome" value={data.outcome} onChange={(e) => setData('outcome', e.target.value)} error={errors.outcome}>
+                        <option value="">— select —</option>
+                        {OUTCOMES.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </AdminSelect>
 
                     <AdminButton type="submit" isLoading={processing} disabled={data.root_cause === '' || data.outcome === ''}>
                         Save diagnosis

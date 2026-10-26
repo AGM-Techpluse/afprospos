@@ -52,6 +52,11 @@
     Consolas,
     monospace;
 
+  /** Used once, deliberately: the reported-issue quote on the diagnosis-intake preview card — a human-handwriting read, not a general admin typeface. */
+  --font-admin-handwriting:
+    "Patrick Hand",
+    cursive;
+
   --font-regular: 400;
   --font-medium: 500;
   --font-semibold: 600;

@@ -266,7 +266,7 @@ export default function SalesCheckout({
                             <AdminStatCard label="Today's revenue" value={formatNaira(todaysSales.total_minor)} variant="blue" fillHeight />
                         </div>
                     )}
-                    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
                         <div>
                             <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
                             <RecentSales sales={recentSales} />
@@ -403,7 +403,7 @@ export default function SalesCheckout({
                 </div>
             )}
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
                 <div className={`bg-admin-surface border border-admin-border rounded-admin-card p-4 h-[520px] ${closed ? 'pointer-events-none opacity-60' : ''}`}>
                     <ProductSearch
                         shopId={checkout.shop_id}
@@ -432,17 +432,13 @@ export default function SalesCheckout({
                     {discountOpen ? (
                         <form onSubmit={submitDiscount} className="border-t border-white/15 pt-3 mb-3">
                             <div className="grid grid-cols-2 gap-2 mb-2">
-                                <select
-                                    value={discountForm.data.type}
-                                    onChange={(e) => discountForm.setData('type', e.target.value)}
-                                    className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
-                                >
+                                <AdminSelect aria-label="Discount type" value={discountForm.data.type} onChange={(e) => discountForm.setData('type', e.target.value)} containerClassName="mb-0">
                                     {DISCOUNT_TYPES.map((t) => (
                                         <option key={t.value} value={t.value}>
                                             {t.label}
                                         </option>
                                     ))}
-                                </select>
+                                </AdminSelect>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -517,17 +513,13 @@ export default function SalesCheckout({
                             </div>
                         ) : (
                             <>
-                                <select
-                                    value={completeForm.data.payment_method}
-                                    onChange={(e) => completeForm.setData('payment_method', e.target.value)}
-                                    className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2 bg-white"
-                                >
+                                <AdminSelect aria-label="Payment method" value={completeForm.data.payment_method} onChange={(e) => completeForm.setData('payment_method', e.target.value)} containerClassName="mb-2">
                                     {PAYMENT_METHODS.map((m) => (
                                         <option key={m.value} value={m.value}>
                                             {m.label}
                                         </option>
                                     ))}
-                                </select>
+                                </AdminSelect>
                                 {completeForm.data.payment_method !== 'cash' && (
                                     <input
                                         type="text"

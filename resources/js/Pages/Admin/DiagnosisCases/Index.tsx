@@ -6,6 +6,7 @@ import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 
 type Shop = { id: number; name: string };
@@ -211,37 +212,25 @@ export default function DiagnosisCasesIndex({ cases, filters, shops }: Props) {
                             placeholder="Search device, customer, fault..."
                             className="flex-1 min-w-[180px] max-w-[280px] border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                         />
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        <AdminSelect aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             <option value="received">Received</option>
                             <option value="diagnosed">Diagnosed</option>
                             <option value="called_up">Called up</option>
                             <option value="declined">Declined</option>
-                        </select>
-                        <select
-                            value={outcome}
-                            onChange={(e) => setOutcome(e.target.value)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)} containerClassName="mb-0">
                             <option value="">All outcomes</option>
                             <option value="repairable">Repairable</option>
                             <option value="unrepairable">Unrepairable</option>
                             <option value="requires_further_assessment">Further assessment</option>
-                        </select>
-                        <select
-                            value={shopId ?? ''}
-                            onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by shop" value={shopId ?? ''} onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)} containerClassName="mb-0">
                             <option value="">All shops</option>
                             {shops.map((shop) => (
                                 <option key={shop.id} value={shop.id}>{shop.name}</option>
                             ))}
-                        </select>
+                        </AdminSelect>
                         <div className="flex-1" />
                         <AdminButton type="button" variant="neutral" onClick={refresh} isLoading={refreshing} loadingText="Refreshing...">
                             Refresh

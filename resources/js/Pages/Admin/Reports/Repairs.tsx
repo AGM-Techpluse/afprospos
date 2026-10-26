@@ -7,6 +7,7 @@ import { ReportFilters, ShopOption } from '../../../Features/Reports/types';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 import { formatNaira } from '../../../lib/money';
 
@@ -120,19 +121,20 @@ export default function RepairReports({
                 mobileStatusField="repair_status"
                 mobileDetailFields={['customer_name', 'repair_cost_minor', 'created_at']}
                 toolbar={
-                    <select
+                    <AdminSelect
+                        aria-label="Filter by status"
                         value={status}
                         onChange={(e) => {
                             setStatus(e.target.value);
                             reload({ status: e.target.value, page: 1 });
                         }}
-                        className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg"
+                        containerClassName="mb-0"
                     >
                         <option value="">All statuses</option>
                         {Object.keys(STATUS_BADGE).map((value) => (
                             <option key={value} value={value}>{value.replace(/_/g, ' ')}</option>
                         ))}
-                    </select>
+                    </AdminSelect>
                 }
                 renderActions={(row) => (
                     <AdminButton variant="neutral" onClick={() => router.visit(`/admin/repairs/${row.id}`)}>

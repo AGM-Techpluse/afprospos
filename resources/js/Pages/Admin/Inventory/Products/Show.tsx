@@ -5,6 +5,7 @@ import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 import ProductImage from '../../../../Components/ProductImage';
 
@@ -328,20 +329,13 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
             <div className="mt-8 max-w-lg">
                 <h2 className="text-admin-md font-semibold text-admin-text mb-4">Receive stock</h2>
                 <form onSubmit={submitReceive}>
-                    <div className="mb-4">
-                        <label className="block text-xs font-semibold text-admin-text mb-1.5">Shop</label>
-                        <select
-                            value={data.shop_id}
-                            onChange={(e) => setData('shop_id', e.target.value)}
-                            className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                        >
-                            {shops.map((shop) => (
-                                <option key={shop.id} value={shop.id}>
-                                    {shop.name} ({shop.sku_prefix_code})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
+                        {shops.map((shop) => (
+                            <option key={shop.id} value={shop.id}>
+                                {shop.name} ({shop.sku_prefix_code})
+                            </option>
+                        ))}
+                    </AdminSelect>
 
                     {sku.is_serialized ? (
                         <div className="mb-4 grid gap-3 sm:grid-cols-2">

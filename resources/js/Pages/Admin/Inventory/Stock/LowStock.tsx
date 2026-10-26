@@ -5,6 +5,7 @@ import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 
 type LowStockItem = {
@@ -81,18 +82,14 @@ export default function LowStock({ items, filters, shops }: LowStockProps) {
                 mobileDetailFields={['shop_id', 'low_stock_threshold']}
                 loading={loading}
                 toolbar={
-                    <select
-                        value={filters.shop_id ?? ''}
-                        onChange={(e) => filterByShop(e.target.value ? Number(e.target.value) : null)}
-                        className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                    >
+                    <AdminSelect aria-label="Filter by shop" value={filters.shop_id ?? ''} onChange={(e) => filterByShop(e.target.value ? Number(e.target.value) : null)} containerClassName="mb-0">
                         <option value="">All shops</option>
                         {shops.map((shop) => (
                             <option key={shop.id} value={shop.id}>
                                 {shop.name}
                             </option>
                         ))}
-                    </select>
+                    </AdminSelect>
                 }
                 renderActions={(item) =>
                     item.is_serialized ? (

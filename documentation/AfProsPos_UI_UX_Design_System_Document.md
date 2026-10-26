@@ -1540,6 +1540,8 @@ actions
 
 without an elevated parent.
 
+> **Revision 6 exception, stakeholder-directed:** a page's single, primary form (a Create page, a profile editor, the diagnosis-intake form) still follows the Core Rule exactly as written above — no card, no border, no shadow. A status-dependent **"Actions" panel** — several small, mutually-exclusive mini-forms stacked in one column, only one of which is ever visible at a time depending on the record's current state (e.g. Repairs/Show, DiagnosisCases/Show) — is explicitly exempted and *does* get the standard `AdminSectionCard` treatment (bordered, white `admin-surface` fill, `title="Actions"`), the same as the data-display panels beside it. The distinction: a primary form is the one thing the page asks the viewer to do; an Actions panel is a dense operational hub where visual containment reads as "this is a distinct control surface," not as a single big form being needlessly decorated.
+
 ---
 
 # 10.2 Admin Form Anatomy

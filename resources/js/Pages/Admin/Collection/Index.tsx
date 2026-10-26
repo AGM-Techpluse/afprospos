@@ -5,6 +5,7 @@ import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 import { formatNaira } from '../../../lib/money';
 
@@ -68,17 +69,13 @@ export default function CollectionIndex({ cases, filters }: CollectionIndexProps
                 mobileStatusField="status"
                 mobileDetailFields={['context', 'collection_deadline_at', 'accrued_storage_fee_minor']}
                 toolbar={
-                    <select
-                        value={filters.status}
-                        onChange={(e) => applyStatus(e.target.value)}
-                        className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                    >
+                    <AdminSelect aria-label="Filter by status" value={filters.status} onChange={(e) => applyStatus(e.target.value)} containerClassName="mb-0">
                         <option value="">All statuses</option>
                         <option value="pending">Pending</option>
                         <option value="overdue">Overdue</option>
                         <option value="abandoned">Abandoned</option>
                         <option value="resolved">Resolved</option>
-                    </select>
+                    </AdminSelect>
                 }
                 renderActions={(row) => (
                     <AdminButton variant="neutral" onClick={() => router.visit(`/admin/collection/${row.id}`)}>

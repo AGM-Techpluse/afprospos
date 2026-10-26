@@ -4,6 +4,7 @@ import Icon from '../../Components/Icons/Icon';
 import AdminEmptyState from '../../Components/Admin/AdminEmptyState';
 import AdminButton from '../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../Components/Admin/AdminBadge';
+import AdminSelect from '../../Components/Admin/Forms/AdminSelect';
 import { formatNaira } from '../../lib/money';
 
 type PartSearchResult = {
@@ -125,18 +126,19 @@ export default function PartsReservationPicker({
 
                 <h3 className="text-sm font-semibold text-admin-text mb-3">Search parts</h3>
                 <div className="mb-3 grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
-                    <select
+                    <AdminSelect
+                        aria-label="Filter"
                         value={PART_FILTERS.some((filter) => filter.value === term) ? term : ''}
                         disabled={disabled}
                         onChange={(e) => setTerm(e.target.value)}
-                        className="border border-admin-border-strong rounded-admin-button px-2 py-2 text-admin-field outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus disabled:bg-admin-hover disabled:cursor-not-allowed disabled:text-admin-text3"
+                        containerClassName="mb-0"
                     >
                         {PART_FILTERS.map((filter) => (
                             <option key={filter.label} value={filter.value}>
                                 {filter.label}
                             </option>
                         ))}
-                    </select>
+                    </AdminSelect>
                     <div className="relative">
                     <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text3" />
                     <input

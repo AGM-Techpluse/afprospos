@@ -7,6 +7,7 @@ import AdminBadge from '../../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import Icon from '../../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 import ProductImage from '../../../../Components/ProductImage';
@@ -138,16 +139,12 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
                                 className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                             />
                         </div>
-                        <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg"
-                        >
+                        <AdminSelect aria-label="Filter by category" value={category} onChange={(e) => setCategory(e.target.value)} containerClassName="mb-0">
                             <option value="">All categories</option>
                             {categories.map((value) => (
                                 <option key={value} value={value}>{value}</option>
                             ))}
-                        </select>
+                        </AdminSelect>
                         <input
                             type="text"
                             value={brand}
@@ -155,18 +152,14 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
                             placeholder="Brand"
                             className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg w-28"
                         />
-                        <select
-                            value={shopId ?? ''}
-                            onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                        >
+                        <AdminSelect aria-label="Filter by shop" value={shopId ?? ''} onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)} containerClassName="mb-0">
                             <option value="">All shops</option>
                             {shops.map((shop) => (
                                 <option key={shop.id} value={shop.id}>
                                     {shop.name}
                                 </option>
                             ))}
-                        </select>
+                        </AdminSelect>
                         <div className="flex-1" />
                         {hasActiveFilters && (
                             <AdminButton type="button" variant="warning" onClick={clearFilters}>

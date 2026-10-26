@@ -93,13 +93,13 @@ class AdminCanViewPaymentsListAndDetailTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/Payments/Index')
-                ->where('payments.data.0.source_label', "Repair #{$repair->id} — Google Pixel 7"));
+                ->where('payments.data.0.source_label', "Repair ◉{$repair->id} — Google Pixel 7"));
 
         $this->actingAs($accountant, 'staff')
             ->get("/admin/payments/{$transaction->id}")
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/Payments/Show')
-                ->where('payment.source.label', "Repair #{$repair->id} — Google Pixel 7"));
+                ->where('payment.source.label', "Repair ◉{$repair->id} — Google Pixel 7"));
     }
 }

@@ -5,6 +5,7 @@ import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 
 type Shop = { id: number; name: string; is_warehouse?: boolean };
 type DiagnosisCase = {
@@ -67,18 +68,14 @@ export default function RepairCreate({ shops, diagnosisCases, filters }: RepairC
             />
 
             <div className="mb-4 grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)] max-w-5xl">
-                <select
-                    value={filters.shop_id ?? ''}
-                    onChange={(event) => setShop(event.target.value)}
-                    className="border border-admin-border-strong rounded-admin-button px-3 py-2 text-sm bg-white"
-                >
+                <AdminSelect aria-label="Filter by shop" value={filters.shop_id ?? ''} onChange={(event) => setShop(event.target.value)} containerClassName="mb-0">
                     <option value="">All shops</option>
                     {shops.filter((shop) => !shop.is_warehouse).map((shop) => (
                         <option key={shop.id} value={shop.id}>
                             {shop.name}
                         </option>
                     ))}
-                </select>
+                </AdminSelect>
                 <input
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}

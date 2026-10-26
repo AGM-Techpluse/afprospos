@@ -6,6 +6,7 @@ import AdminBadge from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 
@@ -102,16 +103,12 @@ export default function TransfersIndex({ transfers, filters, shops }: TransfersI
                 mobileDetailFields={['sku_code', 'from_shop_id', 'to_shop_id']}
                 loading={loading}
                 toolbar={
-                    <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                    >
+                    <AdminSelect aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} containerClassName="mb-0">
                         <option value="">All statuses</option>
                         <option value="in_transit">In transit</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
-                    </select>
+                    </AdminSelect>
                 }
                 renderActions={(row) => (
                     <AdminButton variant="neutral" onClick={() => router.visit(`/admin/inventory/transfers/${row.id}`)}>

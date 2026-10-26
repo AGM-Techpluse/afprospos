@@ -5,6 +5,7 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import { formatNaira } from '../../../lib/money';
 
 type CaseEvent = {
@@ -103,7 +104,7 @@ export default function CollectionShow({ collectionCase: item, shops, canTransfe
                 actions={<AdminBadge status={STATUS_BADGE[item.status] ?? 'neutral'}>{item.status}</AdminBadge>}
             />
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
                     <h2 className="text-sm font-semibold text-admin-text mb-3">Event history</h2>
                     {item.events.length === 0 ? (
@@ -145,18 +146,14 @@ export default function CollectionShow({ collectionCase: item, shops, canTransfe
                                         <span className="text-xs text-admin-text2">No other active shop is available for pickup transfer.</span>
                                     ) : (
                                         <>
-                                            <select
-                                                value={transferShopId}
-                                                onChange={(e) => setTransferShopId(e.target.value)}
-                                                className="border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs"
-                                            >
+                                            <AdminSelect value={transferShopId} onChange={(e) => setTransferShopId(e.target.value)}>
                                                 <option value="">Select pickup shop...</option>
                                                 {transferTargetShops.map((shop) => (
                                                     <option key={shop.id} value={shop.id}>
                                                         {shop.name}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </AdminSelect>
                                             <textarea
                                                 value={transferReason}
                                                 onChange={(e) => setTransferReason(e.target.value)}

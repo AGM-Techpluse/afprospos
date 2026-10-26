@@ -7,6 +7,7 @@ import AdminBulkActionBar from '../../../Components/Admin/AdminBulkActionBar';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 import { formatNaira } from '../../../lib/money';
 
@@ -55,10 +56,10 @@ const PURPOSE_LABEL: Record<string, string> = {
     sale_payment: 'Sale payment',
     repair_down_payment: 'Repair down payment',
     repair_final_payment: 'Repair final payment',
+    repair_diagnosis_fee: 'Diagnosis fee',
 };
 
 const COLUMNS: DataTableColumn<PaymentRow>[] = [
-    { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
     { key: 'purpose', label: 'Purpose', render: (row) => PURPOSE_LABEL[row.purpose] ?? row.purpose.replace(/_/g, ' ') },
     { key: 'source_label', label: 'For' },
     { key: 'customer_name', label: 'Customer', render: (row) => row.customer_name ?? <span className="text-admin-text3">Walk-in</span> },
@@ -136,29 +137,21 @@ export default function PaymentsIndex({ payments, filters }: PaymentsIndexProps)
                 onSelectionChange={setSelectedIds}
                 toolbar={
                     <div className="flex gap-2">
-                        <select
-                            value={filters.status}
-                            onChange={(e) => applyFilter({ status: e.target.value })}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        <AdminSelect aria-label="Filter by status" value={filters.status} onChange={(e) => applyFilter({ status: e.target.value })} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             {Object.entries(STATUS_LABEL).map(([value, label]) => (
                                 <option key={value} value={value}>
                                     {label}
                                 </option>
                             ))}
-                        </select>
-                        <select
-                            value={filters.method}
-                            onChange={(e) => applyFilter({ method: e.target.value })}
-                            className="border border-admin-border rounded-admin-button px-2 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                        >
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by method" value={filters.method} onChange={(e) => applyFilter({ method: e.target.value })} containerClassName="mb-0">
                             <option value="">All methods</option>
                             <option value="cash">Cash</option>
                             <option value="pos_terminal">POS terminal</option>
                             <option value="bank_transfer">Bank transfer</option>
                             <option value="in_app">In-app</option>
-                        </select>
+                        </AdminSelect>
                     </div>
                 }
                 renderActions={(row) => (

@@ -4,6 +4,7 @@ import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import Icon from '../../../../Components/Icons/Icon';
 
@@ -139,20 +140,13 @@ function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSeriali
                         />
                     )}
 
-                    <div className="mb-4">
-                        <label className="block text-xs font-semibold text-admin-text mb-1.5">Shop</label>
-                        <select
-                            value={data.shop_id}
-                            onChange={(e) => setData('shop_id', e.target.value)}
-                            className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                        >
-                            {shops.map((shop) => (
-                                <option key={shop.id} value={shop.id}>
-                                    {shop.name} ({shop.sku_prefix_code})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
+                        {shops.map((shop) => (
+                            <option key={shop.id} value={shop.id}>
+                                {shop.name} ({shop.sku_prefix_code})
+                            </option>
+                        ))}
+                    </AdminSelect>
 
                     <AdminButton type="submit" variant="neutral" isLoading={processing}>
                         {isSerialized ? 'Add device' : 'Add item'}
@@ -365,20 +359,13 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
                     </div>
 
                     <form onSubmit={submit}>
-                        <div className="mb-4">
-                            <label className="block text-xs font-semibold text-admin-text mb-1.5">Shop</label>
-                            <select
-                                value={data.shop_id}
-                                onChange={(e) => setData('shop_id', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                            >
-                                {shops.map((shop) => (
-                                    <option key={shop.id} value={shop.id}>
-                                        {shop.name} ({shop.sku_prefix_code})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
+                            {shops.map((shop) => (
+                                <option key={shop.id} value={shop.id}>
+                                    {shop.name} ({shop.sku_prefix_code})
+                                </option>
+                            ))}
+                        </AdminSelect>
 
                         <div className="mb-4">
                             <label className="block text-xs font-semibold text-admin-text mb-1.5">CSV file</label>

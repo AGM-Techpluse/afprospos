@@ -7,6 +7,7 @@ import AdminBulkActionBar from '../../../../Components/Admin/AdminBulkActionBar'
 import AdminModal from '../../../../Components/Admin/AdminModal';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import Icon from '../../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
@@ -227,17 +228,12 @@ export default function StockIndex({ stock, filters, shops }: StockIndexProps) {
                 }
             >
                 <form id="bulk-transfer-form" onSubmit={submitBulkTransfer} className="pb-6">
-                    <select
-                        value={toShopId}
-                        onChange={(e) => setToShopId(e.target.value)}
-                        className="w-full border border-admin-border-strong rounded-admin-button px-2.5 py-1.5 text-xs bg-white outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus mb-3"
-                        required
-                    >
+                    <AdminSelect aria-label="Destination shop" value={toShopId} onChange={(e) => setToShopId(e.target.value)}>
                         <option value="">Select destination shop…</option>
                         {shops.map((shop) => (
                             <option key={shop.id} value={shop.id}>{shop.name}</option>
                         ))}
-                    </select>
+                    </AdminSelect>
                     <div className="flex flex-col gap-2 mb-3">
                         {selectedRows.map((row) => (
                             <div key={row.id} className="flex items-center justify-between gap-3">
@@ -282,18 +278,14 @@ export default function StockIndex({ stock, filters, shops }: StockIndexProps) {
                             className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                         />
                     </div>
-                    <select
-                        value={shopId ?? ''}
-                        onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)}
-                        className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                    >
+                    <AdminSelect aria-label="Filter by shop" value={shopId ?? ''} onChange={(e) => setShopId(e.target.value ? Number(e.target.value) : null)} containerClassName="mb-0">
                         <option value="">All shops</option>
                         {shops.map((shop) => (
                             <option key={shop.id} value={shop.id}>
                                 {shop.name}
                             </option>
                         ))}
-                    </select>
+                    </AdminSelect>
                     </>
                 }
                 renderActions={(row) => (

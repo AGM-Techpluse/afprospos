@@ -5,6 +5,7 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import { formatNaira } from '../../../lib/money';
 
 type PaymentRefund = {
@@ -12,6 +13,21 @@ type PaymentRefund = {
     refunded_by_staff_name: string | null;
     source: 'manual_refund' | 'dispute_resolution';
     created_at: string | null;
+};
+
+type SaleLineItem = {
+    product_name: string | null;
+    variant_label: string | null;
+    quantity: number;
+    unit_price_minor: number;
+    line_total_minor: number;
+};
+
+type SaleDetail = {
+    subtotal_minor: number;
+    discount_minor: number;
+    total_minor: number;
+    items: SaleLineItem[];
 };
 
 type PaymentDetail = {
@@ -31,6 +47,8 @@ type PaymentDetail = {
     dispute_resolved_by_staff_name: string | null;
     created_at: string;
     source: { label: string; link: string };
+    customer_name: string | null;
+    sale: SaleDetail | null;
     refunded_amount_minor: number;
     remaining_refundable_minor: number;
     refunds: PaymentRefund[];
@@ -40,6 +58,7 @@ const PURPOSE_LABEL: Record<string, string> = {
     sale_payment: 'Sale payment',
     repair_down_payment: 'Repair down payment',
     repair_final_payment: 'Repair final payment',
+    repair_diagnosis_fee: 'Diagnosis fee',
 };
 
 interface PaymentShowProps {
@@ -136,7 +155,7 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                 actions={<AdminBadge status={STATUS_BADGE[payment.status] ?? 'neutral'}>{STATUS_LABEL[payment.status] ?? payment.status}</AdminBadge>}
             />
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
                     <DetailRow
                         label="For"
@@ -147,6 +166,7 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                         }
                     />
                     <DetailRow label="Purpose" value={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')} />
+                    <DetailRow label="Customer" value={payment.customer_name ?? <span className="text-admin-text3">Walk-in</span>} />
                     <DetailRow label="Method" value={payment.method.replace('_', ' ')} />
                     <DetailRow label="Amount" value={formatNaira(payment.amount_minor)} />
                     {payment.refunded_amount_minor > 0 && (
@@ -184,6 +204,35 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                         </div>
                     )}
                     <DetailRow label="Created" value={new Date(payment.created_at).toLocaleString()} />
+
+                    {payment.sale && (
+                        <div className="pt-4 mt-1">
+                            <span className="text-sm text-admin-text2 block mb-2">Items purchased</span>
+                            <ul className="border border-admin-border rounded-admin-card divide-y divide-admin-border mb-2">
+                                {payment.sale.items.map((item, index) => (
+                                    <li key={index} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-medium text-admin-text truncate">
+                                                {item.product_name ?? 'Unknown product'}
+                                                {item.variant_label && <span className="text-admin-text3"> — {item.variant_label}</span>}
+                                            </div>
+                                            <div className="text-xs text-admin-text3">
+                                                {item.quantity} × {formatNaira(item.unit_price_minor)}
+                                            </div>
+                                        </div>
+                                        <span className="text-sm font-mono text-admin-text shrink-0">{formatNaira(item.line_total_minor)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <DetailRow label="Subtotal" value={formatNaira(payment.sale.subtotal_minor)} />
+                            {payment.sale.discount_minor > 0 ? (
+                                <DetailRow label="Discount applied" value={`− ${formatNaira(payment.sale.discount_minor)}`} />
+                            ) : (
+                                <DetailRow label="Discount applied" value="None" />
+                            )}
+                            <DetailRow label="Total" value={formatNaira(payment.sale.total_minor)} />
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 flex flex-col gap-2">
@@ -228,16 +277,11 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
 
                     {payment.status === 'disputed' && (
                         <form onSubmit={resolveDispute} className="border-t border-admin-border pt-3 mt-1">
-                            <label className="text-xs font-semibold text-admin-text mb-1.5 block">Resolve dispute as</label>
-                            <select
-                                value={resolution}
-                                onChange={(e) => setResolution(e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs mb-2"
-                            >
+                            <AdminSelect label="Resolve dispute as" value={resolution} onChange={(e) => setResolution(e.target.value)}>
                                 <option value="confirmed">Confirmed</option>
                                 <option value="refunded">Refunded</option>
                                 <option value="exception">Exception</option>
-                            </select>
+                            </AdminSelect>
                             {resolution === 'refunded' && (
                                 <>
                                     <label className="text-xs font-semibold text-admin-text mb-1.5 block">

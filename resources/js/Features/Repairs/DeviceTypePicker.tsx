@@ -37,16 +37,16 @@ function QuickAddDeviceType({ onAdded }: { onAdded: () => void }) {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex flex-col items-center justify-center gap-2 border border-dashed border-admin-border-strong rounded-admin-card p-4 text-admin-text3 hover:border-admin-blue hover:text-admin-blue transition-colors"
+                className="shrink-0 w-24 h-24 flex flex-col items-center justify-center gap-2 border border-dashed border-admin-border-strong rounded-admin-card p-3 text-admin-text3 hover:border-admin-blue hover:text-admin-blue transition-colors"
             >
                 <Icon name="plus-lg" className="text-lg" />
-                <span className="text-xs font-semibold">Add device type</span>
+                <span className="text-xs font-semibold text-center">Add device type</span>
             </button>
         );
     }
 
     return (
-        <form onSubmit={submit} className="col-span-2 flex items-center gap-2 bg-admin-surface border border-admin-border rounded-admin-card p-3">
+        <form onSubmit={submit} className="shrink-0 flex items-center gap-2 bg-admin-surface border border-admin-border rounded-admin-card p-3">
             <IconPicker value={icon} onChange={setIcon} compact />
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Drones" autoFocus className={quickAddInputClass} />
             <button type="submit" className="text-xs font-semibold text-admin-blue px-2">Add</button>
@@ -110,18 +110,18 @@ export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceT
         return (
             <div>
                 <h2 className="text-sm font-semibold text-admin-text mb-3">What kind of device?</h2>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {deviceTypes.map((type) => (
                         <button
                             key={type.id}
                             type="button"
                             onClick={() => setSelectedTypeId(type.id)}
-                            className="flex flex-col items-center justify-center gap-2 bg-admin-surface border border-admin-border rounded-admin-card p-4 hover:border-admin-blue hover:bg-admin-blue-soft transition-colors"
+                            className="shrink-0 w-24 h-24 flex flex-col items-center justify-center gap-2 bg-admin-surface border border-admin-border rounded-admin-card p-3 hover:border-admin-blue hover:bg-admin-blue-soft transition-colors"
                         >
                             <div className="w-10 h-10 rounded-full bg-admin-blue-soft text-admin-blue flex items-center justify-center text-lg">
                                 <Icon name={type.icon} />
                             </div>
-                            <span className="text-xs font-semibold text-admin-text text-center">{type.label}</span>
+                            <span className="text-xs font-semibold text-admin-text text-center line-clamp-2">{type.label}</span>
                         </button>
                     ))}
                     <QuickAddDeviceType onAdded={refresh} />
@@ -146,7 +146,7 @@ export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceT
             </button>
 
             <h2 className="text-sm font-semibold text-admin-text mb-3">{selectedType.label} — pick a brand</h2>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {selectedType.brands.map((brand) => (
                     <button
                         key={brand.id}
@@ -155,7 +155,7 @@ export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceT
                             setSelectedBrand(brand);
                             setSelectedModelId(null);
                         }}
-                        className={`bg-admin-surface border rounded-admin-card p-3 text-sm font-semibold text-admin-text hover:border-admin-blue hover:bg-admin-blue-soft transition-colors ${
+                        className={`shrink-0 bg-admin-surface border rounded-admin-card px-4 py-3 text-sm font-semibold text-admin-text hover:border-admin-blue hover:bg-admin-blue-soft transition-colors ${
                             selectedBrand?.id === brand.id ? 'border-admin-blue bg-admin-blue-soft' : 'border-admin-border'
                         }`}
                     >
@@ -182,7 +182,7 @@ export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceT
                         Model for {selectedBrand.name} (required)
                     </h3>
                     {selectedBrand.models.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-2">
+                        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {selectedBrand.models.map((model) => (
                                 <button
                                     key={model.id}
@@ -191,7 +191,7 @@ export default function DeviceTypePicker({ deviceTypes, onSelectModel }: DeviceT
                                         setSelectedModelId(model.id);
                                         onSelectModel(selectedType.label, selectedBrand.name, model.name, model.id);
                                     }}
-                                    className={`text-xs font-semibold rounded-admin-badge px-2.5 py-1 border transition-colors ${
+                                    className={`shrink-0 text-xs font-semibold rounded-admin-badge px-2.5 py-1.5 border transition-colors ${
                                         selectedModelId === model.id
                                             ? 'bg-admin-blue text-white border-admin-blue'
                                             : 'bg-white text-admin-text2 border-admin-border hover:border-admin-blue'

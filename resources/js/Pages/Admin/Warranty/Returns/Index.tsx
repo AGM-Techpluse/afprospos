@@ -7,6 +7,7 @@ import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/Admin
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 
 interface ReturnRequestRow {
@@ -128,16 +129,12 @@ export default function ReturnRequestsIndex({ returns, filters }: ReturnRequests
                             placeholder="Filter by customer name or phone…"
                             className="flex-1 min-w-[160px] max-w-[260px] border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                         />
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="border border-admin-border rounded-admin-button text-xs py-1.5 px-2 bg-admin-bg"
-                        >
+                        <AdminSelect aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} containerClassName="mb-0">
                             <option value="">All statuses</option>
                             {Object.entries(STATE_LABEL).map(([value, label]) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
-                        </select>
+                        </AdminSelect>
                         <div className="flex-1" />
                         {hasActiveFilters && (
                             <AdminButton type="button" variant="warning" onClick={clearFilters}>

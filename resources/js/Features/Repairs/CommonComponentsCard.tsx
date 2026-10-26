@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import AdminButton from '../../Components/Admin/AdminButton';
+import AdminModal from '../../Components/Admin/AdminModal';
 
 export type CommonComponentOption = { id: number; label: string };
 
@@ -110,5 +111,34 @@ export default function CommonComponentsCard({ components, submitUrl, diagnosedC
                 Mark {selected.length > 0 ? selected.length : ''} selected as faulty
             </AdminButton>
         </div>
+    );
+}
+
+/**
+ * The card's content doesn't shrink well into a narrow mobile column
+ * (a full checklist plus "select all" plus the mark-faulty button) — on
+ * mobile this swaps it for a trigger button that opens the same content
+ * (bare, so it isn't double-boxed) in AdminModal's bottom-sheet instead.
+ * Desktop keeps the plain inline card, unchanged.
+ */
+export function CommonComponentsPicker(props: Omit<CommonComponentsCardProps, 'bare'>) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <>
+            <div className="hidden sm:block">
+                <CommonComponentsCard {...props} />
+            </div>
+            <div className="sm:hidden">
+                <AdminButton type="button" variant="neutral" onClick={() => setOpen(true)}>
+                    Common components
+                </AdminButton>
+                <AdminModal open={open} title="Common components" onClose={() => setOpen(false)}>
+                    <div className="pb-6">
+                        <CommonComponentsCard {...props} bare />
+                    </div>
+                </AdminModal>
+            </div>
+        </>
     );
 }

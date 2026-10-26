@@ -4,6 +4,7 @@ import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
+import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import ResponsiveDataTable, { DataTableColumn } from '../../../Components/Tables/ResponsiveDataTable';
 import { formatNaira } from '../../../lib/money';
 
@@ -107,19 +108,19 @@ export default function CommissionIndex({ entries, filters, shops, staffOptions 
                 mobileDetailFields={['source_type', 'commissionable_amount_minor', 'created_at']}
                 toolbar={
                     <div className="flex flex-wrap items-center gap-2">
-                        <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className={filterInputClass}>
+                        <AdminSelect aria-label="Filter by staff" value={staffId} onChange={(e) => setStaffId(e.target.value)} containerClassName="mb-0">
                             <option value="">All staff</option>
                             {staffOptions.map((option) => (
                                 <option key={option.id} value={option.id}>{option.name}</option>
                             ))}
-                        </select>
+                        </AdminSelect>
                         {shops.length > 1 && (
-                            <select value={shopId} onChange={(e) => setShopId(e.target.value)} className={filterInputClass}>
+                            <AdminSelect aria-label="Filter by shop" value={shopId} onChange={(e) => setShopId(e.target.value)} containerClassName="mb-0">
                                 <option value="">All shops</option>
                                 {shops.map((shop) => (
                                     <option key={shop.id} value={shop.id}>{shop.name}</option>
                                 ))}
-                            </select>
+                            </AdminSelect>
                         )}
                         <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className={filterInputClass} />
                         <span className="text-xs text-admin-text3">to</span>

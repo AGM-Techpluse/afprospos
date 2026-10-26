@@ -25,7 +25,7 @@ const AdminTextarea = forwardRef<HTMLTextAreaElement, AdminTextareaProps>(
 
         const displayError = error || internalError;
 
-        let borderClass = 'border-admin-border-strong focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
+        let borderClass = 'border-admin-border-strong hover:border-admin-blue focus:border-admin-blue focus:ring-admin-focus focus:ring-2';
         if (displayError) {
             borderClass = 'border-admin-red focus:border-admin-red focus:ring-admin-red-soft focus:ring-2';
         } else if (success) {

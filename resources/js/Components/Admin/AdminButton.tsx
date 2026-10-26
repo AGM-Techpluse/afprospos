@@ -19,7 +19,7 @@ export default function AdminButton({
     disabled,
     ...props
 }: AdminButtonProps) {
-    let baseClass = `rounded-admin-button font-semibold transition-transform duration-120 active:scale-98 flex items-center justify-center ${
+    let baseClass = `rounded-admin-button font-semibold transition-transform duration-120 active:scale-95 flex items-center justify-center ${
         size === 'sm' ? 'text-xs px-2.5 py-1.5 gap-1' : 'text-admin-button px-admin-btn-x py-admin-btn-y'
     }`;
     let variantClass = '';
@@ -29,7 +29,7 @@ export default function AdminButton({
             variantClass = 'bg-admin-blue text-white hover:bg-blue-700';
             break;
         case 'neutral':
-            variantClass = 'bg-white border border-admin-border-strong text-admin-text hover:bg-admin-hover';
+            variantClass = 'bg-white border border-admin-border-strong text-admin-text hover:bg-admin-hover hover:border-admin-blue';
             break;
         case 'warning':
             variantClass = 'bg-admin-yellow-soft text-admin-yellow-text border border-admin-border-warning hover:bg-yellow-200';

@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import Icon from '../../Components/Icons/Icon';
+import AdminSelect from '../../Components/Admin/Forms/AdminSelect';
 import { ReportFilters, ShopOption } from './types';
 
 const RANGES = [
@@ -29,18 +29,11 @@ export default function ReportFilterBar({ filters, shops }: { filters: ReportFil
     return (
         <div className="bg-admin-surface border border-admin-border rounded-admin-card p-3 mb-4">
             <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                    <Icon name="calendar3" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-admin-text3 text-xs" />
-                    <select
-                        value={filters.range}
-                        onChange={(event) => update({ range: event.target.value })}
-                        className="border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg"
-                    >
-                        {RANGES.map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                        ))}
-                    </select>
-                </div>
+                <AdminSelect aria-label="Date range" value={filters.range} onChange={(event) => update({ range: event.target.value })} containerClassName="mb-0">
+                    {RANGES.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                    ))}
+                </AdminSelect>
 
                 {filters.range === 'custom' && (
                     <>
@@ -59,16 +52,12 @@ export default function ReportFilterBar({ filters, shops }: { filters: ReportFil
                     </>
                 )}
 
-                <select
-                    value={filters.shop_id ?? ''}
-                    onChange={(event) => update({ shop_id: event.target.value ? Number(event.target.value) : null })}
-                    className="border border-admin-border rounded-admin-button px-2.5 py-1.5 text-xs bg-admin-bg"
-                >
+                <AdminSelect aria-label="Filter by shop" value={filters.shop_id ?? ''} onChange={(event) => update({ shop_id: event.target.value ? Number(event.target.value) : null })} containerClassName="mb-0">
                     <option value="">All accessible shops</option>
                     {shops.map((shop) => (
                         <option key={shop.id} value={shop.id}>{shop.name}</option>
                     ))}
-                </select>
+                </AdminSelect>
             </div>
         </div>
     );
