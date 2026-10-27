@@ -117,28 +117,40 @@ final class SalesController
         return Inertia::render('Admin/Sales/Receipt', ['sale' => $data]);
     }
 
-    /** Empty-cart screen when no checkout param is given yet; otherwise the live cart. */
+    /** Empty-cart/chooser screen when no checkout param is given yet; otherwise the live cart. */
     public function checkout(Request $request): Response|RedirectResponse
     {
         $checkoutId = $request->integer('checkout') ?: null;
         $actor = app(ActorContext::class);
+        $openCheckouts = [];
 
         if ($checkoutId === null) {
-            $resumable = $this->checkoutDetail->findOpenForCashier($actor->staffId->value, $actor->shopIds);
+            $openCheckouts = $this->checkoutDetail->listOpenForCashier($actor->staffId->value, $actor->shopIds);
 
-            if ($resumable !== null) {
-                return redirect()->route('admin.sales.checkout', ['checkout' => $resumable['id']]);
+            // Exactly one open checkout is still the common case — resume it with zero friction, same as before.
+            // Two or more means the cashier deliberately has several going; let them pick instead of guessing.
+            if (count($openCheckouts) === 1) {
+                return redirect()->route('admin.sales.checkout', ['checkout' => $openCheckouts[0]['id']]);
             }
         }
 
         $checkout = $checkoutId !== null ? $this->checkoutDetail->find($checkoutId) : null;
         abort_if($checkout !== null && ! $actor->canAccessShop((int) $checkout['shop_id']), 403);
 
+        // Also needed while viewing a specific checkout (not just the chooser screen) — the
+        // "leave this checkout?" guard reads these ids to tell "switching to one of my other
+        // open checkouts" apart from "actually navigating away". Not part of the poll's own
+        // `only` list below, so it's computed once per full page load, not every 5s.
+        if ($checkout !== null) {
+            $openCheckouts = $this->checkoutDetail->listOpenForCashier($actor->staffId->value, $actor->shopIds);
+        }
+
         return Inertia::render('Admin/Sales/Checkout', [
             'checkout' => $checkout,
             'pendingPaymentTransaction' => $checkout !== null
                 ? $this->paymentLookup->pendingTransactionFor('sales_checkout', $checkout['id'])
                 : null,
+            'openCheckouts' => $openCheckouts,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
@@ -201,6 +213,7 @@ final class SalesController
                 walkInName: $request->string('walk_in_name')->toString() ?: null,
                 walkInPhone: $request->string('walk_in_phone')->toString() ?: null,
                 walkInEmail: $request->string('walk_in_email')->toString() ?: null,
+                forceNew: $request->boolean('force_new'),
             ));
         } catch (WarehouseCannotSell $exception) {
             throw ValidationException::withMessages(['shop_id' => $exception->getMessage()]);

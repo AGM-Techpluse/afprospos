@@ -61,9 +61,19 @@ type PendingPaymentTransaction = {
     provider_reference: string | null;
 };
 
+type OpenCheckout = {
+    id: number;
+    shop_id: number;
+    shop_name: string | null;
+    customer_name: string | null;
+    item_count: number;
+    total_minor: number;
+};
+
 interface CheckoutPageProps {
     checkout: CheckoutView | null;
     pendingPaymentTransaction: PendingPaymentTransaction | null;
+    openCheckouts: OpenCheckout[];
     shops: Shop[];
     productCategories: string[];
     productBrands: string[];
@@ -89,10 +99,10 @@ const PAYMENT_METHODS = [
     { value: 'in_app', label: 'In-app (registered customer)' },
 ];
 
-function NewCheckoutForm({ shops }: { shops: Shop[] }) {
+function NewCheckoutForm({ shops, forceNew = false }: { shops: Shop[]; forceNew?: boolean }) {
     // A warehouse holds stock for transfer only — sales happen in a shop, so it never appears here.
     const sellableShops = shops.filter((shop) => !shop.is_warehouse);
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, transform, processing, errors } = useForm({
         shop_id: sellableShops[0]?.id.toString() ?? '',
         customer_id: '',
         walk_in_name: '',
@@ -103,6 +113,7 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
 
     function submit(e: FormEvent) {
         e.preventDefault();
+        transform((formData) => ({ ...formData, force_new: forceNew }));
         post('/admin/sales/checkout');
     }
 
@@ -128,9 +139,39 @@ function NewCheckoutForm({ shops }: { shops: Shop[] }) {
                 }
             />
             <AdminButton type="submit" isLoading={processing}>
-                Start checkout
+                {forceNew ? 'Start another checkout' : 'Start checkout'}
             </AdminButton>
         </form>
+    );
+}
+
+/** Shown instead of auto-redirecting once a cashier has more than one open checkout — picking one is a deliberate choice at that point, not a guess. */
+function OpenCheckoutsList({ checkouts }: { checkouts: OpenCheckout[] }) {
+    return (
+        <div className="mb-6">
+            <h2 className="text-sm font-semibold text-admin-text mb-3">Your open checkouts</h2>
+            <ul className="bg-admin-surface border border-admin-border rounded-admin-card divide-y divide-admin-border">
+                {checkouts.map((item) => (
+                    <li key={item.id}>
+                        <button
+                            type="button"
+                            onClick={() => router.visit(`/admin/sales/checkout?checkout=${item.id}`)}
+                            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-admin-hover"
+                        >
+                            <div className="min-w-0">
+                                <div className="text-sm font-medium text-admin-text truncate">
+                                    {item.customer_name ?? 'Walk-in customer'}
+                                </div>
+                                <div className="text-xs text-admin-text3">
+                                    {item.shop_name ?? 'Unknown shop'} · {item.item_count} item{item.item_count === 1 ? '' : 's'}
+                                </div>
+                            </div>
+                            <span className="text-sm font-mono text-admin-text shrink-0">{formatNaira(item.total_minor)}</span>
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 }
 
@@ -170,6 +211,7 @@ function RecentSales({ sales }: { sales: RecentSale[] }) {
 export default function SalesCheckout({
     checkout,
     pendingPaymentTransaction,
+    openCheckouts,
     shops,
     recentSales,
     todaysSales,
@@ -221,9 +263,16 @@ export default function SalesCheckout({
         if (itemCount === 0) return;
 
         let allowNextVisit = false;
+        const myOtherCheckoutUrls = openCheckouts
+            .filter((item) => item.id !== checkout?.id)
+            .map((item) => `/admin/sales/checkout?checkout=${item.id}`);
 
         return router.on('before', (event) => {
-            if (event.detail.visit.method !== 'get' || event.detail.visit.only.length > 0 || allowNextVisit) {
+            // Switching to one of this cashier's OWN other open checkouts isn't abandoning
+            // anything — both stay held exactly as they are, so the guard doesn't apply there.
+            const isSwitchingToOwnCheckout = myOtherCheckoutUrls.some((url) => event.detail.visit.url.toString().endsWith(url));
+
+            if (event.detail.visit.method !== 'get' || event.detail.visit.only.length > 0 || allowNextVisit || isSwitchingToOwnCheckout) {
                 allowNextVisit = false;
                 return;
             }
@@ -243,7 +292,7 @@ export default function SalesCheckout({
                 }
             });
         });
-    }, [itemCount, confirm]);
+    }, [itemCount, confirm, openCheckouts, checkout?.id]);
 
     if (checkout === null) {
         return (
@@ -266,12 +315,13 @@ export default function SalesCheckout({
                             <AdminStatCard label="Today's revenue" value={formatNaira(todaysSales.total_minor)} variant="blue" fillHeight />
                         </div>
                     )}
+                    {openCheckouts.length > 1 && <OpenCheckoutsList checkouts={openCheckouts} />}
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
                         <div>
                             <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
                             <RecentSales sales={recentSales} />
                         </div>
-                        <NewCheckoutForm shops={shops} />
+                        <NewCheckoutForm shops={shops} forceNew={openCheckouts.length > 0} />
                     </div>
                 </div>
             </AdminShell>
@@ -389,7 +439,20 @@ export default function SalesCheckout({
             <AdminPageHead
                 title={`Checkout — ${shop?.name ?? 'Unknown shop'}`}
                 description={checkout.customer_name ?? checkout.walk_in_name ?? 'Walk-in customer'}
-                actions={<CheckoutExpiryTimer expiresAt={checkout.reservation_expires_at} onExpire={() => setIsExpired(true)} />}
+                actions={
+                    <div className="flex items-center gap-3">
+                        {openCheckouts.length > 1 && (
+                            <button
+                                type="button"
+                                onClick={() => router.visit('/admin/sales/checkout')}
+                                className="text-sm font-semibold text-admin-blue"
+                            >
+                                Switch checkout ({openCheckouts.length})
+                            </button>
+                        )}
+                        <CheckoutExpiryTimer expiresAt={checkout.reservation_expires_at} onExpire={() => setIsExpired(true)} />
+                    </div>
+                }
             />
 
             {isExpired && (

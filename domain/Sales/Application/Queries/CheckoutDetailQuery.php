@@ -51,6 +51,44 @@ final class CheckoutDetailQuery
         return $checkout !== null ? $this->toArray($checkout) : null;
     }
 
+    /**
+     * Every open checkout this cashier has, lightweight (no items/adjustments
+     * eager-loaded) — backs the "your open checkouts" switcher shown when there's
+     * more than one. `findOpenForCashier()` above stays the single-result shape
+     * everything else expects; this is additive, for the one place that needs the
+     * whole list.
+     *
+     * @param  int[]  $shopIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function listOpenForCashier(int $cashierStaffId, array $shopIds): array
+    {
+        if ($shopIds === []) {
+            return [];
+        }
+
+        return SalesCheckoutRecord::query()
+            ->withCount('items')
+            ->where('cashier_staff_id', $cashierStaffId)
+            ->whereIn('shop_id', $shopIds)
+            ->where('status', 'open')
+            ->latest('id')
+            ->get()
+            ->map(function (SalesCheckoutRecord $checkout): array {
+                $customer = $checkout->customer_id !== null ? $this->customerDirectory->find($checkout->customer_id) : null;
+
+                return [
+                    'id' => $checkout->id,
+                    'shop_id' => $checkout->shop_id,
+                    'shop_name' => ShopRecord::query()->whereKey($checkout->shop_id)->value('name'),
+                    'customer_name' => $customer['name'] ?? $checkout->walk_in_name,
+                    'item_count' => $checkout->items_count,
+                    'total_minor' => $checkout->total_minor,
+                ];
+            })
+            ->all();
+    }
+
     /** The customer's own self-service cart (storefront) — at most one open checkout per customer, same invariant as `findOpenForCashier`. */
     public function findOpenForCustomer(int $customerId): ?array
     {

@@ -21,6 +21,7 @@ final class CreateCheckoutRequest extends FormRequest
             'walk_in_name' => ['nullable', 'string', 'max:150'],
             'walk_in_phone' => ['nullable', 'string', 'max:30'],
             'walk_in_email' => ['nullable', 'string', 'max:150'],
+            'force_new' => ['nullable', 'boolean'],
         ];
     }
 }

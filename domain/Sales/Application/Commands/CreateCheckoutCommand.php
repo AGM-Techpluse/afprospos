@@ -14,5 +14,7 @@ final readonly class CreateCheckoutCommand
         public ?string $walkInName = null,
         public ?string $walkInPhone = null,
         public ?string $walkInEmail = null,
+        /** Skips the find-and-reuse-the-cashier's-existing-open-checkout short-circuit — a deliberate second (third, ...) concurrent checkout, not a navigation resuming the first one. */
+        public bool $forceNew = false,
     ) {}
 }

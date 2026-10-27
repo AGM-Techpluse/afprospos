@@ -44,7 +44,7 @@ final class CreateCheckoutHandler
         return $this->atomic->run(function () use ($command): CheckoutId {
             $cashierStaffId = $command->cashierStaffId !== null ? new StaffId($command->cashierStaffId) : null;
 
-            if ($cashierStaffId !== null) {
+            if ($cashierStaffId !== null && ! $command->forceNew) {
                 $existing = $this->checkouts->findOpenIdForCashier($cashierStaffId);
 
                 if ($existing !== null) {
