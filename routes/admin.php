@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\DeviceCatalogImportController;
 use App\Http\Controllers\Admin\DiagnosisCasesController;
 use App\Http\Controllers\Admin\InventoryImportController;
 use App\Http\Controllers\Admin\InventoryMasterController;
+use App\Http\Controllers\Admin\InventoryReconciliationController;
 use App\Http\Controllers\Admin\InventorySerializedUnitsController;
 use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\InventoryTransferController;
@@ -266,6 +267,14 @@ Route::prefix('admin')
             ->name('inventory.stock.bulk-adjust');
 
         Route::middleware('permission:inventory.edit')
+            ->get('/inventory/reconciliation', [InventoryReconciliationController::class, 'index'])
+            ->name('inventory.reconciliation.index');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/reconciliation', [InventoryReconciliationController::class, 'store'])
+            ->name('inventory.reconciliation.store');
+
+        Route::middleware('permission:inventory.edit')
             ->post('/inventory/stock/bulk-transfer', [InventoryStockController::class, 'bulkTransfer'])
             ->name('inventory.stock.bulk-transfer');
 
@@ -310,6 +319,10 @@ Route::prefix('admin')
         Route::middleware('permission:inventory.edit')
             ->post('/inventory/transfers', [InventoryTransferController::class, 'store'])
             ->name('inventory.transfers.store');
+
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/transfers/bulk-serialized', [InventoryTransferController::class, 'storeBulkSerialized'])
+            ->name('inventory.transfers.store-bulk-serialized');
 
         Route::middleware('permission:inventory.view')
             ->get('/inventory/transfers/{transfer}', [InventoryTransferController::class, 'show'])
@@ -466,6 +479,14 @@ Route::prefix('admin')
         Route::middleware('permission:settings.edit')
             ->delete('/settings/appearance', [SiteAppearanceController::class, 'reset'])
             ->name('settings.appearance.reset');
+
+        Route::middleware('permission:settings.edit')
+            ->post('/settings/appearance/logo', [SiteAppearanceController::class, 'updateLogo'])
+            ->name('settings.appearance.logo.update');
+
+        Route::middleware('permission:settings.edit')
+            ->delete('/settings/appearance/logo', [SiteAppearanceController::class, 'resetLogo'])
+            ->name('settings.appearance.logo.reset');
 
         Route::middleware('permission:inventory.view')
             ->get('/settings/inventory-catalog', [InventoryMasterController::class, 'index'])

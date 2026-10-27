@@ -176,6 +176,52 @@ return [
 
     /*
     |--------------------------------------------------------------------
+    | Stock reconciliation discrepancy reasons
+    |--------------------------------------------------------------------
+    |
+    | Fixed catalog shown as a dropdown on the stock reconciliation page
+    | whenever a physical count differs from the system count — a
+    | structured reason code instead of freeform text keeps future
+    | reporting on discrepancy causes meaningful. Exact list given by the
+    | stakeholder.
+    |
+    */
+    'stock_reconciliation_reasons' => [
+        'customer_return' => 'Customer return',
+        'refund' => 'Refund',
+        'damaged' => 'Damaged',
+        'fraud' => 'Fraud',
+        'supplier_return' => 'Supplier return',
+        'data_entry_error' => 'Data entry error',
+        'expired' => 'Expired',
+        'lost' => 'Lost',
+        'understocking' => 'Understocking',
+        'overstocking' => 'Overstocking',
+        'other' => 'Other',
+    ],
+
+    /*
+    |--------------------------------------------------------------------
+    | Expense categories
+    |--------------------------------------------------------------------
+    |
+    | Fixed catalog for recording a business expense (Finance module) —
+    | keeps the category axis clean for future reporting instead of
+    | freeform text that fragments on typos.
+    |
+    */
+    'expense_categories' => [
+        'salaries' => 'Salaries',
+        'rent' => 'Rent',
+        'utilities' => 'Utilities',
+        'supplies' => 'Supplies',
+        'maintenance' => 'Maintenance',
+        'marketing' => 'Marketing',
+        'other' => 'Other',
+    ],
+
+    /*
+    |--------------------------------------------------------------------
     | RBAC permission catalog
     |--------------------------------------------------------------------
     |

@@ -6,6 +6,7 @@ const TABS = [
     { key: 'stock', label: 'Stock', href: '/admin/inventory/stock' },
     { key: 'serialized-units', label: 'Serialized units', href: '/admin/inventory/serialized-units' },
     { key: 'transfers', label: 'Transfers', href: '/admin/inventory/transfers' },
+    { key: 'reconciliation', label: 'Reconciliation', href: '/admin/inventory/reconciliation' },
     { key: 'import', label: 'Import', href: '/admin/inventory/import' },
 ];
 
