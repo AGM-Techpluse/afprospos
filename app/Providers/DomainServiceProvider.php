@@ -7,6 +7,7 @@ namespace App\Providers;
 use Domain\Audit\Infrastructure\Laravel\AuditServiceProvider;
 use Domain\Collection\Infrastructure\Laravel\CollectionServiceProvider;
 use Domain\Commission\Infrastructure\Laravel\CommissionServiceProvider;
+use Domain\Finance\Infrastructure\Laravel\FinanceServiceProvider;
 use Domain\Identity\Infrastructure\Laravel\IdentityServiceProvider;
 use Domain\Inventory\Infrastructure\Laravel\InventoryServiceProvider;
 use Domain\Notifications\Infrastructure\Laravel\NotificationsServiceProvider;
@@ -40,6 +41,7 @@ final class DomainServiceProvider extends ServiceProvider
         $this->app->register(RepairServiceProvider::class);
         $this->app->register(SalesServiceProvider::class);
         $this->app->register(CommissionServiceProvider::class);
+        $this->app->register(FinanceServiceProvider::class);
         $this->app->register(WarrantyServiceProvider::class);
         $this->app->register(NotificationsServiceProvider::class);
     }

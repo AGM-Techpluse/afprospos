@@ -53,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
             { key: 'shops', label: 'Multi-shop', icon: 'shop', href: '/admin/shops' },
             { key: 'reports', label: 'Reports', icon: 'bar-chart-line', href: '/admin/reports', activeMatch: '/admin/reports' },
             { key: 'commission', label: 'Commission', icon: 'cash-coin', href: '/admin/commission', activeMatch: '/admin/commission' },
+            { key: 'finance', label: 'Expenses', icon: 'wallet2', href: '/admin/finance/expenses', activeMatch: '/admin/finance' },
             { key: 'staff', label: 'Staff', icon: 'people', href: '/admin/staff' },
             { key: 'roles', label: 'Roles', icon: 'person-badge', href: '/admin/staff/roles' },
             { key: 'customers', label: 'Customers', icon: 'person-lines-fill', href: '/admin/customers' },

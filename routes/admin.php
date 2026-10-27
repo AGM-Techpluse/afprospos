@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DeviceCatalogController;
 use App\Http\Controllers\Admin\DeviceCatalogImportController;
 use App\Http\Controllers\Admin\DiagnosisCasesController;
+use App\Http\Controllers\Admin\ExpensesController;
 use App\Http\Controllers\Admin\InventoryImportController;
 use App\Http\Controllers\Admin\InventoryMasterController;
 use App\Http\Controllers\Admin\InventoryReconciliationController;
@@ -929,6 +930,23 @@ Route::prefix('admin')
             ->post('/collection/{collectionCase}/transfer', [CollectionController::class, 'transfer'])
             ->whereNumber('collectionCase')
             ->name('collection.transfer');
+
+        Route::middleware('permission:expenses.view')
+            ->get('/finance/expenses', [ExpensesController::class, 'index'])
+            ->name('finance.expenses.index');
+
+        Route::middleware('permission:expenses.create')
+            ->get('/finance/expenses/create', [ExpensesController::class, 'create'])
+            ->name('finance.expenses.create');
+
+        Route::middleware('permission:expenses.create')
+            ->post('/finance/expenses', [ExpensesController::class, 'store'])
+            ->name('finance.expenses.store');
+
+        Route::middleware('permission:expenses.manage')
+            ->put('/finance/expenses/{expense}', [ExpensesController::class, 'update'])
+            ->whereNumber('expense')
+            ->name('finance.expenses.update');
 
         Route::middleware('permission:warranty.manage')
             ->get('/warranty/policies', [WarrantyPolicyController::class, 'index'])
