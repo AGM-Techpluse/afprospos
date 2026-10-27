@@ -28,5 +28,7 @@ interface StaffRepository
 
     public function updateProfile(StaffId $id, string $name, string $phone, string $email): void;
 
+    public function updatePassword(StaffId $id, string $plainPassword): void;
+
     public function save(StaffAccount $staff): void;
 }

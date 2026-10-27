@@ -7,10 +7,12 @@ interface AdminInputProps extends InputHTMLAttributes<HTMLInputElement> {
     label: string;
     error?: string;
     success?: string;
+    /** Rendered inside the field, vertically centered on its right edge (e.g. a show/hide-password toggle) — the input gets extra right padding automatically when this is set. */
+    rightElement?: React.ReactNode;
 }
 
 const AdminInput = forwardRef<HTMLInputElement, AdminInputProps>(
-    ({ label, error, success, className = '', onBlur, onChange, ...props }, ref) => {
+    ({ label, error, success, rightElement, className = '', onBlur, onChange, ...props }, ref) => {
         const [internalError, setInternalError] = useState<string>('');
 
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -48,21 +50,27 @@ const AdminInput = forwardRef<HTMLInputElement, AdminInputProps>(
             <FormField label={label} labelClassName="text-xs font-semibold text-admin-text mb-[5px]">
                 {(id) => (
                     <>
-                        <input
-                            id={id}
-                            ref={ref}
-                            onBlur={handleBlur}
-                            onChange={handleChange}
-                            className={`
-                                bg-white border rounded-admin-button px-admin-field-x py-admin-field-y
-                                font-admin-base text-admin-field text-admin-text placeholder-admin-text3
-                                transition-all duration-200 outline-none
-                                [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
-                                ${inputBorderClass}
-                                ${className}
-                            `}
-                            {...props}
-                        />
+                        <div className="relative">
+                            <input
+                                id={id}
+                                ref={ref}
+                                onBlur={handleBlur}
+                                onChange={handleChange}
+                                className={`
+                                    w-full bg-white border rounded-admin-button px-admin-field-x py-admin-field-y
+                                    font-admin-base text-admin-field text-admin-text placeholder-admin-text3
+                                    transition-all duration-200 outline-none
+                                    [&:autofill]:transition-colors [&:autofill]:duration-[9999999s]
+                                    ${rightElement ? 'pr-9' : ''}
+                                    ${inputBorderClass}
+                                    ${className}
+                                `}
+                                {...props}
+                            />
+                            {rightElement && (
+                                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">{rightElement}</div>
+                            )}
+                        </div>
                         {displayError && (
                             <FormErrorMessage className="mt-1 text-xs">{displayError}</FormErrorMessage>
                         )}

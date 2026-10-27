@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\CommonComponentController;
@@ -66,6 +67,8 @@ Route::prefix('admin')
     ->name('admin.')
     ->group(function (): void {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+        Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
 
         Route::middleware('permission:reports.view')
             ->controller(ReportsController::class)

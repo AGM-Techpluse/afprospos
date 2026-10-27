@@ -68,6 +68,13 @@ final class EloquentStaffRepository implements StaffRepository
         ]);
     }
 
+    public function updatePassword(StaffId $id, string $plainPassword): void
+    {
+        StaffRecord::query()->findOrFail($id->value)->update([
+            'password' => Hash::make($plainPassword),
+        ]);
+    }
+
     public function save(StaffAccount $staff): void
     {
         StaffRecord::query()

@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import { initialsFor } from '../../lib/initials';
+import ChangePasswordModal from './ChangePasswordModal';
 
 export default function AdminAccountMenu({ name, email }: { name: string; email: string }) {
     const [open, setOpen] = useState(false);
+    const [changePasswordOpen, setChangePasswordOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -54,6 +56,17 @@ export default function AdminAccountMenu({ name, email }: { name: string; email:
                     </div>
                     <button
                         type="button"
+                        onClick={() => {
+                            setOpen(false);
+                            setChangePasswordOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-admin-text hover:bg-admin-hover"
+                    >
+                        <Icon name="key" />
+                        Change password
+                    </button>
+                    <button
+                        type="button"
                         onClick={logout}
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-admin-red hover:bg-admin-hover"
                     >
@@ -62,6 +75,8 @@ export default function AdminAccountMenu({ name, email }: { name: string; email:
                     </button>
                 </div>
             )}
+
+            <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
         </div>
     );
 }
