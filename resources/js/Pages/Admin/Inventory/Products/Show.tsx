@@ -8,6 +8,7 @@ import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 import ProductImage from '../../../../Components/ProductImage';
+import AttributeEditor, { serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
@@ -56,7 +57,25 @@ const UNIT_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     reserved: 'warning',
     transferring: 'info',
     sold: 'neutral',
+    damaged: 'danger',
 };
+
+/** Turns the backend's {brand,color,storage,material,compatibility,custom:{key:value}} shape into AttributeEditor's row-based editing shape. */
+function toVariantAttributes(attributes: Record<string, unknown>): VariantAttributes {
+    const custom = attributes.custom;
+    const customRows = custom && typeof custom === 'object'
+        ? Object.entries(custom as Record<string, unknown>).map(([key, value]) => ({ key, value: String(value) }))
+        : [];
+
+    return {
+        brand: typeof attributes.brand === 'string' ? attributes.brand : '',
+        color: typeof attributes.color === 'string' ? attributes.color : '',
+        storage: typeof attributes.storage === 'string' ? attributes.storage : '',
+        material: typeof attributes.material === 'string' ? attributes.material : '',
+        compatibility: typeof attributes.compatibility === 'string' ? attributes.compatibility : '',
+        custom: customRows,
+    };
+}
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
@@ -95,6 +114,30 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
 
     const [editingDescription, setEditingDescription] = useState(false);
     const descriptionForm = useForm({ description: sku.description ?? '' });
+
+    const [updatingUnitId, setUpdatingUnitId] = useState<number | null>(null);
+
+    function updateUnitStatus(unitId: number, toStatus: 'damaged' | 'available') {
+        setUpdatingUnitId(unitId);
+        router.post(
+            `/admin/inventory/serialized-units/${unitId}/status`,
+            { to_status: toStatus },
+            { preserveScroll: true, onFinish: () => setUpdatingUnitId(null) },
+        );
+    }
+
+    const [editingAttributes, setEditingAttributes] = useState(false);
+    const attributesForm = useForm<{ attributes: VariantAttributes }>({ attributes: toVariantAttributes(sku.attributes) });
+    const attributesErrors = attributesForm.errors as Record<string, string | undefined>;
+
+    function submitAttributes(e: FormEvent) {
+        e.preventDefault();
+        attributesForm.transform((formData) => ({ attributes: serializeAttributes(formData.attributes) }));
+        attributesForm.put(`/admin/inventory/products/${sku.id}/attributes`, {
+            preserveScroll: true,
+            onSuccess: () => setEditingAttributes(false),
+        });
+    }
 
     function submitDescription(e: FormEvent) {
         e.preventDefault();
@@ -246,6 +289,7 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                         <th className="pb-2">Shop</th>
                                         <th className="pb-2">Condition</th>
                                         <th className="pb-2 text-right">Status</th>
+                                        <th className="pb-2 text-right"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-admin-border">
@@ -257,6 +301,28 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                             <td className="py-2 text-admin-text capitalize">{unit.condition}</td>
                                             <td className="py-2 text-right">
                                                 <AdminBadge status={UNIT_STATUS_BADGE[unit.status] ?? 'neutral'}>{unit.status}</AdminBadge>
+                                            </td>
+                                            <td className="py-2 text-right">
+                                                {unit.status === 'available' && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={updatingUnitId === unit.id}
+                                                        onClick={() => updateUnitStatus(unit.id, 'damaged')}
+                                                        className="text-xs font-semibold text-admin-red disabled:opacity-50"
+                                                    >
+                                                        Mark damaged
+                                                    </button>
+                                                )}
+                                                {unit.status === 'damaged' && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={updatingUnitId === unit.id}
+                                                        onClick={() => updateUnitStatus(unit.id, 'available')}
+                                                        className="text-xs font-semibold text-admin-blue disabled:opacity-50"
+                                                    >
+                                                        Restore
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -324,6 +390,43 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                     </AdminInfoCard>
                 </div>
             )}
+
+            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
+            <div className="mt-8 max-w-lg">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-admin-md font-semibold text-admin-text">Product specs</h2>
+                    {!editingAttributes && (
+                        <button type="button" onClick={() => setEditingAttributes(true)} className="text-xs font-semibold text-admin-blue">
+                            Edit
+                        </button>
+                    )}
+                </div>
+
+                {editingAttributes ? (
+                    <form onSubmit={submitAttributes}>
+                        <AttributeEditor
+                            value={attributesForm.data.attributes}
+                            onChange={(value) => attributesForm.setData('attributes', value)}
+                        />
+                        {attributesErrors.attributes && <p className="text-xs text-admin-red mt-2">{attributesErrors.attributes}</p>}
+                        <div className="flex items-center gap-2 mt-3">
+                            <AdminButton type="submit" variant="neutral" isLoading={attributesForm.processing}>Save</AdminButton>
+                            <AdminButton
+                                type="button"
+                                variant="neutral"
+                                onClick={() => {
+                                    attributesForm.setData('attributes', toVariantAttributes(sku.attributes));
+                                    setEditingAttributes(false);
+                                }}
+                            >
+                                Cancel
+                            </AdminButton>
+                        </div>
+                    </form>
+                ) : (
+                    <p className="text-sm text-admin-text2">{variantLabel(sku.attributes)}</p>
+                )}
+            </div>
 
             {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
             <div className="mt-8 max-w-lg">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Inventory\Domain\Entities;
 
+use Domain\Inventory\Domain\Exceptions\InventoryItemStatusTransitionNotAllowed;
 use Domain\Inventory\Domain\Exceptions\ItemNotReservable;
 use Domain\Inventory\Domain\Exceptions\ItemNotTransferable;
 use Domain\Inventory\Domain\ValueObjects\InventoryItemId;
@@ -112,6 +113,35 @@ final class InventoryItem
     {
         if ($this->status !== 'transferring') {
             throw ItemNotTransferable::forItem($this->id->value);
+        }
+
+        $this->status = 'available';
+        $this->version++;
+    }
+
+    /**
+     * A physical unit that's been damaged in our own handling (not an
+     * intake-grading fact like `condition` — a lifecycle fact, same tier as
+     * `sold`/`transferring`) stops being reservable with zero change to
+     * reserve()'s own check, since it already gates on `status === 'available'`
+     * alone. Only a currently-available unit can be marked damaged — one
+     * already reserved/sold/transferring must resolve that first.
+     */
+    public function markDamaged(): void
+    {
+        if ($this->status !== 'available') {
+            throw InventoryItemStatusTransitionNotAllowed::forItem($this->id->value, 'marked damaged');
+        }
+
+        $this->status = 'damaged';
+        $this->version++;
+    }
+
+    /** The unit was actually fine, or has been repaired — back to sellable. */
+    public function restoreToAvailable(): void
+    {
+        if ($this->status !== 'damaged') {
+            throw InventoryItemStatusTransitionNotAllowed::forItem($this->id->value, 'restored to available');
         }
 
         $this->status = 'available';

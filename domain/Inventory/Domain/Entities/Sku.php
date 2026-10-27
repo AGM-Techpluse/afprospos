@@ -82,6 +82,18 @@ final class Sku
         $this->commissionAmount = $isCommissionable ? $amount : null;
     }
 
+    /**
+     * Correcting a product's specs after creation (e.g. a storage size was mistyped at intake).
+     * The caller (Handler) is responsible for INV-BR-08's "one SKU per exact configuration"
+     * invariant — this method only holds the new value, it doesn't check for a collision.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateAttributes(array $attributes): void
+    {
+        $this->attributes = $attributes;
+    }
+
     public function id(): SkuId
     {
         return $this->id;

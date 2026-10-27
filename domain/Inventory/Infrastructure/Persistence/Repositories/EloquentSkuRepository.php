@@ -90,6 +90,8 @@ final class EloquentSkuRepository implements SkuRepository
             'selling_price_overridden' => $sku->sellingPriceOverridden(),
             'is_commissionable' => $sku->isCommissionable(),
             'commission_amount_minor' => $sku->commissionAmount()?->minor,
+            'attributes' => $sku->attributes(),
+            'attributes_signature' => AttributeSignature::of($sku->attributes()),
         ]);
     }
 

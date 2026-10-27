@@ -9,21 +9,25 @@ use App\Http\Requests\Admin\AddProductVariantRequest;
 use App\Http\Requests\Admin\CreateProductRequest;
 use App\Http\Requests\Admin\CreateProductWithVariantsRequest;
 use App\Http\Requests\Admin\UpdateProductDescriptionRequest;
+use App\Http\Requests\Admin\UpdateSkuAttributesRequest;
 use App\Http\Requests\Admin\UpdateSkuCommissionRequest;
 use App\Support\Images\ProductImageProcessor;
 use Domain\Inventory\Application\Commands\AddProductVariantCommand;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
 use Domain\Inventory\Application\Commands\CreateProductWithVariantsCommand;
 use Domain\Inventory\Application\Commands\UpdateProductDescriptionCommand;
+use Domain\Inventory\Application\Commands\UpdateSkuAttributesCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuCommissionCommand;
 use Domain\Inventory\Application\DTOs\VariantInput;
 use Domain\Inventory\Application\Handlers\AddProductVariantHandler;
 use Domain\Inventory\Application\Handlers\CreateProductHandler;
 use Domain\Inventory\Application\Handlers\CreateProductWithVariantsHandler;
 use Domain\Inventory\Application\Handlers\UpdateProductDescriptionHandler;
+use Domain\Inventory\Application\Handlers\UpdateSkuAttributesHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuCommissionHandler;
 use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Application\Queries\ProductCatalogQuery;
+use Domain\Inventory\Domain\Exceptions\DuplicateSkuAttributes;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
@@ -52,6 +56,7 @@ final class ProductController
         private readonly InventoryMasterListQuery $masterLists,
         private readonly UpdateSkuCommissionHandler $updateSkuCommission,
         private readonly UpdateProductDescriptionHandler $updateProductDescription,
+        private readonly UpdateSkuAttributesHandler $updateSkuAttributes,
         private readonly ProductImageProcessor $images,
     ) {}
 
@@ -320,6 +325,25 @@ final class ProductController
         ));
 
         $this->flashSuccess('Commission settings updated');
+
+        return redirect()->back();
+    }
+
+    public function updateAttributes(UpdateSkuAttributesRequest $request, int $sku): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        try {
+            $this->updateSkuAttributes->handle(new UpdateSkuAttributesCommand(
+                skuId: $sku,
+                attributes: $request->array('attributes'),
+                updatedByStaffId: $actor->staffId->value,
+            ));
+        } catch (DuplicateSkuAttributes $exception) {
+            throw ValidationException::withMessages(['attributes' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Product specs updated');
 
         return redirect()->back();
     }
