@@ -19,11 +19,17 @@ final class EloquentExpenseRepository implements ExpenseRepository
     public function save(Expense $expense): ExpenseId
     {
         $attributes = [
+            'name' => $expense->name(),
             'shop_id' => $expense->shopId(),
+            'department' => $expense->department(),
             'category' => $expense->category(),
             'amount_minor' => $expense->amountMinor(),
-            'allocation' => $expense->allocation(),
-            'note' => $expense->note(),
+            'expense_date' => $expense->expenseDate()->format('Y-m-d'),
+            'payment_method' => $expense->paymentMethod(),
+            'proof_path' => $expense->proofPath(),
+            'description' => $expense->description(),
+            'fund_type' => $expense->fundType(),
+            'reimbursed_to_staff_id' => $expense->reimbursedToStaffId(),
             'recorded_by_staff_id' => $expense->recordedByStaffId(),
         ];
 
@@ -41,11 +47,17 @@ final class EloquentExpenseRepository implements ExpenseRepository
     {
         return Expense::reconstitute(
             new ExpenseId($record->id),
+            $record->name,
             $record->shop_id,
+            $record->department,
             $record->category,
             $record->amount_minor,
-            $record->allocation,
-            $record->note,
+            $record->expense_date->toDateTimeImmutable(),
+            $record->payment_method,
+            $record->proof_path,
+            $record->description,
+            $record->fund_type,
+            $record->reimbursed_to_staff_id,
             $record->recorded_by_staff_id,
         );
     }

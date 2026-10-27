@@ -18,11 +18,21 @@ final class UpdateExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'name' => ['required', 'string', 'max:150'],
+            'department' => ['required', 'string', Rule::in(array_keys(config('afprospos.expense_departments')))],
             'category' => ['required', 'string', Rule::in(array_keys(config('afprospos.expense_categories')))],
             'amount_minor' => ['required', 'integer', 'min:1'],
-            'allocation' => ['nullable', 'array'],
-            'allocation.*' => ['integer', 'min:0'],
-            'note' => ['nullable', 'string', 'max:500'],
+            'expense_date' => ['required', 'date', 'before_or_equal:today'],
+            'payment_method' => ['required', 'string', Rule::in(array_keys(config('afprospos.expense_payment_methods')))],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'fund_type' => ['required', 'string', Rule::in(['disbursement', 'reimbursement'])],
+            'reimbursed_to_staff_id' => [
+                Rule::requiredIf(fn () => $this->input('fund_type') === 'reimbursement'),
+                'nullable',
+                'integer',
+                'exists:staff,id',
+            ],
         ];
     }
 }

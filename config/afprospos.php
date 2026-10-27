@@ -202,12 +202,13 @@ return [
 
     /*
     |--------------------------------------------------------------------
-    | Expense categories
+    | Expense categories and departments
     |--------------------------------------------------------------------
     |
-    | Fixed catalog for recording a business expense (Finance module) —
-    | keeps the category axis clean for future reporting instead of
-    | freeform text that fragments on typos.
+    | Fixed catalogs for recording a business expense (Finance module) —
+    | keep these axes clean for future reporting instead of freeform text
+    | that fragments on typos. Departments mirror the app's own module
+    | list rather than inventing a separate taxonomy.
     |
     */
     'expense_categories' => [
@@ -218,6 +219,22 @@ return [
         'maintenance' => 'Maintenance',
         'marketing' => 'Marketing',
         'other' => 'Other',
+    ],
+
+    'expense_departments' => [
+        'sales' => 'Sales',
+        'repairs' => 'Repairs',
+        'inventory' => 'Inventory',
+        'marketing' => 'Marketing',
+        'finance' => 'Finance / Admin',
+        'collection' => 'Collection',
+        'other' => 'Other',
+    ],
+
+    'expense_payment_methods' => [
+        'cash' => 'Cash',
+        'pos_terminal' => 'POS terminal',
+        'bank_transfer' => 'Bank transfer',
     ],
 
     /*

@@ -6,13 +6,18 @@ namespace Domain\Finance\Application\Commands;
 
 final readonly class RecordExpenseCommand
 {
-    /** @param  array<string, int>|null  $allocation */
     public function __construct(
+        public string $name,
         public ?int $shopId,
+        public string $department,
         public string $category,
         public int $amountMinor,
-        public ?array $allocation,
-        public ?string $note,
+        public string $expenseDate,
+        public string $paymentMethod,
+        public ?string $proofPath,
+        public ?string $description,
+        public string $fundType,
+        public ?int $reimbursedToStaffId,
         public int $recordedByStaffId,
     ) {}
 }

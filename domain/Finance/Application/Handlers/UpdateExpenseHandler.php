@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Domain\Finance\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use DateTimeImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Finance\Application\Commands\UpdateExpenseCommand;
 use Domain\Finance\Domain\Repositories\ExpenseRepository;
 use Domain\Finance\Domain\ValueObjects\ExpenseId;
 use Domain\Shared\Domain\ValueObjects\StaffId;
+use Illuminate\Support\Facades\Storage;
 
 final class UpdateExpenseHandler
 {
@@ -24,9 +26,29 @@ final class UpdateExpenseHandler
         $this->atomic->run(function () use ($command): void {
             $expenseId = new ExpenseId($command->expenseId);
             $expense = $this->expenses->get($expenseId);
-            $before = ['category' => $expense->category(), 'amount_minor' => $expense->amountMinor()];
+            $before = ['name' => $expense->name(), 'category' => $expense->category(), 'amount_minor' => $expense->amountMinor()];
 
-            $expense->update($command->category, $command->amountMinor, $command->allocation, $command->note);
+            $expense->update(
+                name: $command->name,
+                department: $command->department,
+                category: $command->category,
+                amountMinor: $command->amountMinor,
+                expenseDate: new DateTimeImmutable($command->expenseDate),
+                paymentMethod: $command->paymentMethod,
+                description: $command->description,
+                fundType: $command->fundType,
+                reimbursedToStaffId: $command->reimbursedToStaffId,
+            );
+
+            if ($command->newProofPath !== null) {
+                $previousProofPath = $expense->proofPath();
+                $expense->replaceProof($command->newProofPath);
+
+                if ($previousProofPath !== null) {
+                    Storage::disk('local')->delete($previousProofPath);
+                }
+            }
+
             $this->expenses->save($expense);
 
             $this->audit->record(
@@ -37,7 +59,7 @@ final class UpdateExpenseHandler
                 subjectType: 'expense',
                 subjectId: $expenseId->value,
                 beforeState: $before,
-                afterState: ['category' => $command->category, 'amount_minor' => $command->amountMinor],
+                afterState: ['name' => $command->name, 'category' => $command->category, 'amount_minor' => $command->amountMinor],
             );
         });
     }

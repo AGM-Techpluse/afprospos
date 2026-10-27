@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Finance\Application\Handlers;
 
 use App\Support\Transactions\Atomic;
+use DateTimeImmutable;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Finance\Application\Commands\RecordExpenseCommand;
 use Domain\Finance\Domain\Entities\Expense;
@@ -24,11 +25,17 @@ final class RecordExpenseHandler
     {
         return $this->atomic->run(function () use ($command): ExpenseId {
             $expense = Expense::record(
+                name: $command->name,
                 shopId: $command->shopId,
+                department: $command->department,
                 category: $command->category,
                 amountMinor: $command->amountMinor,
-                allocation: $command->allocation,
-                note: $command->note,
+                expenseDate: new DateTimeImmutable($command->expenseDate),
+                paymentMethod: $command->paymentMethod,
+                proofPath: $command->proofPath,
+                description: $command->description,
+                fundType: $command->fundType,
+                reimbursedToStaffId: $command->reimbursedToStaffId,
                 recordedByStaffId: $command->recordedByStaffId,
             );
 
@@ -43,9 +50,13 @@ final class RecordExpenseHandler
                 subjectId: $expenseId->value,
                 beforeState: null,
                 afterState: [
+                    'name' => $command->name,
                     'shop_id' => $command->shopId,
+                    'department' => $command->department,
                     'category' => $command->category,
                     'amount_minor' => $command->amountMinor,
+                    'fund_type' => $command->fundType,
+                    'reimbursed_to_staff_id' => $command->reimbursedToStaffId,
                 ],
             );
 

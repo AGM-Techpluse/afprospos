@@ -948,6 +948,11 @@ Route::prefix('admin')
             ->whereNumber('expense')
             ->name('finance.expenses.update');
 
+        Route::middleware('permission:expenses.view')
+            ->get('/finance/expenses/{expense}/proof', [ExpensesController::class, 'downloadProof'])
+            ->whereNumber('expense')
+            ->name('finance.expenses.proof');
+
         Route::middleware('permission:warranty.manage')
             ->get('/warranty/policies', [WarrantyPolicyController::class, 'index'])
             ->name('warranty.policies.index');
