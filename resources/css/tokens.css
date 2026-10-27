@@ -134,8 +134,13 @@
   --a-text2: #667085;
   --a-text3: #98A2B3;
 
+  /* --a-blue is the single admin accent colour — Settings → Site appearance
+     overrides ONLY this one custom property (inline, on AdminShell's root),
+     and these two tints re-derive from it automatically via color-mix(),
+     so any accent colour the admin picks gets correctly-shaded soft/focus
+     variants with no further configuration. */
   --a-blue: #1E56E8;
-  --a-blue-soft: #EAF0FF;
+  --a-blue-soft: color-mix(in oklab, var(--a-blue) 10%, white);
 
   --a-yellow: #F5A623;
   --a-yellow-soft: #FFF6E5;
@@ -149,7 +154,7 @@
 
   --a-table-head: #FAFBFC;
   --a-hover: #F2F3F6;
-  --a-focus: #C7D6FC;
+  --a-focus: color-mix(in oklab, var(--a-blue) 32%, white);
   /* A deliberately dark "profile card" surface (Shop detail's left card) —
      reuses --color-black rather than a new hex, since that's already the
      exact tone this theme treats as "ink". */

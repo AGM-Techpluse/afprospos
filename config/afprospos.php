@@ -115,6 +115,21 @@ return [
     |
     */
     'appearance' => [
+        /*
+        |----------------------------------------------------------------
+        | Admin theme accent
+        |----------------------------------------------------------------
+        |
+        | The one accent colour behind every "admin blue" button, active
+        | nav item, and focus ring — resources/css/tokens.css derives the
+        | soft/focus tints from this single value via color-mix(), so
+        | changing just this one hex recolours the whole admin UI
+        | consistently. Settings → Site appearance overrides it at
+        | runtime via the shared `admin_theme` Inertia prop.
+        |
+        */
+        'admin_theme_accent' => '#1E56E8',
+
         'welcome_palette' => [
             'page_start' => '#CFE3FF',
             'page_mid' => '#EAF3FF',

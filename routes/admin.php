@@ -499,6 +499,14 @@ Route::prefix('admin')
             ->delete('/settings/appearance/logo', [SiteAppearanceController::class, 'resetLogo'])
             ->name('settings.appearance.logo.reset');
 
+        Route::middleware('permission:settings.edit')
+            ->put('/settings/appearance/admin-theme', [SiteAppearanceController::class, 'updateAdminTheme'])
+            ->name('settings.appearance.admin-theme.update');
+
+        Route::middleware('permission:settings.edit')
+            ->delete('/settings/appearance/admin-theme', [SiteAppearanceController::class, 'resetAdminTheme'])
+            ->name('settings.appearance.admin-theme.reset');
+
         Route::middleware('permission:inventory.view')
             ->get('/settings/inventory-catalog', [InventoryMasterController::class, 'index'])
             ->name('settings.inventory-catalog.index');

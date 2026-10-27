@@ -12,6 +12,8 @@ interface SiteAppearanceProps {
     defaults: WelcomePalette;
     logoUrl: string;
     hasCustomLogo: boolean;
+    adminThemeAccent: string;
+    adminThemeDefault: string;
 }
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
@@ -88,8 +90,85 @@ function SiteLogoSection({ logoUrl, hasCustomLogo }: { logoUrl: string; hasCusto
     );
 }
 
-/** Settings → Site appearance. Changes the site logo and the landing page's colours; the page itself is unchanged apart from its palette. */
-export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCustomLogo }: SiteAppearanceProps) {
+/**
+ * The whole admin UI's accent colour — every "admin blue" button, active nav
+ * item, badge, and focus ring resolves from this one value (resources/css/tokens.css
+ * derives the soft/focus tints from it automatically via color-mix()), so this
+ * single picker recolours the entire admin area consistently, not just this page.
+ */
+function AdminThemeSection({ accent, defaultAccent }: { accent: string; defaultAccent: string }) {
+    const confirm = useConfirm();
+    const [draft, setDraft] = useState(accent);
+    const [busy, setBusy] = useState(false);
+
+    const valid = HEX.test(draft);
+    const dirty = draft !== accent;
+
+    function save() {
+        setBusy(true);
+        router.put('/admin/settings/appearance/admin-theme', { accent: draft }, {
+            preserveScroll: true,
+            onFinish: () => setBusy(false),
+        });
+    }
+
+    async function reset() {
+        const confirmed = await confirm({
+            kind: 'warning',
+            title: 'Reset the admin theme colour?',
+            body: 'Every admin button, active state, and focus ring goes back to the original blue.',
+            confirmLabel: 'Reset',
+        });
+
+        if (confirmed) {
+            setDraft(defaultAccent);
+            router.delete('/admin/settings/appearance/admin-theme', { preserveScroll: true });
+        }
+    }
+
+    return (
+        <div className="mb-8 pb-8 border-b border-admin-border">
+            <h2 className="text-sm font-semibold text-admin-text mb-3">Admin theme colour</h2>
+            <div className="flex items-center gap-4 flex-wrap">
+                <input
+                    type="color"
+                    aria-label="Admin accent colour"
+                    value={valid ? draft : defaultAccent}
+                    onChange={(e) => setDraft(e.target.value.toUpperCase())}
+                    className="h-9 w-12 shrink-0 cursor-pointer rounded-admin-button border border-admin-border-strong bg-transparent p-0.5"
+                />
+                <input
+                    type="text"
+                    aria-label="Admin accent colour hex value"
+                    value={draft}
+                    maxLength={7}
+                    onChange={(e) => setDraft(e.target.value)}
+                    className={`w-28 border rounded-admin-button px-2 py-1.5 font-mono text-sm text-admin-text outline-none focus:ring-2 focus:ring-admin-focus ${
+                        valid ? 'border-admin-border-strong' : 'border-admin-border-danger'
+                    }`}
+                />
+                <span
+                    className="inline-flex items-center rounded-admin-button px-4 py-2 text-sm font-semibold text-white"
+                    style={{ background: valid ? draft : defaultAccent }}
+                >
+                    Preview button
+                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                    <AdminButton type="button" onClick={save} disabled={!dirty || !valid || busy}>
+                        {busy ? 'Saving…' : 'Save colour'}
+                    </AdminButton>
+                    <AdminButton type="button" variant="danger" onClick={reset}>
+                        Reset
+                    </AdminButton>
+                </div>
+            </div>
+            {!valid && <p className="text-xs text-admin-red mt-2">Must be six hex digits, like #1E56E8.</p>}
+        </div>
+    );
+}
+
+/** Settings → Site appearance. Changes the site logo, the admin UI's accent colour, and the landing page's colours; the page itself is unchanged apart from its palette. */
+export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCustomLogo, adminThemeAccent, adminThemeDefault }: SiteAppearanceProps) {
     const confirm = useConfirm();
     const [draft, setDraft] = useState<WelcomePalette>(palette);
     const [busy, setBusy] = useState(false);
@@ -134,6 +213,8 @@ export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCus
             <SettingsSubNav />
 
             <SiteLogoSection logoUrl={logoUrl} hasCustomLogo={hasCustomLogo} />
+
+            <AdminThemeSection accent={adminThemeAccent} defaultAccent={adminThemeDefault} />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 <div>

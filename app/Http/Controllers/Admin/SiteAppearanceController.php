@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
+use App\Http\Requests\Admin\UpdateAdminThemeRequest;
 use App\Http\Requests\Admin\UpdateSiteLogoRequest;
 use App\Http\Requests\Admin\UpdateWelcomePaletteRequest;
+use Domain\Shared\Application\Commands\UpdateAdminThemeCommand;
 use Domain\Shared\Application\Commands\UpdateSiteLogoCommand;
 use Domain\Shared\Application\Commands\UpdateWelcomePaletteCommand;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shared\Application\Handlers\UpdateAdminThemeHandler;
 use Domain\Shared\Application\Handlers\UpdateSiteLogoHandler;
 use Domain\Shared\Application\Handlers\UpdateWelcomePaletteHandler;
+use Domain\Shared\Application\Queries\AdminThemeQuery;
 use Domain\Shared\Application\Queries\SiteLogoQuery;
 use Domain\Shared\Application\Queries\WelcomePaletteQuery;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +23,7 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Settings → Site appearance: recolour the landing page and change the site logo without a code change or deploy. */
+/** Settings → Site appearance: recolour the landing page, the admin UI's accent colour, and the site logo without a code change or deploy. */
 final class SiteAppearanceController
 {
     use FlashesToast;
@@ -29,6 +33,8 @@ final class SiteAppearanceController
         private readonly UpdateWelcomePaletteHandler $update,
         private readonly SiteLogoQuery $logo,
         private readonly UpdateSiteLogoHandler $updateLogo,
+        private readonly AdminThemeQuery $adminTheme,
+        private readonly UpdateAdminThemeHandler $updateAdminTheme,
     ) {}
 
     public function index(): Response
@@ -38,6 +44,8 @@ final class SiteAppearanceController
             'defaults' => WelcomePaletteQuery::defaults(),
             'logoUrl' => $this->logo->url(),
             'hasCustomLogo' => $this->logo->storedPath() !== null,
+            'adminThemeAccent' => $this->adminTheme->resolved(),
+            'adminThemeDefault' => AdminThemeQuery::defaults(),
         ]);
     }
 
@@ -92,6 +100,28 @@ final class SiteAppearanceController
         $this->updateLogo->handle(new UpdateSiteLogoCommand(null, $actor->staffId->value));
 
         $this->flashSuccess('Site logo reset to the default');
+
+        return redirect()->back();
+    }
+
+    public function updateAdminTheme(UpdateAdminThemeRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->updateAdminTheme->handle(new UpdateAdminThemeCommand($request->string('accent')->toString(), $actor->staffId->value));
+
+        $this->flashSuccess('Admin theme colour saved');
+
+        return redirect()->back();
+    }
+
+    public function resetAdminTheme(): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->updateAdminTheme->handle(new UpdateAdminThemeCommand(null, $actor->staffId->value));
+
+        $this->flashSuccess('Admin theme colour reset to the default');
 
         return redirect()->back();
     }
