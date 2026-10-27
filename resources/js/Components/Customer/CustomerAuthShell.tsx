@@ -15,7 +15,7 @@ export default function CustomerAuthShell({ children }: CustomerAuthShellProps) 
             {/* Minimal Header just showing brand, no navigation */}
             <header className="flex h-customer-header-desktop items-center px-4 sm:px-8 mx-auto w-full max-w-7xl">
                 <div className="flex items-center mt-4">
-                    <img src={app_logo} alt={app_name} className="h-8 w-8 mr-3" />
+                    <img src={app_logo} alt={app_name} className="h-12 w-auto max-w-[200px] object-contain mr-3" />
                 </div>
             </header>
 

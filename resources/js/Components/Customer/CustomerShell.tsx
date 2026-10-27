@@ -69,8 +69,7 @@ export default function CustomerShell({ children }: CustomerShellProps) {
                 `}
             >
                 <div className="flex items-center gap-2 px-2 pt-4 pb-6">
-                    <img src={app_logo} alt={app_name} className="h-6 w-6" />
-                    <span className="font-customer-display font-extrabold text-customer-base text-customer-text">{app_name}</span>
+                    <img src={app_logo} alt={app_name} className="h-10 w-auto max-w-[160px] object-contain" />
                 </div>
 
                 <div className="border-b border-gray-100 -mx-4 sm:-mx-5" />

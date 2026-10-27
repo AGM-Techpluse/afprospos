@@ -45,6 +45,15 @@ return [
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
+            // Forces every file/directory written here to 0644/0755 regardless of the
+            // server's umask — without this, a restrictive PHP-FPM umask (common on
+            // shared hosting) can write files the web server's own user can't read,
+            // which serves as a 403 on the generated URL even though the file exists
+            // and the storage:link symlink is correct.
+            'permissions' => [
+                'file' => ['public' => 0644, 'private' => 0600],
+                'dir' => ['public' => 0755, 'private' => 0700],
+            ],
         ],
 
         's3' => [

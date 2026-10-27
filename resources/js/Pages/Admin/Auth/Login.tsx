@@ -28,7 +28,7 @@ export default function StaffLogin() {
             
             <div className="w-full max-w-sm">
                 <div className="flex flex-col items-center mb-8">
-                    <img src={app_logo} alt={app_name} className="h-10 w-10 mb-4" />
+                    <img src={app_logo} alt={app_name} className="h-16 w-auto max-w-[260px] object-contain mb-4" />
                     <h1 className="text-2xl font-bold text-admin-text">Staff Login</h1>
                     <p className="text-admin-text2 text-sm mt-1">Sign in to your account</p>
                 </div>

@@ -45,8 +45,7 @@ export default function PublicStorefrontShell({ children }: PublicStorefrontShel
                     )}
 
                     <Link href="/" className="flex items-center gap-2 shrink-0">
-                        <img src={app_logo} alt={app_name} className="h-6 w-6" />
-                        <span className="font-customer-display font-extrabold text-customer-base text-customer-text">{app_name}</span>
+                        <img src={app_logo} alt={app_name} className="h-10 w-auto max-w-[160px] object-contain" />
                     </Link>
 
                     <nav className="hidden sm:flex items-center gap-5 text-customer-caption font-bold text-customer-text2">

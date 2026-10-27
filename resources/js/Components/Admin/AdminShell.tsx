@@ -185,8 +185,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                 className={`hidden sm:flex flex-col ${collapsed ? 'w-admin-sidebar-collapsed' : 'w-admin-sidebar'} bg-admin-surface border-r border-admin-border fixed inset-y-0 z-10 transition-[width] duration-200`}
             >
                 <div className="h-admin-topbar flex items-center px-4 border-b border-admin-border shrink-0">
-                    <img src={app_logo} alt={app_name} className="h-6 w-6 mr-2 shrink-0" />
-                    {!collapsed && <span className="font-semibold text-admin-base truncate">{app_name}</span>}
+                    <img src={app_logo} alt={app_name} className="h-10 w-auto max-w-[160px] object-contain shrink-0" />
                 </div>
 
                 <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -212,8 +211,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                     <aside className="relative flex flex-col w-admin-drawer max-w-xs h-full bg-admin-surface border-r border-admin-border z-50 transform transition-transform">
                         <div className="h-admin-topbar flex items-center justify-between px-4 border-b border-admin-border shrink-0">
                             <div className="flex items-center">
-                                <img src={app_logo} alt={app_name} className="h-6 w-6 mr-2" />
-                                <span className="font-semibold">{app_name}</span>
+                                <img src={app_logo} alt={app_name} className="h-10 w-auto max-w-[160px] object-contain" />
                             </div>
                             <button onClick={() => setIsMobileDrawerOpen(false)} className="text-admin-text3 hover:text-admin-text">
                                 <Icon name="x-lg" />
