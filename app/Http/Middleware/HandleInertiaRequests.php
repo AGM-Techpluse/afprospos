@@ -6,6 +6,7 @@ use Domain\Notifications\Application\Queries\CustomerNotificationInboxQuery;
 use Domain\Notifications\Application\Queries\StaffNotificationInboxQuery;
 use Domain\RBAC\Application\Queries\EffectivePermissionsQuery;
 use Domain\Sales\Application\Queries\CheckoutDetailQuery;
+use Domain\Shared\Application\Queries\SiteLogoQuery;
 use Domain\Shop\Application\Contracts\ActiveShopSessionStore;
 use Domain\Shop\Application\Handlers\EnsureActiveShopSelectedHandler;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
@@ -23,6 +24,7 @@ class HandleInertiaRequests extends Middleware
         private readonly CustomerNotificationInboxQuery $customerNotifications,
         private readonly StaffNotificationInboxQuery $staffNotifications,
         private readonly CheckoutDetailQuery $checkoutDetail,
+        private readonly SiteLogoQuery $siteLogo,
     ) {}
 
     /**
@@ -59,7 +61,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'app_name' => config('app.name'),
-            'app_logo' => asset('logo.jpg'), // Fallback until the database settings module is built
+            'app_logo' => $this->siteLogo->url(),
             // Lets the landing page / nav links hide "Shop" rather than
             // link to a route that 404s while STOREFRONT_ENABLED=false.
             'storefrontEnabled' => (bool) config('afprospos.storefront_enabled'),

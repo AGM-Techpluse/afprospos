@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { FormEvent, useState } from 'react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import SettingsSubNav from '../../../../Components/Admin/SettingsSubNav';
@@ -10,12 +10,86 @@ import { paletteVars, WELCOME_PALETTE_TOKENS, WelcomePalette } from '../../../..
 interface SiteAppearanceProps {
     palette: WelcomePalette;
     defaults: WelcomePalette;
+    logoUrl: string;
+    hasCustomLogo: boolean;
 }
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 
-/** Settings → Site appearance. Changes the landing page's colours; the page itself is unchanged apart from its palette. */
-export default function SiteAppearanceIndex({ palette, defaults }: SiteAppearanceProps) {
+/** The sidebar/topbar/receipt logo — a separate concern from the landing page colours below, but lives on the same Settings → Site appearance page. */
+function SiteLogoSection({ logoUrl, hasCustomLogo }: { logoUrl: string; hasCustomLogo: boolean }) {
+    const confirm = useConfirm();
+    const { data, setData, post, processing, errors, reset } = useForm<{ logo: File | null }>({ logo: null });
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    function pickFile(file: File | null) {
+        setData('logo', file);
+        setPreviewUrl(file ? URL.createObjectURL(file) : null);
+    }
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        if (!data.logo) return;
+
+        post('/admin/settings/appearance/logo', {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                setPreviewUrl(null);
+            },
+        });
+    }
+
+    async function resetLogo() {
+        const confirmed = await confirm({
+            kind: 'warning',
+            title: 'Reset the site logo?',
+            body: 'Goes back to the default AfProsPos logo.',
+            confirmLabel: 'Reset',
+        });
+
+        if (confirmed) {
+            router.delete('/admin/settings/appearance/logo', { preserveScroll: true });
+        }
+    }
+
+    return (
+        <div className="mb-8 pb-8 border-b border-admin-border">
+            <h2 className="text-sm font-semibold text-admin-text mb-3">Site logo</h2>
+            <form onSubmit={submit} className="flex items-center gap-4">
+                <img
+                    src={previewUrl ?? logoUrl}
+                    alt="Current site logo"
+                    className="h-12 w-12 rounded-admin-button border border-admin-border object-contain bg-admin-surface p-1"
+                />
+                <div className="flex-1 min-w-0">
+                    <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                        onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-admin-text file:mr-3 file:rounded-admin-button file:border file:border-admin-border-strong file:bg-admin-surface file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-admin-text"
+                    />
+                    {errors.logo && <p className="text-xs text-admin-red mt-1">{errors.logo}</p>}
+                    <p className="text-xs text-admin-text3 mt-1">PNG, JPG, SVG, or WebP — shown small (a square icon reads best), up to 2MB.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <AdminButton type="submit" isLoading={processing} disabled={!data.logo}>
+                        Save logo
+                    </AdminButton>
+                    {hasCustomLogo && (
+                        <AdminButton type="button" variant="danger" onClick={resetLogo}>
+                            Reset
+                        </AdminButton>
+                    )}
+                </div>
+            </form>
+        </div>
+    );
+}
+
+/** Settings → Site appearance. Changes the site logo and the landing page's colours; the page itself is unchanged apart from its palette. */
+export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCustomLogo }: SiteAppearanceProps) {
     const confirm = useConfirm();
     const [draft, setDraft] = useState<WelcomePalette>(palette);
     const [busy, setBusy] = useState(false);
@@ -58,6 +132,8 @@ export default function SiteAppearanceIndex({ palette, defaults }: SiteAppearanc
             />
 
             <SettingsSubNav />
+
+            <SiteLogoSection logoUrl={logoUrl} hasCustomLogo={hasCustomLogo} />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 <div>
