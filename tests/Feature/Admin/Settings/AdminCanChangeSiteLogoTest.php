@@ -10,9 +10,17 @@ use Domain\Shared\Infrastructure\Persistence\Eloquent\SiteSettingRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
+/**
+ * Deliberately writes to a real file under public/uploads/site (not the
+ * storage:link symlink) — several shared-hosting Apache configs disable
+ * FollowSymLinks, which 403s anything reached through that symlink even
+ * with correct file permissions (see SiteAppearanceController::updateLogo()'s
+ * docblock) — so these assertions check the real filesystem path, with
+ * tearDown cleaning up whatever the test run created.
+ */
 class AdminCanChangeSiteLogoTest extends TestCase
 {
     use RefreshDatabase;
@@ -26,7 +34,13 @@ class AdminCanChangeSiteLogoTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
         $this->owner = StaffRecord::factory()->create();
         $this->owner->assignRole('Shop Owner');
-        Storage::fake('public');
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(public_path('uploads/site'));
+
+        parent::tearDown();
     }
 
     public function test_an_uploaded_logo_is_stored_and_served_to_every_page(): void
@@ -37,10 +51,10 @@ class AdminCanChangeSiteLogoTest extends TestCase
 
         $setting = SiteSettingRecord::query()->find(SiteLogoQuery::KEY);
         $this->assertNotNull($setting);
-        Storage::disk('public')->assertExists($setting->value['path']);
+        $this->assertTrue(File::exists(public_path($setting->value['path'])));
 
         $this->get('/admin/dashboard')->assertInertia(fn ($page) => $page
-            ->where('app_logo', Storage::disk('public')->url($setting->value['path'])));
+            ->where('app_logo', asset($setting->value['path'])));
     }
 
     public function test_uploading_a_new_logo_removes_the_previous_file(): void
@@ -49,7 +63,7 @@ class AdminCanChangeSiteLogoTest extends TestCase
             ->post('/admin/settings/appearance/logo', ['logo' => UploadedFile::fake()->image('first.png', 64, 64)]);
 
         $firstPath = SiteSettingRecord::query()->find(SiteLogoQuery::KEY)->value['path'];
-        Storage::disk('public')->assertExists($firstPath);
+        $this->assertTrue(File::exists(public_path($firstPath)));
 
         $this->actingAs($this->owner, 'staff')
             ->post('/admin/settings/appearance/logo', ['logo' => UploadedFile::fake()->image('second.png', 64, 64)]);
@@ -57,8 +71,8 @@ class AdminCanChangeSiteLogoTest extends TestCase
         $secondPath = SiteSettingRecord::query()->find(SiteLogoQuery::KEY)->value['path'];
 
         $this->assertNotSame($firstPath, $secondPath);
-        Storage::disk('public')->assertMissing($firstPath);
-        Storage::disk('public')->assertExists($secondPath);
+        $this->assertFalse(File::exists(public_path($firstPath)));
+        $this->assertTrue(File::exists(public_path($secondPath)));
     }
 
     public function test_a_non_image_file_is_rejected(): void
@@ -81,7 +95,7 @@ class AdminCanChangeSiteLogoTest extends TestCase
         $this->actingAs($this->owner, 'staff')->delete('/admin/settings/appearance/logo')->assertRedirect();
 
         $this->assertDatabaseMissing('site_settings', ['key' => SiteLogoQuery::KEY]);
-        Storage::disk('public')->assertMissing($path);
+        $this->assertFalse(File::exists(public_path($path)));
     }
 
     public function test_a_cashier_cannot_change_the_site_logo(): void

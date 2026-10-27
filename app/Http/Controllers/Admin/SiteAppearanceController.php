@@ -63,17 +63,22 @@ final class SiteAppearanceController
         return redirect()->back();
     }
 
+    /**
+     * Writes directly into public/uploads/site — NOT storage/app/public via the
+     * storage:link symlink. Several shared-hosting Apache configs disable
+     * `FollowSymLinks`, which makes every file reached through that symlink 403
+     * even though the symlink, the file, and its permissions are all otherwise
+     * correct; a real file under the actual webroot sidesteps that entirely.
+     */
     public function updateLogo(UpdateSiteLogoRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
+        $file = $request->file('logo');
+        $filename = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
 
-        $path = $request->file('logo')->storeAs(
-            'site',
-            Str::uuid()->toString().'.'.$request->file('logo')->getClientOriginalExtension(),
-            'public',
-        );
+        $file->move(public_path('uploads/site'), $filename);
 
-        $this->updateLogo->handle(new UpdateSiteLogoCommand($path, $actor->staffId->value));
+        $this->updateLogo->handle(new UpdateSiteLogoCommand("uploads/site/{$filename}", $actor->staffId->value));
 
         $this->flashSuccess('Site logo updated');
 
