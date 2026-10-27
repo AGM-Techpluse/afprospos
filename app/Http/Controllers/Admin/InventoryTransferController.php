@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
+use App\Http\Requests\Admin\InitiateBulkSerializedTransferRequest;
 use App\Http\Requests\Admin\InitiateInventoryTransferRequest;
 use Domain\Inventory\Application\Commands\CancelInventoryTransferCommand;
+use Domain\Inventory\Application\Commands\InitiateBulkSerializedTransferCommand;
 use Domain\Inventory\Application\Commands\InitiateInventoryTransferCommand;
 use Domain\Inventory\Application\Commands\ReceiveInventoryTransferCommand;
 use Domain\Inventory\Application\Handlers\CancelInventoryTransferHandler;
+use Domain\Inventory\Application\Handlers\InitiateBulkSerializedTransferHandler;
 use Domain\Inventory\Application\Handlers\InitiateInventoryTransferHandler;
 use Domain\Inventory\Application\Handlers\ReceiveInventoryTransferHandler;
 use Domain\Inventory\Application\Queries\InventoryTransferQuery;
@@ -38,6 +41,7 @@ final class InventoryTransferController
         private readonly ProductCatalogQuery $catalog,
         private readonly SerializedUnitsQuery $serializedUnits,
         private readonly InitiateInventoryTransferHandler $initiate,
+        private readonly InitiateBulkSerializedTransferHandler $initiateBulkSerialized,
         private readonly ReceiveInventoryTransferHandler $receiveTransfer,
         private readonly CancelInventoryTransferHandler $cancel,
     ) {}
@@ -103,11 +107,15 @@ final class InventoryTransferController
             search: $request->string('search')->toString() ?: null,
             shopId: $shopId,
             status: 'available',
-            page: 1,
+            page: $request->integer('page', 1),
             perPage: 50,
         );
 
-        return response()->json(['results' => $results['data']]);
+        return response()->json([
+            'results' => $results['data'],
+            'total' => $results['total'],
+            'last_page' => $results['last_page'],
+        ]);
     }
 
     public function index(Request $request): Response
@@ -168,6 +176,29 @@ final class InventoryTransferController
         $this->flashSuccess('Transfer initiated');
 
         return redirect()->route('admin.inventory.transfers.show', $transferId->value);
+    }
+
+    public function storeBulkSerialized(InitiateBulkSerializedTransferRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $fromShopId = $request->integer('from_shop_id');
+        $toShopId = $request->integer('to_shop_id');
+        abort_unless($actor->canAccessShop($fromShopId) && $actor->canAccessShop($toShopId), 403);
+
+        try {
+            $this->initiateBulkSerialized->handle(new InitiateBulkSerializedTransferCommand(
+                units: $request->array('units'),
+                fromShopId: $fromShopId,
+                toShopId: $toShopId,
+                initiatedByStaffId: $actor->staffId->value,
+            ));
+        } catch (InsufficientAvailableStock|ItemNotTransferable $exception) {
+            throw ValidationException::withMessages(['units' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess(count($request->array('units')).' unit(s) transferred');
+
+        return redirect()->route('admin.inventory.transfers.index');
     }
 
     public function receive(int $transfer): RedirectResponse

@@ -207,19 +207,22 @@ type SerializedUnitResult = {
 };
 
 /**
- * Single serialized (IMEI-tracked) unit — quantity doesn't apply to an
- * individually-tracked device, so this picks exactly one physical unit
- * rather than a quantity. Mirrors BulkTransferPicker's debounced
- * search/category UX (search-serialized, SerializedUnitsQuery) instead
- * of requiring staff to already know the unit's raw database IDs.
+ * Serialized (IMEI-tracked) units — quantity doesn't apply to an
+ * individually-tracked device, so this picks one or more specific
+ * physical units rather than a quantity. Mirrors BulkTransferPicker's
+ * debounced search UX and checkbox multi-select (search-serialized,
+ * SerializedUnitsQuery) instead of requiring staff to already know each
+ * unit's raw database IDs. Selecting several and submitting once issues
+ * one transfer record per unit, atomically (InitiateBulkSerializedTransferHandler).
  */
 function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
     const [fromShopId, setFromShopId] = useState(shops[0]?.id.toString() ?? '');
     const [toShopId, setToShopId] = useState(shops[1]?.id.toString() ?? shops[0]?.id.toString() ?? '');
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<SerializedUnitResult[]>([]);
+    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [selected, setSelected] = useState<Record<number, boolean>>({});
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const requestId = useRef(0);
@@ -235,9 +238,10 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
 
             fetch(`/admin/inventory/transfers/search-serialized?${params.toString()}`, { credentials: 'same-origin' })
                 .then((response) => response.json())
-                .then((json: { results: SerializedUnitResult[] }) => {
+                .then((json: { results: SerializedUnitResult[]; total: number }) => {
                     if (requestId.current === currentRequest) {
                         setResults(json.results);
+                        setTotal(json.total);
                         setLoading(false);
                     }
                 })
@@ -247,25 +251,29 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
         return () => clearTimeout(timeout);
     }, [fromShopId, term]);
 
-    const selected = results.find((row) => row.id === selectedId) ?? null;
+    function toggle(row: SerializedUnitResult) {
+        setSelected((current) => ({ ...current, [row.id]: !current[row.id] }));
+    }
+
+    const selectedRows = results.filter((row) => selected[row.id]);
 
     function submit(e: FormEvent) {
         e.preventDefault();
-        if (!selected) return;
+        if (selectedRows.length === 0) return;
         setProcessing(true);
         setError(null);
 
         router.post(
-            '/admin/inventory/transfers',
+            '/admin/inventory/transfers/bulk-serialized',
             {
-                sku_id: selected.sku_id,
-                inventory_item_id: selected.id,
+                units: selectedRows.map((row) => ({ sku_id: row.sku_id, inventory_item_id: row.id })),
                 from_shop_id: fromShopId,
                 to_shop_id: toShopId,
             },
             {
                 onFinish: () => setProcessing(false),
-                onError: (errors) => setError(errors.inventory_item_id ?? errors.sku_id ?? 'Could not initiate the transfer.'),
+                onSuccess: () => setSelected({}),
+                onError: (errors) => setError(errors.units ?? 'Could not initiate the transfer.'),
             },
         );
     }
@@ -273,7 +281,7 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
     return (
         <form onSubmit={submit}>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <AdminSelect label="From shop" value={fromShopId} onChange={(e) => { setFromShopId(e.target.value); setSelectedId(null); }}>
+                <AdminSelect label="From shop" value={fromShopId} onChange={(e) => { setFromShopId(e.target.value); setSelected({}); }}>
                     {shops.map((shop) => (
                         <option key={shop.id} value={shop.id}>
                             {shop.name} ({shop.sku_prefix_code})
@@ -303,7 +311,7 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
                 </div>
             </div>
 
-            <div className="border border-admin-border rounded-admin-card mb-4 max-h-[420px] overflow-y-auto">
+            <div className="border border-admin-border rounded-admin-card mb-1 max-h-[420px] overflow-y-auto">
                 {loading ? (
                     <p className="text-sm text-admin-text3 p-4">Searching…</p>
                 ) : results.length === 0 ? (
@@ -325,13 +333,9 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
                         </thead>
                         <tbody className="divide-y divide-admin-border">
                             {results.map((row) => (
-                                <tr
-                                    key={row.id}
-                                    className={`cursor-pointer ${selectedId === row.id ? 'bg-admin-blue/5' : ''}`}
-                                    onClick={() => setSelectedId(row.id)}
-                                >
+                                <tr key={row.id} className={selected[row.id] ? 'bg-admin-blue/5' : undefined}>
                                     <td className="p-3">
-                                        <input type="radio" checked={selectedId === row.id} onChange={() => setSelectedId(row.id)} />
+                                        <input type="checkbox" checked={!!selected[row.id]} onChange={() => toggle(row)} />
                                     </td>
                                     <td className="p-3 text-admin-text">
                                         {row.brand} {row.model}
@@ -346,8 +350,14 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
                 )}
             </div>
 
-            <AdminButton type="submit" isLoading={processing} disabled={!selected || fromShopId === toShopId}>
-                {selected ? `Transfer ${selected.brand} ${selected.model}` : 'Transfer unit'}
+            {results.length > 0 && (
+                <p className="text-xs text-admin-text3 mb-4">
+                    Showing {results.length} of {total}{total > results.length ? ' — narrow your search to see more' : ''}.
+                </p>
+            )}
+
+            <AdminButton type="submit" isLoading={processing} disabled={selectedRows.length === 0 || fromShopId === toShopId}>
+                Transfer {selectedRows.length > 0 ? `${selectedRows.length} unit${selectedRows.length === 1 ? '' : 's'}` : ''}
             </AdminButton>
             {fromShopId === toShopId && <p className="text-xs text-admin-red mt-2">From shop and to shop must be different.</p>}
             {error && <p className="text-xs text-admin-red mt-2">{error}</p>}
