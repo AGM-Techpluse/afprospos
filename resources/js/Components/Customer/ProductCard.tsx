@@ -36,9 +36,17 @@ export default function ProductCard({ product, isLoggedIn, onQuickAdd }: Product
         !outOfStock && cart != null && !product.shops_available.some((shop) => shop.shop_id === cart.shop_id);
 
     return (
-        <div className="bg-white rounded-customer-card overflow-hidden flex flex-col h-full">
-            <Link href={`/shop/${product.sku_id}`} className="block relative">
-                <ProductImage src={product.image_url} alt={`${product.brand} ${product.model}`} aspect="square" category={product.category} />
+        <div className="group bg-white rounded-customer-card overflow-hidden flex flex-col h-full border border-customer-divider transition-shadow duration-200 hover:shadow-customer-soft">
+            <Link href={`/shop/${product.sku_id}`} className="block relative bg-customer-page-end">
+                <div className="p-3">
+                    <ProductImage
+                        src={product.image_url}
+                        alt={`${product.brand} ${product.model}`}
+                        aspect="square"
+                        category={product.category}
+                        className="rounded-customer-item transition-transform duration-200 group-hover:scale-[1.03]"
+                    />
+                </div>
                 {outOfStock && (
                     <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide bg-customer-red text-white px-2 py-1 rounded-customer-pill">
                         Out of stock
@@ -46,18 +54,27 @@ export default function ProductCard({ product, isLoggedIn, onQuickAdd }: Product
                 )}
             </Link>
 
-            <div className="p-3 flex flex-col gap-1 flex-1">
-                <span className="text-customer-caption font-bold text-customer-text truncate">
-                    {product.brand} {product.model}
-                </span>
-                <span className="text-customer-caption font-extrabold text-customer-text">{formatNaira(product.selling_price_minor)}</span>
-                {lockedElsewhere ? (
-                    <span className="text-[11px] font-bold text-customer-yellow-text">Not at {cart!.shop_name ?? 'your cart’s shop'}</span>
-                ) : (
-                    lowStock && <span className="text-[11px] font-bold text-customer-red">Only {product.available_total} left</span>
-                )}
+            <div className="px-3 pb-3 pt-2.5 border-t border-customer-divider flex flex-col gap-1 flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-customer-text2">{product.brand}</span>
+                <Link
+                    href={`/shop/${product.sku_id}`}
+                    className="font-customer-display text-customer-caption font-bold text-customer-text leading-snug line-clamp-2 min-h-[2.3em]"
+                >
+                    {product.model}
+                </Link>
 
-                <div className="mt-auto pt-2 flex items-center gap-2">
+                <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <span className="font-customer-display text-base font-extrabold text-customer-text">
+                        {formatNaira(product.selling_price_minor)}
+                    </span>
+                    {lockedElsewhere ? (
+                        <span className="text-[10px] font-bold text-customer-yellow-text">Other shop</span>
+                    ) : (
+                        lowStock && <span className="text-[10px] font-bold text-customer-red">{product.available_total} left</span>
+                    )}
+                </div>
+
+                <div className="mt-auto pt-2.5 flex items-center gap-2">
                     <Link
                         href={`/shop/${product.sku_id}`}
                         className="flex-1 text-center rounded-customer-pill border border-customer-blue text-customer-blue text-[11px] font-bold py-2 transition-colors hover:bg-customer-blue hover:text-white"
