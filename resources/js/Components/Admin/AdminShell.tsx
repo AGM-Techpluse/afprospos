@@ -8,6 +8,7 @@ import { AdminToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
 import { useFlashToast } from '../../hooks/useFlashToast';
 import { useApprovalAlerts } from '../../hooks/useApprovalAlerts';
+import { useSiteThemeAccent } from '../../hooks/useSiteThemeAccent';
 
 interface AdminShellProps {
     children: React.ReactNode;
@@ -167,6 +168,7 @@ export default function AdminShell({ children }: AdminShellProps) {
     const [collapsed, setCollapsed] = useState(readStoredCollapsed);
     const activeKey = useActiveKey(url);
 
+    useSiteThemeAccent(site_theme_accent);
     useFlashToast();
     useApprovalAlerts();
     // Keeps `staffNotifications` fresh while a manager sits on one page — otherwise it only updates on the next Inertia navigation, and a pending approval could sit unnoticed for however long they stay put.
@@ -183,7 +185,6 @@ export default function AdminShell({ children }: AdminShellProps) {
         <div
             data-theme="admin"
             className="min-h-screen bg-admin-bg text-admin-text font-admin-base flex"
-            style={{ '--a-blue': site_theme_accent } as React.CSSProperties}
         >
             {/* Desktop Sidebar (Hidden on mobile) */}
             <aside

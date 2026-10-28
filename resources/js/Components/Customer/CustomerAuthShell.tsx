@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { CustomerToastViewport } from '../Feedback/Toast';
 import { ConfirmDialogHost } from '../Feedback/ConfirmDialog';
+import { useSiteThemeAccent } from '../../hooks/useSiteThemeAccent';
 
 interface CustomerAuthShellProps {
     children: React.ReactNode;
@@ -10,12 +11,10 @@ interface CustomerAuthShellProps {
 export default function CustomerAuthShell({ children }: CustomerAuthShellProps) {
     const { app_name, app_logo, site_theme_accent } = usePage().props as any;
 
+    useSiteThemeAccent(site_theme_accent);
+
     return (
-        <div
-            data-theme="customer"
-            className="min-h-screen bg-white text-customer-text font-customer-ui flex flex-col relative"
-            style={{ '--c-blue': site_theme_accent } as React.CSSProperties}
-        >
+        <div data-theme="customer" className="min-h-screen bg-white text-customer-text font-customer-ui flex flex-col relative">
             {/* Minimal Header just showing brand, no navigation */}
             <header className="flex h-customer-header-desktop items-center px-4 sm:px-8 mx-auto w-full max-w-7xl">
                 <div className="flex items-center mt-4">

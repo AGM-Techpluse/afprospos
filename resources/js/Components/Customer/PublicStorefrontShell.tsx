@@ -1,10 +1,11 @@
-import { CSSProperties, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import CustomerAvatar from './CustomerAvatar';
 import ShopAside from './ShopAside';
 import { CustomerToastViewport } from '../Feedback/Toast';
 import { useFlashToast } from '../../hooks/useFlashToast';
+import { useSiteThemeAccent } from '../../hooks/useSiteThemeAccent';
 
 interface PublicStorefrontShellProps {
     children: ReactNode;
@@ -27,14 +28,11 @@ export default function PublicStorefrontShell({ children }: PublicStorefrontShel
     const [isAsideOpen, setIsAsideOpen] = useState(false);
     const showAside = customerName !== null;
 
+    useSiteThemeAccent(site_theme_accent);
     useFlashToast();
 
     return (
-        <div
-            data-theme="customer"
-            className="min-h-screen bg-white"
-            style={{ '--c-blue': site_theme_accent } as CSSProperties}
-        >
+        <div data-theme="customer" className="min-h-screen bg-white">
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white">
                 <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center gap-6">
                     {showAside && (

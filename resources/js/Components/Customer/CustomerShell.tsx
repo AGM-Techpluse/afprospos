@@ -7,6 +7,7 @@ import NotificationDropdown from './NotificationDropdown';
 import CustomerFab from './CustomerFab';
 import CustomerAvatar from './CustomerAvatar';
 import { useFlashToast } from '../../hooks/useFlashToast';
+import { useSiteThemeAccent } from '../../hooks/useSiteThemeAccent';
 
 interface CustomerShellProps {
     children: React.ReactNode;
@@ -42,14 +43,11 @@ export default function CustomerShell({ children }: CustomerShellProps) {
     const avatarUrl: string | null = auth?.customer?.avatar_url ?? null;
     const navItems = buildNavItems(Boolean(storefrontEnabled));
 
+    useSiteThemeAccent(site_theme_accent);
     useFlashToast();
 
     return (
-        <div
-            data-theme="customer"
-            className="min-h-screen bg-white flex"
-            style={{ '--c-blue': site_theme_accent } as React.CSSProperties}
-        >
+        <div data-theme="customer" className="min-h-screen bg-white flex">
             {isDrawerOpen && (
                 <div
                     className="sm:hidden fixed inset-0 z-40 bg-customer-overlay"
