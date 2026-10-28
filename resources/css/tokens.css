@@ -231,11 +231,16 @@
       #FFFFFF 72%
     );
 
+  /* Derives from --c-blue (same color-mix() pattern as --c-blue-hover)
+     rather than a fixed pair of hex stops, so the site theme accent
+     (Settings → Site appearance) recolours this gradient too. Must stay
+     declared at :root — see useSiteThemeAccent.ts's docblock for why a
+     descendant-level --c-blue override wouldn't otherwise reach it. */
   --c-gradient-hero:
     linear-gradient(
       135deg,
-      #2F6FED,
-      #1E56E8
+      var(--c-blue),
+      color-mix(in oklab, var(--c-blue) 78%, black)
     );
 
   /* ---------- Admin typography scale (Layer 4) ----------
