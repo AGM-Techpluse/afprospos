@@ -6,8 +6,8 @@
 
     <title inertia>{{ config('app.name', 'AfProsPos') }}</title>
     
-    <link rel="icon" type="image/jpeg" href="{{ asset('favicon.jpg') }}">
-    <link rel="apple-touch-icon" href="{{ asset('logo.jpg') }}">
+    <link rel="icon" href="{{ app(\Domain\Shared\Application\Queries\SiteFaviconQuery::class)->url() }}">
+    <link rel="apple-touch-icon" href="{{ app(\Domain\Shared\Application\Queries\SiteLogoQuery::class)->url() }}">
 
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])

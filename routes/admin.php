@@ -500,6 +500,14 @@ Route::prefix('admin')
             ->name('settings.appearance.logo.reset');
 
         Route::middleware('permission:settings.edit')
+            ->post('/settings/appearance/favicon', [SiteAppearanceController::class, 'updateFavicon'])
+            ->name('settings.appearance.favicon.update');
+
+        Route::middleware('permission:settings.edit')
+            ->delete('/settings/appearance/favicon', [SiteAppearanceController::class, 'resetFavicon'])
+            ->name('settings.appearance.favicon.reset');
+
+        Route::middleware('permission:settings.edit')
             ->put('/settings/appearance/admin-theme', [SiteAppearanceController::class, 'updateAdminTheme'])
             ->name('settings.appearance.admin-theme.update');
 

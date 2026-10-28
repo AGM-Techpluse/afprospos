@@ -6,16 +6,20 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\UpdateAdminThemeRequest;
+use App\Http\Requests\Admin\UpdateSiteFaviconRequest;
 use App\Http\Requests\Admin\UpdateSiteLogoRequest;
 use App\Http\Requests\Admin\UpdateWelcomePaletteRequest;
 use Domain\Shared\Application\Commands\UpdateAdminThemeCommand;
+use Domain\Shared\Application\Commands\UpdateSiteFaviconCommand;
 use Domain\Shared\Application\Commands\UpdateSiteLogoCommand;
 use Domain\Shared\Application\Commands\UpdateWelcomePaletteCommand;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Application\Handlers\UpdateAdminThemeHandler;
+use Domain\Shared\Application\Handlers\UpdateSiteFaviconHandler;
 use Domain\Shared\Application\Handlers\UpdateSiteLogoHandler;
 use Domain\Shared\Application\Handlers\UpdateWelcomePaletteHandler;
 use Domain\Shared\Application\Queries\AdminThemeQuery;
+use Domain\Shared\Application\Queries\SiteFaviconQuery;
 use Domain\Shared\Application\Queries\SiteLogoQuery;
 use Domain\Shared\Application\Queries\WelcomePaletteQuery;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +37,8 @@ final class SiteAppearanceController
         private readonly UpdateWelcomePaletteHandler $update,
         private readonly SiteLogoQuery $logo,
         private readonly UpdateSiteLogoHandler $updateLogo,
+        private readonly SiteFaviconQuery $favicon,
+        private readonly UpdateSiteFaviconHandler $updateFavicon,
         private readonly AdminThemeQuery $adminTheme,
         private readonly UpdateAdminThemeHandler $updateAdminTheme,
     ) {}
@@ -44,6 +50,8 @@ final class SiteAppearanceController
             'defaults' => WelcomePaletteQuery::defaults(),
             'logoUrl' => $this->logo->url(),
             'hasCustomLogo' => $this->logo->storedPath() !== null,
+            'faviconUrl' => $this->favicon->url(),
+            'hasCustomFavicon' => $this->favicon->storedPath() !== null,
             'adminThemeAccent' => $this->adminTheme->resolved(),
             'adminThemeDefault' => AdminThemeQuery::defaults(),
         ]);
@@ -100,6 +108,33 @@ final class SiteAppearanceController
         $this->updateLogo->handle(new UpdateSiteLogoCommand(null, $actor->staffId->value));
 
         $this->flashSuccess('Site logo reset to the default');
+
+        return redirect()->back();
+    }
+
+    /** Same symlink-bypass reasoning as updateLogo() — see its docblock. */
+    public function updateFavicon(UpdateSiteFaviconRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $file = $request->file('favicon');
+        $filename = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
+
+        $file->move(public_path('uploads/site'), $filename);
+
+        $this->updateFavicon->handle(new UpdateSiteFaviconCommand("uploads/site/{$filename}", $actor->staffId->value));
+
+        $this->flashSuccess('Favicon updated');
+
+        return redirect()->back();
+    }
+
+    public function resetFavicon(): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->updateFavicon->handle(new UpdateSiteFaviconCommand(null, $actor->staffId->value));
+
+        $this->flashSuccess('Favicon reset to the default');
 
         return redirect()->back();
     }

@@ -12,6 +12,8 @@ interface SiteAppearanceProps {
     defaults: WelcomePalette;
     logoUrl: string;
     hasCustomLogo: boolean;
+    faviconUrl: string;
+    hasCustomFavicon: boolean;
     adminThemeAccent: string;
     adminThemeDefault: string;
 }
@@ -81,6 +83,78 @@ function SiteLogoSection({ logoUrl, hasCustomLogo }: { logoUrl: string; hasCusto
                     </AdminButton>
                     {hasCustomLogo && (
                         <AdminButton type="button" variant="danger" onClick={resetLogo}>
+                            Reset
+                        </AdminButton>
+                    )}
+                </div>
+            </form>
+        </div>
+    );
+}
+
+/** The browser-tab icon — same upload mechanism as the site logo above, a separate file so a square favicon and a wider logo don't have to compromise on the same image. */
+function SiteFaviconSection({ faviconUrl, hasCustomFavicon }: { faviconUrl: string; hasCustomFavicon: boolean }) {
+    const confirm = useConfirm();
+    const { data, setData, post, processing, errors, reset } = useForm<{ favicon: File | null }>({ favicon: null });
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    function pickFile(file: File | null) {
+        setData('favicon', file);
+        setPreviewUrl(file ? URL.createObjectURL(file) : null);
+    }
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        if (!data.favicon) return;
+
+        post('/admin/settings/appearance/favicon', {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                setPreviewUrl(null);
+            },
+        });
+    }
+
+    async function resetFavicon() {
+        const confirmed = await confirm({
+            kind: 'warning',
+            title: 'Reset the favicon?',
+            body: 'Goes back to the default AfProsPos favicon.',
+            confirmLabel: 'Reset',
+        });
+
+        if (confirmed) {
+            router.delete('/admin/settings/appearance/favicon', { preserveScroll: true });
+        }
+    }
+
+    return (
+        <div className="mb-8 pb-8 border-b border-admin-border">
+            <h2 className="text-sm font-semibold text-admin-text mb-3">Favicon</h2>
+            <form onSubmit={submit} className="flex items-center gap-4">
+                <img
+                    src={previewUrl ?? faviconUrl}
+                    alt="Current favicon"
+                    className="h-12 w-12 rounded-admin-button border border-admin-border object-contain bg-admin-surface p-1"
+                />
+                <div className="flex-1 min-w-0">
+                    <input
+                        type="file"
+                        accept="image/x-icon,image/png,image/svg+xml,image/webp,image/jpeg,.ico"
+                        onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-admin-text file:mr-3 file:rounded-admin-button file:border file:border-admin-border-strong file:bg-admin-surface file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-admin-text"
+                    />
+                    {errors.favicon && <p className="text-xs text-admin-red mt-1">{errors.favicon}</p>}
+                    <p className="text-xs text-admin-text3 mt-1">ICO, PNG, SVG, WebP, or JPG — a small square works best, up to 1MB.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <AdminButton type="submit" isLoading={processing} disabled={!data.favicon}>
+                        Save favicon
+                    </AdminButton>
+                    {hasCustomFavicon && (
+                        <AdminButton type="button" variant="danger" onClick={resetFavicon}>
                             Reset
                         </AdminButton>
                     )}
@@ -174,7 +248,16 @@ function SiteThemeSection({ accent, defaultAccent }: { accent: string; defaultAc
 }
 
 /** Settings → Site appearance. Changes the site logo, the admin UI's accent colour, and the landing page's colours; the page itself is unchanged apart from its palette. */
-export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCustomLogo, adminThemeAccent, adminThemeDefault }: SiteAppearanceProps) {
+export default function SiteAppearanceIndex({
+    palette,
+    defaults,
+    logoUrl,
+    hasCustomLogo,
+    faviconUrl,
+    hasCustomFavicon,
+    adminThemeAccent,
+    adminThemeDefault,
+}: SiteAppearanceProps) {
     const confirm = useConfirm();
     const [draft, setDraft] = useState<WelcomePalette>(palette);
     const [busy, setBusy] = useState(false);
@@ -219,6 +302,8 @@ export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCus
             <SettingsSubNav />
 
             <SiteLogoSection logoUrl={logoUrl} hasCustomLogo={hasCustomLogo} />
+
+            <SiteFaviconSection faviconUrl={faviconUrl} hasCustomFavicon={hasCustomFavicon} />
 
             <SiteThemeSection accent={adminThemeAccent} defaultAccent={adminThemeDefault} />
 
