@@ -16,6 +16,18 @@ export default defineConfig({
                 bunny('Patrick Hand', {
                     weights: [400],
                 }),
+                // UI/UX design system doc §4: "Inter" (admin + customer body/UI
+                // text) and "Plus Jakarta Sans" (customer display/headings).
+                // tokens.css already referenced these two names, but neither
+                // was ever actually self-hosted — every admin and customer
+                // page was silently falling back to the browser's system-ui
+                // font the whole time.
+                bunny('Inter', {
+                    weights: [400, 500, 600, 700, 800],
+                }),
+                bunny('Plus Jakarta Sans', {
+                    weights: [400, 600, 700, 800],
+                }),
             ],
         }),
         react(),
