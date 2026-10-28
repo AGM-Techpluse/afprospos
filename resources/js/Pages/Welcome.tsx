@@ -8,25 +8,13 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
         site_theme_accent: string;
     };
     useEffect(() => {
-        // Inject Bootstrap Icons stylesheet
-        if (!document.getElementById('bootstrap-icons')) {
-            const biLink = document.createElement('link')
-            biLink.rel = 'stylesheet'
-            biLink.href =
-                'https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css'
-            biLink.id = 'bootstrap-icons'
-            document.head.appendChild(biLink)
-        }
-
-        // Inject Google Fonts
-        if (!document.getElementById('welcome-fonts')) {
-            const fontLink = document.createElement('link')
-            fontLink.rel = 'stylesheet'
-            fontLink.href =
-                'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap'
-            fontLink.id = 'welcome-fonts'
-            document.head.appendChild(fontLink)
-        }
+        // Bootstrap Icons and the self-hosted Inter/Space Grotesk font faces
+        // are already part of the main app.css bundle (loaded once for the
+        // whole Inertia app via app.blade.php's @vite call) — this used to
+        // fetch both live from a third-party CDN at runtime instead, which
+        // both duplicated what was already loaded and, worse, meant this
+        // page's fonts kept "working" off that live CDN fetch even when the
+        // real self-hosted build was stale, masking exactly that bug.
 
         // Header scroll effect
         const header = document.getElementById('main-header')
