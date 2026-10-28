@@ -59,7 +59,7 @@ export default function CustomerProfileShow() {
             {/* order-2 as the base (mobile) value, sm:order-1 overriding at desktop — order must be set at BOTH breakpoints, not just sm:, or mobile falls back to DOM order (form first) which was the actual bug: avatar only visible after scrolling past the whole form. */}
             <div className="customer-content-grid py-4 sm:py-0">
                 <div className="order-2 sm:order-1">
-                    <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-1">My profile</h1>
+                    <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-1">My profile</h1>
                     <p className="text-customer-text2 text-customer-caption mb-6">
                         Keep your contact details up to date so we can reach you about repairs and orders.
                     </p>

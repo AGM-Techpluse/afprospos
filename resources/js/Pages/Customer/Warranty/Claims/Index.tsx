@@ -30,7 +30,7 @@ export default function CustomerWarrantyClaimsIndex({ claims }: { claims: Pagina
             <div className="customer-content-grid py-4 sm:py-0">
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text">Your warranty claims</h1>
+                        <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text">Your warranty claims</h1>
                         <button
                             type="button"
                             onClick={() => router.visit('/customer/warranty/claims/create')}

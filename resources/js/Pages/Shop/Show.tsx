@@ -151,12 +151,12 @@ export default function ShopShow({ product, relatedProducts }: ShopShowProps) {
                     <span className="inline-block rounded-customer-pill bg-customer-blue-soft text-customer-blue px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
                         {product.category}
                     </span>
-                    <h1 className="font-customer-display font-extrabold text-2xl text-customer-text mt-2">
+                    <h1 className="font-customer-display font-bold text-2xl text-customer-text mt-2">
                         {product.brand} {product.model}
                     </h1>
                     {variant && <p className="text-customer-caption text-customer-text2 mt-1">{variant}</p>}
 
-                    <p className="font-customer-display font-extrabold text-2xl text-customer-text mt-4">
+                    <p className="font-customer-display font-bold text-2xl text-customer-text mt-4">
                         {formatNaira(product.selling_price_minor)}
                     </p>
 
@@ -316,7 +316,7 @@ export default function ShopShow({ product, relatedProducts }: ShopShowProps) {
 
             {relatedProducts.length > 0 && (
                 <section className="mt-12">
-                    <h2 className="font-customer-display font-extrabold text-lg text-customer-text mb-3">More like this</h2>
+                    <h2 className="font-customer-display font-bold text-lg text-customer-text mb-3">More like this</h2>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {relatedProducts.map((related) => (
                             <ProductCard key={related.sku_id} product={related} isLoggedIn={isLoggedIn} onQuickAdd={quickAdd} />

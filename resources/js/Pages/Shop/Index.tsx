@@ -123,7 +123,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
 
             {!isLoggedIn && (
                 <>
-                    <h1 className="font-customer-display font-extrabold text-2xl text-customer-text mb-1">Shop devices</h1>
+                    <h1 className="font-customer-display font-bold text-2xl text-customer-text mb-1">Shop devices</h1>
                     <p className="text-customer-text2 text-customer-caption mb-4">Browse what's in stock across every shop.</p>
                 </>
             )}
@@ -154,7 +154,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
             ) : products !== null ? (
                 // Search/filter mode — a flat, paginated results grid.
                 <>
-                    <h1 className="font-customer-display font-extrabold text-xl text-customer-text mb-4">
+                    <h1 className="font-customer-display font-bold text-xl text-customer-text mb-4">
                         {products.total} {products.total === 1 ? 'result' : 'results'}
                     </h1>
 
@@ -197,7 +197,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
                 <>
                     <div className="bg-customer-hero-gradient rounded-customer-hero px-6 py-8 sm:px-10 sm:py-10 mb-8 text-white">
                         <p className="text-customer-caption font-bold uppercase tracking-wide opacity-80">AfProsPos Shop</p>
-                        <h1 className="font-customer-display font-extrabold text-2xl sm:text-3xl mt-1">
+                        <h1 className="font-customer-display font-bold text-2xl sm:text-3xl mt-1">
                             Genuine devices, every shop, one place.
                         </h1>
                         <p className="text-customer-caption opacity-90 mt-2 max-w-md">
@@ -234,7 +234,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
 
                     {browse.featured.length > 0 && (
                         <section id="featured" className="mb-8 scroll-mt-20">
-                            <h2 className="font-customer-display font-extrabold text-lg text-customer-text mb-3">Featured products</h2>
+                            <h2 className="font-customer-display font-bold text-lg text-customer-text mb-3">Featured products</h2>
                             <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 lg:grid-cols-4">
                                 {browse.featured.map((product) => (
                                     <div key={product.sku_id} className="w-36 shrink-0 sm:w-auto">
@@ -248,7 +248,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
                     {browse.sections.map((section) => (
                         <section key={section.category} className="mb-8">
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="font-customer-display font-extrabold text-lg text-customer-text">{section.category}</h2>
+                                <h2 className="font-customer-display font-bold text-lg text-customer-text">{section.category}</h2>
                                 <Link
                                     href={`/shop?category=${encodeURIComponent(section.category)}`}
                                     className="text-customer-caption font-bold text-customer-blue transition-colors hover:opacity-80 hover:underline"

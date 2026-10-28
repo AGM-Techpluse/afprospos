@@ -49,7 +49,7 @@ export default function CustomerPaymentShow({ checkout, pendingTransaction, bank
             <Head title="Pay for your order" />
 
             <div className="max-w-md">
-                <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-1">Pay for checkout #{checkout.id}</h1>
+                <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-1">Pay for checkout #{checkout.id}</h1>
                 <p className="font-mono text-customer-2xl font-extrabold text-customer-text mb-4">{formatNaira(checkout.total_minor)}</p>
 
                 {!isOpen ? (

@@ -589,7 +589,7 @@ Headings / branding:
 
 ```css
 font-family:
-  "Plus Jakarta Sans",
+  "Space Grotesk",
   system-ui,
   sans-serif;
 ```
@@ -603,10 +603,14 @@ font-family:
   sans-serif;
 ```
 
+Space Grotesk tops out at weight 700 (no 800/extrabold instance exists) —
+every heading/branding use pairs it with `font-bold`, never
+`font-extrabold`.
+
 This creates:
 
 ```text
-friendly display layer
+distinctive, technical display layer
 +
 highly readable utility layer
 ```
@@ -3453,7 +3457,7 @@ The following is the recommended production token organization.
     sans-serif;
 
   --font-customer-display:
-    "Plus Jakarta Sans",
+    "Space Grotesk",
     system-ui,
     sans-serif;
 
@@ -3954,7 +3958,7 @@ The following are non-negotiable.
 
 8. Admin uses Inter as the primary UI family.
 
-9. Customer uses Plus Jakarta Sans for headings/branding and Inter for utility text.
+9. Customer uses Space Grotesk for headings/branding and Inter for utility text.
 
 10. JetBrains Mono/Consolas is used for technical identifiers and precision values.
 

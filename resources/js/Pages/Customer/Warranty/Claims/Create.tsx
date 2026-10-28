@@ -34,7 +34,7 @@ export default function CustomerWarrantyClaimCreate({ policies, originatingSaleI
         <CustomerShell>
             <Head title="File a warranty claim" />
 
-            <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-1">File a warranty claim</h1>
+            <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-1">File a warranty claim</h1>
             <p className="text-customer-text2 text-customer-caption mb-6">
                 Tell us which warranty policy applies — our team will assess your claim and get back to you.
             </p>

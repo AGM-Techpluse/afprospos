@@ -23,7 +23,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
             const fontLink = document.createElement('link')
             fontLink.rel = 'stylesheet'
             fontLink.href =
-                'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap'
+                'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap'
             fontLink.id = 'welcome-fonts'
             document.head.appendChild(fontLink)
         }
@@ -90,7 +90,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                     --lp-shadow-strong: 0 10px 30px color-mix(in srgb, var(--lp-text) 16%, transparent);
                     --lp-radius-hero: 22px;
                     --lp-radius-pill: 100px;
-                    --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+                    --font-display: "Space Grotesk", system-ui, sans-serif;
                     --font-ui: "Inter", system-ui, sans-serif;
 
                     font-family: var(--font-ui);
@@ -151,7 +151,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                 }
                 .lp-logo {
                     font-family: var(--font-display);
-                    font-weight: 800;
+                    font-weight: 700;
                     font-size: 24px;
                     color: var(--lp-on-accent);
                     display: flex;

@@ -32,7 +32,7 @@ export default function CustomerReturnRequestCreate({ saleId, recentSales }: Ret
         <CustomerShell>
             <Head title="Start a return" />
 
-            <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-1">Start a return</h1>
+            <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-1">Start a return</h1>
             <p className="text-customer-text2 text-customer-caption mb-6">
                 Tell us which purchase you'd like to return — our team will review it and get back to you.
             </p>

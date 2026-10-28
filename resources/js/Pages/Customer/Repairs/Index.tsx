@@ -33,7 +33,7 @@ export default function CustomerRepairsIndex({ repairs }: { repairs: Paginated<R
             {/* One wrapping div = one grid item, so this whole column stays in customer-content-grid's first track — a bare h1 + list as direct grid children get auto-placed across BOTH columns instead of stacking. */}
             <div className="customer-content-grid py-4 sm:py-0">
                 <div>
-                    <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-4">Your repairs</h1>
+                    <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-4">Your repairs</h1>
 
                     <CustomerQuickActions actions={REPAIRS_QUICK_ACTIONS} gridClassName="grid-cols-2 sm:grid-cols-3" className="mb-6" />
 

@@ -54,7 +54,7 @@ export default function CustomerWarrantyClaimShow({ claim }: CustomerWarrantyCla
             {/* One wrapping div = one grid item, so this column stays in customer-content-grid's first track. */}
             <div className="customer-content-grid py-4 sm:py-0">
                 <div>
-                    <h1 className="font-customer-display font-extrabold text-customer-2xl text-customer-text mb-4">Claim #{claim.id}</h1>
+                    <h1 className="font-customer-display font-bold text-customer-2xl text-customer-text mb-4">Claim #{claim.id}</h1>
 
                     <CustomerDetailCard
                         icon="shield-exclamation"

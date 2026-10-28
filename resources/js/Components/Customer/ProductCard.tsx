@@ -64,7 +64,7 @@ export default function ProductCard({ product, isLoggedIn, onQuickAdd }: Product
                 </Link>
 
                 <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <span className="font-customer-display text-base font-extrabold text-customer-text">
+                    <span className="font-customer-display text-base font-bold text-customer-text">
                         {formatNaira(product.selling_price_minor)}
                     </span>
                     {lockedElsewhere ? (
