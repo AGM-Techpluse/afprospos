@@ -32,7 +32,7 @@ const KIND_STYLES: Record<ConfirmKind, { icon: string; iconClass: string; confir
     info: {
         icon: 'info-circle',
         iconClass: 'text-ui-info bg-ui-info-soft',
-        confirmClass: 'bg-admin-blue text-white hover:bg-blue-700',
+        confirmClass: 'bg-admin-blue text-white hover:bg-admin-blue-hover',
     },
 };
 

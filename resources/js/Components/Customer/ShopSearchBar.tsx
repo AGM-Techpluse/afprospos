@@ -34,7 +34,7 @@ export default function ShopSearchBar({ search, onSearchChange, category, onCate
                     <CategoryDropdown category={category} onCategoryChange={onCategoryChange} categories={categories} variant="embedded" />
                 </div>
 
-                <span className="w-8 h-8 rounded-full bg-customer-blue text-white flex items-center justify-center shrink-0 transition-all duration-150 hover:scale-110 hover:bg-blue-700">
+                <span className="w-8 h-8 rounded-full bg-customer-blue text-white flex items-center justify-center shrink-0 transition-all duration-150 hover:scale-110 hover:bg-customer-blue-hover">
                     <Icon name="search" className="text-xs" />
                 </span>
             </div>

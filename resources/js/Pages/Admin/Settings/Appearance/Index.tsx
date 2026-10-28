@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { CSSProperties, FormEvent, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
@@ -91,12 +91,15 @@ function SiteLogoSection({ logoUrl, hasCustomLogo }: { logoUrl: string; hasCusto
 }
 
 /**
- * The whole admin UI's accent colour — every "admin blue" button, active nav
- * item, badge, and focus ring resolves from this one value (resources/css/tokens.css
- * derives the soft/focus tints from it automatically via color-mix()), so this
- * single picker recolours the entire admin area consistently, not just this page.
+ * The whole site's accent colour — every blue button, active nav item, badge,
+ * focus ring, and highlight across the admin panel, the customer portal, AND
+ * the public landing page resolves from this one value (resources/css/tokens.css
+ * derives the soft/hover/focus tints from it automatically via color-mix()),
+ * so this single picker recolours the entire site consistently, not just one
+ * area. The landing page's own "Accent" colour row has been removed from the
+ * list below for this reason — it would otherwise look editable but do nothing.
  */
-function AdminThemeSection({ accent, defaultAccent }: { accent: string; defaultAccent: string }) {
+function SiteThemeSection({ accent, defaultAccent }: { accent: string; defaultAccent: string }) {
     const confirm = useConfirm();
     const [draft, setDraft] = useState(accent);
     const [busy, setBusy] = useState(false);
@@ -115,8 +118,8 @@ function AdminThemeSection({ accent, defaultAccent }: { accent: string; defaultA
     async function reset() {
         const confirmed = await confirm({
             kind: 'warning',
-            title: 'Reset the admin theme colour?',
-            body: 'Every admin button, active state, and focus ring goes back to the original blue.',
+            title: 'Reset the site theme colour?',
+            body: 'Every button, active state, and highlight across the admin panel, customer portal, and landing page goes back to the original blue.',
             confirmLabel: 'Reset',
         });
 
@@ -128,18 +131,21 @@ function AdminThemeSection({ accent, defaultAccent }: { accent: string; defaultA
 
     return (
         <div className="mb-8 pb-8 border-b border-admin-border">
-            <h2 className="text-sm font-semibold text-admin-text mb-3">Admin theme colour</h2>
+            <h2 className="text-sm font-semibold text-admin-text mb-3">Site theme colour</h2>
+            <p className="text-xs text-admin-text3 mb-3">
+                One colour for the whole site — admin panel, customer portal, and the public landing page.
+            </p>
             <div className="flex items-center gap-4 flex-wrap">
                 <input
                     type="color"
-                    aria-label="Admin accent colour"
+                    aria-label="Site accent colour"
                     value={valid ? draft : defaultAccent}
                     onChange={(e) => setDraft(e.target.value.toUpperCase())}
                     className="h-9 w-12 shrink-0 cursor-pointer rounded-admin-button border border-admin-border-strong bg-transparent p-0.5"
                 />
                 <input
                     type="text"
-                    aria-label="Admin accent colour hex value"
+                    aria-label="Site accent colour hex value"
                     value={draft}
                     maxLength={7}
                     onChange={(e) => setDraft(e.target.value)}
@@ -214,13 +220,16 @@ export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCus
 
             <SiteLogoSection logoUrl={logoUrl} hasCustomLogo={hasCustomLogo} />
 
-            <AdminThemeSection accent={adminThemeAccent} defaultAccent={adminThemeDefault} />
+            <SiteThemeSection accent={adminThemeAccent} defaultAccent={adminThemeDefault} />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 <div>
                     <h2 className="text-sm font-semibold text-admin-text mb-3">Landing page colours</h2>
+                    <p className="text-xs text-admin-text3 mb-3">
+                        The landing page's "Accent" colour is now the site theme colour above — set it there.
+                    </p>
                     <ul className="flex flex-col gap-3">
-                        {WELCOME_PALETTE_TOKENS.map((token) => {
+                        {WELCOME_PALETTE_TOKENS.filter((token) => token.key !== 'accent').map((token) => {
                             const value = draft[token.key];
                             const valid = HEX.test(value);
 
@@ -272,7 +281,15 @@ export default function SiteAppearanceIndex({ palette, defaults, logoUrl, hasCus
 
                 <div>
                     <h2 className="text-sm font-semibold text-admin-text mb-3">Preview</h2>
-                    <div className="lp-preview rounded-admin-card overflow-hidden border border-admin-border" style={paletteVars(draft)}>
+                    <div
+                        className="lp-preview rounded-admin-card overflow-hidden border border-admin-border"
+                        style={
+                            {
+                                ...paletteVars(draft),
+                                '--lp-blue': HEX.test(adminThemeAccent) ? adminThemeAccent : adminThemeDefault,
+                            } as CSSProperties
+                        }
+                    >
                         <div style={{ background: `linear-gradient(to bottom, var(--lp-page-start), var(--lp-page-mid), var(--lp-page-end))` }} className="p-6">
                             <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--lp-text2)' }}>
                                 AFPROSPOS

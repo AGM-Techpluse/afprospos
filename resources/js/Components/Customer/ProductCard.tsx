@@ -73,7 +73,7 @@ export default function ProductCard({ product, isLoggedIn, onQuickAdd }: Product
                         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 hover:scale-110 disabled:opacity-40 disabled:hover:scale-100 ${
                             lockedElsewhere
                                 ? 'bg-customer-yellow-soft text-customer-yellow-text hover:bg-customer-yellow'
-                                : 'bg-customer-blue text-white hover:bg-blue-700 disabled:bg-customer-divider disabled:text-customer-text2 disabled:hover:bg-customer-divider'
+                                : 'bg-customer-blue text-white hover:bg-customer-blue-hover disabled:bg-customer-divider disabled:text-customer-text2 disabled:hover:bg-customer-divider'
                         }`}
                     >
                         <Icon name={lockedElsewhere ? 'shop' : 'cart-plus'} />

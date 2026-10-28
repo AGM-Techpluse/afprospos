@@ -141,6 +141,10 @@
      variants with no further configuration. */
   --a-blue: #1E56E8;
   --a-blue-soft: color-mix(in oklab, var(--a-blue) 10%, white);
+  /* A hover-state darkening of the same accent — replaces a hardcoded
+     Tailwind blue-700 that several components used to fall back to on
+     hover regardless of the chosen theme colour. */
+  --a-blue-hover: color-mix(in oklab, var(--a-blue) 85%, black);
 
   --a-yellow: #F5A623;
   --a-yellow-soft: #FFF6E5;
@@ -185,6 +189,7 @@
 
   --c-blue: #2F6FED;
   --c-blue-soft: #E7EFFF;
+  --c-blue-hover: color-mix(in oklab, var(--c-blue) 85%, black);
 
   --c-yellow: #FFC845;
   --c-yellow-soft: #FFF6DF;

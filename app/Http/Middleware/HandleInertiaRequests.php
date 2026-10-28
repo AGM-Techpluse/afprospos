@@ -64,7 +64,12 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'app_name' => config('app.name'),
             'app_logo' => $this->siteLogo->url(),
-            'admin_theme_accent' => $this->adminTheme->resolved(),
+            // Shared on every request, Admin or Customer — Settings → Site
+            // appearance's "Site theme colour" is one accent for the whole
+            // site, not just the admin panel (AdminThemeQuery/the storage key
+            // keep their original "admin theme" name, predating that scope
+            // widening, since the already-saved custom value lives under it).
+            'site_theme_accent' => $this->adminTheme->resolved(),
             // Lets the landing page / nav links hide "Shop" rather than
             // link to a route that 404s while STOREFRONT_ENABLED=false.
             'storefrontEnabled' => (bool) config('afprospos.storefront_enabled'),

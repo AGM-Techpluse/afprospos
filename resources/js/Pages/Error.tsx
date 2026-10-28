@@ -101,7 +101,7 @@ export default function ErrorPage({ status, theme }: ErrorPageProps) {
                         href={homeHref}
                         className={
                             isAdmin
-                                ? 'rounded-admin-button text-admin-button font-semibold px-admin-btn-x py-admin-btn-y bg-admin-blue text-white hover:bg-blue-700'
+                                ? 'rounded-admin-button text-admin-button font-semibold px-admin-btn-x py-admin-btn-y bg-admin-blue text-white hover:bg-admin-blue-hover'
                                 : 'rounded-customer-pill text-customer-caption font-semibold px-5 py-2.5 bg-customer-blue text-white'
                         }
                     >

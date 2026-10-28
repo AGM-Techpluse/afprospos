@@ -24,6 +24,7 @@
     --color-admin-text3: var(--a-text3);
     --color-admin-blue: var(--a-blue);
     --color-admin-blue-soft: var(--a-blue-soft);
+    --color-admin-blue-hover: var(--a-blue-hover);
     --color-admin-yellow: var(--a-yellow);
     --color-admin-yellow-soft: var(--a-yellow-soft);
     --color-admin-yellow-text: var(--a-yellow-text);
@@ -51,6 +52,7 @@
     --color-customer-text2: var(--c-text2);
     --color-customer-blue: var(--c-blue);
     --color-customer-blue-soft: var(--c-blue-soft);
+    --color-customer-blue-hover: var(--c-blue-hover);
     --color-customer-yellow: var(--c-yellow);
     --color-customer-yellow-soft: var(--c-yellow-soft);
     --color-customer-yellow-text: var(--c-yellow-text);

@@ -26,7 +26,7 @@ export default function AdminButton({
 
     switch (variant) {
         case 'primary':
-            variantClass = 'bg-admin-blue text-white hover:bg-blue-700';
+            variantClass = 'bg-admin-blue text-white hover:bg-admin-blue-hover';
             break;
         case 'neutral':
             variantClass = 'bg-white border border-admin-border-strong text-admin-text hover:bg-admin-hover hover:border-admin-blue';

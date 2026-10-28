@@ -8,13 +8,13 @@ interface AdminAuthShellProps {
 }
 
 export default function AdminAuthShell({ children }: AdminAuthShellProps) {
-    const { admin_theme_accent } = usePage().props as any;
+    const { site_theme_accent } = usePage().props as any;
 
     return (
         <div
             data-theme="admin"
             className="min-h-screen bg-admin-bg text-admin-text font-admin-base flex items-center justify-center p-4"
-            style={{ '--a-blue': admin_theme_accent } as React.CSSProperties}
+            style={{ '--a-blue': site_theme_accent } as React.CSSProperties}
         >
             {children}
             <AdminToastViewport />

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { CSSProperties, ReactNode, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Icon from '../Icons/Icon';
 import CustomerAvatar from './CustomerAvatar';
@@ -21,7 +21,7 @@ interface PublicStorefrontShellProps {
  * (`ShopSearchBar`), not in the aside.
  */
 export default function PublicStorefrontShell({ children }: PublicStorefrontShellProps) {
-    const { app_name, app_logo, auth } = usePage().props as any;
+    const { app_name, app_logo, auth, site_theme_accent } = usePage().props as any;
     const customerName: string | null = auth?.customer?.name ?? null;
     const avatarUrl: string | null = auth?.customer?.avatar_url ?? null;
     const [isAsideOpen, setIsAsideOpen] = useState(false);
@@ -30,7 +30,11 @@ export default function PublicStorefrontShell({ children }: PublicStorefrontShel
     useFlashToast();
 
     return (
-        <div data-theme="customer" className="min-h-screen bg-white">
+        <div
+            data-theme="customer"
+            className="min-h-screen bg-white"
+            style={{ '--c-blue': site_theme_accent } as CSSProperties}
+        >
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white">
                 <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center gap-6">
                     {showAside && (

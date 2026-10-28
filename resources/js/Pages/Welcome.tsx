@@ -1,9 +1,12 @@
-import { useEffect } from 'react'
+import { CSSProperties, useEffect } from 'react'
 import { Link, usePage } from '@inertiajs/react'
 import { paletteVars, WelcomePalette } from '../lib/welcomePalette'
 
 export default function Welcome({ palette }: { palette: WelcomePalette }) {
-    const { storefrontEnabled } = usePage().props as unknown as { storefrontEnabled: boolean };
+    const { storefrontEnabled, site_theme_accent } = usePage().props as unknown as {
+        storefrontEnabled: boolean;
+        site_theme_accent: string;
+    };
     useEffect(() => {
         // Inject Bootstrap Icons stylesheet
         if (!document.getElementById('bootstrap-icons')) {
@@ -369,7 +372,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                 }
             `}</style>
 
-            <div className="lp-wrap" style={paletteVars(palette)}>
+            <div className="lp-wrap" style={{ ...paletteVars(palette), '--lp-blue': site_theme_accent } as CSSProperties}>
                 {/* Header */}
                 <header id="main-header">
                     <div className="lp-logo">

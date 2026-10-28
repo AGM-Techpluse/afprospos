@@ -22,7 +22,7 @@ export default function CustomerButton({
 
     switch (variant) {
         case 'primary':
-            variantClass = 'bg-customer-blue text-white hover:bg-blue-700';
+            variantClass = 'bg-customer-blue text-white hover:bg-customer-blue-hover';
             break;
         case 'neutral':
             variantClass = 'bg-customer-divider text-customer-text hover:bg-gray-200';

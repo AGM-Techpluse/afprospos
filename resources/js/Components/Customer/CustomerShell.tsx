@@ -35,7 +35,7 @@ function buildNavItems(storefrontEnabled: boolean): NavItem[] {
 }
 
 export default function CustomerShell({ children }: CustomerShellProps) {
-    const { app_name, app_logo, auth, storefrontEnabled } = usePage().props as any;
+    const { app_name, app_logo, auth, storefrontEnabled, site_theme_accent } = usePage().props as any;
     const currentUrl = usePage().url;
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const customerName: string = auth?.customer?.name ?? 'there';
@@ -45,7 +45,11 @@ export default function CustomerShell({ children }: CustomerShellProps) {
     useFlashToast();
 
     return (
-        <div data-theme="customer" className="min-h-screen bg-white flex">
+        <div
+            data-theme="customer"
+            className="min-h-screen bg-white flex"
+            style={{ '--c-blue': site_theme_accent } as React.CSSProperties}
+        >
             {isDrawerOpen && (
                 <div
                     className="sm:hidden fixed inset-0 z-40 bg-customer-overlay"

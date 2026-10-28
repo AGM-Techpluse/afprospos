@@ -251,7 +251,7 @@ export default function ShopIndex({ products, browse, filters, categories }: Sho
                                 <h2 className="font-customer-display font-extrabold text-lg text-customer-text">{section.category}</h2>
                                 <Link
                                     href={`/shop?category=${encodeURIComponent(section.category)}`}
-                                    className="text-customer-caption font-bold text-customer-blue transition-colors hover:text-blue-700 hover:underline"
+                                    className="text-customer-caption font-bold text-customer-blue transition-colors hover:opacity-80 hover:underline"
                                 >
                                     See all
                                 </Link>

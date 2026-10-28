@@ -162,7 +162,7 @@ function NavGroups({ collapsed, activeKey, onNavigate }: { collapsed: boolean; a
 
 export default function AdminShell({ children }: AdminShellProps) {
     const { url } = usePage();
-    const { app_name, app_logo, admin_theme_accent, auth, shopSwitcher } = usePage().props as any;
+    const { app_name, app_logo, site_theme_accent, auth, shopSwitcher } = usePage().props as any;
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(readStoredCollapsed);
     const activeKey = useActiveKey(url);
@@ -183,7 +183,7 @@ export default function AdminShell({ children }: AdminShellProps) {
         <div
             data-theme="admin"
             className="min-h-screen bg-admin-bg text-admin-text font-admin-base flex"
-            style={{ '--a-blue': admin_theme_accent } as React.CSSProperties}
+            style={{ '--a-blue': site_theme_accent } as React.CSSProperties}
         >
             {/* Desktop Sidebar (Hidden on mobile) */}
             <aside

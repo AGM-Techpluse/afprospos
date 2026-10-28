@@ -67,7 +67,7 @@ function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSeriali
                 type="button"
                 onClick={() => setOpen((current) => !current)}
                 aria-expanded={open}
-                className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition-colors ${open ? '' : 'bg-admin-blue hover:bg-blue-700'}`}
+                className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition-colors ${open ? '' : 'bg-admin-blue hover:bg-admin-blue-hover'}`}
             >
                 <span
                     className={`w-8 h-8 rounded-admin-button flex items-center justify-center shrink-0 ${
@@ -162,7 +162,7 @@ function DownloadTemplateCard() {
     return (
         <a
             href="/admin/inventory/import/template"
-            className="flex items-center gap-2.5 px-4 py-3 border border-admin-border rounded-admin-card mb-4 bg-admin-blue hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2.5 px-4 py-3 border border-admin-border rounded-admin-card mb-4 bg-admin-blue hover:bg-admin-blue-hover transition-colors"
         >
             <span className="w-8 h-8 rounded-admin-button bg-white/15 text-white flex items-center justify-center shrink-0">
                 <Icon name="download" />

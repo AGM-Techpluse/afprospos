@@ -34,7 +34,17 @@ class AdminCanChangeAdminThemeTest extends TestCase
 
         $this->actingAs($this->owner, 'staff')
             ->get('/admin/dashboard')
-            ->assertInertia(fn ($page) => $page->where('admin_theme_accent', '#F97316'));
+            ->assertInertia(fn ($page) => $page->where('site_theme_accent', '#F97316'));
+    }
+
+    public function test_a_saved_accent_colour_is_also_shared_on_the_public_landing_page(): void
+    {
+        $this->actingAs($this->owner, 'staff')
+            ->put('/admin/settings/appearance/admin-theme', ['accent' => '#F97316'])
+            ->assertRedirect();
+
+        $this->get('/')
+            ->assertInertia(fn ($page) => $page->where('site_theme_accent', '#F97316'));
     }
 
     public function test_an_invalid_hex_colour_is_rejected_and_nothing_is_saved(): void
