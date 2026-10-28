@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
+import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
@@ -58,7 +59,8 @@ const COLUMNS: DataTableColumn<StaffRow>[] = [
 const NO_FILTERS = { search: '', status: '', role: '' };
 
 export default function StaffIndex({ staff, filters, availableRoles, shops }: StaffIndexProps) {
-    const { post, processing } = useForm();
+    const confirm = useConfirm();
+    const { post, delete: deleteAction, processing } = useForm();
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
     const [role, setRole] = useState(filters.role);
@@ -112,6 +114,24 @@ export default function StaffIndex({ staff, filters, availableRoles, shops }: St
 
     function deactivate(id: number) {
         post(`/admin/staff/${id}/deactivate`);
+    }
+
+    function reactivate(id: number) {
+        post(`/admin/staff/${id}/reactivate`);
+    }
+
+    async function destroy(id: number, name: string) {
+        const confirmed = await confirm({
+            kind: 'danger',
+            title: `Delete ${name}?`,
+            body: 'This permanently removes the staff account. It only succeeds if this staff member has no sales, repairs, or other recorded activity.',
+            confirmLabel: 'Delete staff member',
+            cancelLabel: 'Cancel',
+        });
+
+        if (confirmed) {
+            deleteAction(`/admin/staff/${id}`);
+        }
     }
 
     return (
@@ -184,7 +204,7 @@ export default function StaffIndex({ staff, filters, availableRoles, shops }: St
                         <AdminButton variant="neutral" onClick={() => router.visit(`/admin/staff/${row.id}`)}>
                             View
                         </AdminButton>
-                        {row.status === 'active' && (
+                        {row.status === 'active' ? (
                             <AdminButton
                                 variant="danger"
                                 isLoading={processing}
@@ -192,6 +212,23 @@ export default function StaffIndex({ staff, filters, availableRoles, shops }: St
                             >
                                 Deactivate
                             </AdminButton>
+                        ) : (
+                            <>
+                                <AdminButton
+                                    variant="neutral"
+                                    isLoading={processing}
+                                    onClick={() => reactivate(row.id)}
+                                >
+                                    Reactivate
+                                </AdminButton>
+                                <AdminButton
+                                    variant="danger"
+                                    isLoading={processing}
+                                    onClick={() => destroy(row.id, row.name)}
+                                >
+                                    Delete
+                                </AdminButton>
+                            </>
                         )}
                     </div>
                 )}

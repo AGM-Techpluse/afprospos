@@ -157,6 +157,15 @@ Route::prefix('admin')
             ->post('/staff/{staff}/deactivate', [StaffController::class, 'deactivate'])
             ->name('staff.deactivate');
 
+        Route::middleware('permission:staff.deactivate')
+            ->post('/staff/{staff}/reactivate', [StaffController::class, 'reactivate'])
+            ->name('staff.reactivate');
+
+        Route::middleware('permission:staff.deactivate')
+            ->delete('/staff/{staff}', [StaffController::class, 'destroy'])
+            ->whereNumber('staff')
+            ->name('staff.destroy');
+
         Route::middleware('permission:shops.view')
             ->get('/shops', [ShopController::class, 'index'])
             ->name('shops.index');

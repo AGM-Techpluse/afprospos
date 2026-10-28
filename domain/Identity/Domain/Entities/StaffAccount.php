@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Identity\Domain\Entities;
 
+use Domain\Identity\Domain\Exceptions\StaffAlreadyActive;
 use Domain\Identity\Domain\Exceptions\StaffAlreadyDeactivated;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 
@@ -71,5 +72,20 @@ final class StaffAccount
         }
 
         $this->status = 'deactivated';
+    }
+
+    /**
+     * BLD RBAC-BR-08's counterpart: restores access for a previously
+     * deactivated account. Role assignments and shop grants were never
+     * touched by deactivate(), so reactivating needs no restoration of
+     * its own — the caller (Handler) is responsible for auditing this.
+     */
+    public function reactivate(): void
+    {
+        if ($this->isActive()) {
+            throw StaffAlreadyActive::forStaff($this->id);
+        }
+
+        $this->status = 'active';
     }
 }

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
+import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
@@ -41,6 +42,7 @@ interface StaffShowProps {
 }
 
 export default function StaffShow({ staffMember, grantedShopIds, availableRoles, shops }: StaffShowProps) {
+    const confirm = useConfirm();
     const { post: postAction, delete: deleteAction, processing } = useForm();
     const assignableRoles = availableRoles.filter((role) => !staffMember.roles.includes(role));
     const grantedShops = shops.filter((shop) => grantedShopIds.includes(shop.id));
@@ -73,6 +75,24 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
         postAction(`/admin/staff/${staffMember.id}/deactivate`);
     }
 
+    function reactivate() {
+        postAction(`/admin/staff/${staffMember.id}/reactivate`);
+    }
+
+    async function destroy() {
+        const confirmed = await confirm({
+            kind: 'danger',
+            title: `Delete ${staffMember.name}?`,
+            body: 'This permanently removes the staff account. It only succeeds if this staff member has no sales, repairs, or other recorded activity.',
+            confirmLabel: 'Delete staff member',
+            cancelLabel: 'Cancel',
+        });
+
+        if (confirmed) {
+            deleteAction(`/admin/staff/${staffMember.id}`);
+        }
+    }
+
     return (
         <AdminShell>
             <Head title={staffMember.name} />
@@ -87,10 +107,19 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         <AdminButton variant="neutral" onClick={() => router.visit(`/admin/staff/${staffMember.id}/edit`)}>
                             Edit
                         </AdminButton>
-                        {staffMember.status === 'active' && (
+                        {staffMember.status === 'active' ? (
                             <AdminButton variant="danger" isLoading={processing} onClick={deactivate}>
                                 Deactivate
                             </AdminButton>
+                        ) : (
+                            <>
+                                <AdminButton variant="neutral" isLoading={processing} onClick={reactivate}>
+                                    Reactivate
+                                </AdminButton>
+                                <AdminButton variant="danger" isLoading={processing} onClick={destroy}>
+                                    Delete
+                                </AdminButton>
+                            </>
                         )}
                     </>
                 }

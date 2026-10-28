@@ -11,12 +11,17 @@ use App\Http\Requests\Admin\GrantShopAccessRequest;
 use App\Http\Requests\Admin\UpdateStaffProfileRequest;
 use Domain\Identity\Application\Commands\CreateStaffAccountCommand;
 use Domain\Identity\Application\Commands\DeactivateStaffAccountCommand;
+use Domain\Identity\Application\Commands\DeleteStaffAccountCommand;
+use Domain\Identity\Application\Commands\ReactivateStaffAccountCommand;
 use Domain\Identity\Application\Commands\UpdateStaffProfileCommand;
 use Domain\Identity\Application\Handlers\CreateStaffAccountHandler;
 use Domain\Identity\Application\Handlers\DeactivateStaffAccountHandler;
+use Domain\Identity\Application\Handlers\DeleteStaffAccountHandler;
+use Domain\Identity\Application\Handlers\ReactivateStaffAccountHandler;
 use Domain\Identity\Application\Handlers\UpdateStaffProfileHandler;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Identity\Domain\Exceptions\DuplicateStaffEmail;
+use Domain\Identity\Domain\Exceptions\StaffHasExistingRecords;
 use Domain\RBAC\Application\Commands\AssignRoleToStaffCommand;
 use Domain\RBAC\Application\Commands\GrantShopAccessCommand;
 use Domain\RBAC\Application\Commands\RevokeRoleFromStaffCommand;
@@ -53,6 +58,8 @@ final class StaffController
         private readonly CreateStaffAccountHandler $createStaff,
         private readonly UpdateStaffProfileHandler $updateStaffProfile,
         private readonly DeactivateStaffAccountHandler $deactivateStaff,
+        private readonly ReactivateStaffAccountHandler $reactivateStaff,
+        private readonly DeleteStaffAccountHandler $deleteStaff,
         private readonly AssignRoleToStaffHandler $assignRole,
         private readonly RevokeRoleFromStaffHandler $revokeRole,
         private readonly GrantShopAccessHandler $grantShopAccess,
@@ -224,6 +231,38 @@ final class StaffController
         ));
 
         $this->flashSuccess('Staff member deactivated');
+
+        return redirect()->route('admin.staff.index');
+    }
+
+    public function reactivate(int $staff): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->reactivateStaff->handle(new ReactivateStaffAccountCommand(
+            staffId: $staff,
+            reactivatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Staff member reactivated');
+
+        return redirect()->back();
+    }
+
+    public function destroy(int $staff): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        try {
+            $this->deleteStaff->handle(new DeleteStaffAccountCommand(
+                staffId: $staff,
+                deletedByStaffId: $actor->staffId->value,
+            ));
+        } catch (StaffHasExistingRecords $exception) {
+            throw ValidationException::withMessages(['staff' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Staff member deleted');
 
         return redirect()->route('admin.staff.index');
     }

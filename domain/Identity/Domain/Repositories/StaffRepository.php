@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Identity\Domain\Repositories;
 
 use Domain\Identity\Domain\Entities\StaffAccount;
+use Domain\Identity\Domain\Exceptions\StaffHasExistingRecords;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 
 interface StaffRepository
@@ -31,4 +32,7 @@ interface StaffRepository
     public function updatePassword(StaffId $id, string $plainPassword): void;
 
     public function save(StaffAccount $staff): void;
+
+    /** @throws StaffHasExistingRecords if the staff member has any existing business records referencing them */
+    public function delete(StaffId $id): void;
 }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Domain\Identity\Infrastructure\Persistence\Repositories;
 
 use Domain\Identity\Domain\Entities\StaffAccount;
+use Domain\Identity\Domain\Exceptions\StaffHasExistingRecords;
 use Domain\Identity\Domain\Repositories\StaffRepository;
 use Domain\Shared\Domain\ValueObjects\StaffId;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 
 final class EloquentStaffRepository implements StaffRepository
@@ -80,6 +82,37 @@ final class EloquentStaffRepository implements StaffRepository
         StaffRecord::query()
             ->whereKey($staff->id()->value)
             ->update(['status' => $staff->status()]);
+    }
+
+    /**
+     * Role/shop-grant history (staff_shops, repairs, sales, payments,
+     * commissions, etc.) is protected by real `restrictOnDelete` foreign
+     * keys (DBDD §7) — a FK violation here means this account has existing
+     * business records, translated to a domain error so the caller can
+     * suggest deactivation instead. Role pivot rows (model_has_roles) are
+     * NOT FK-protected (they are polymorphic), so they are cleared
+     * explicitly to avoid leaving orphaned rows behind.
+     */
+    public function delete(StaffId $id): void
+    {
+        $record = StaffRecord::query()->findOrFail($id->value);
+
+        $record->syncRoles([]);
+        $record->syncPermissions([]);
+
+        try {
+            $record->delete();
+        } catch (QueryException $exception) {
+            // SQLSTATE 23000 (integrity constraint violation) is the
+            // portable signal across both MySQL (errno 1451) and the
+            // SQLite driver the test suite runs on (errno 19) — a
+            // FK-specific errno check would only work on one of them.
+            if (($exception->errorInfo[0] ?? null) === '23000') {
+                throw StaffHasExistingRecords::forStaff($id);
+            }
+
+            throw $exception;
+        }
     }
 
     private function toDomain(StaffRecord $record): StaffAccount
