@@ -87,9 +87,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
-        <div className="flex items-center justify-between py-2.5 border-b border-admin-border last:border-b-0">
-            <span className="text-sm text-admin-text2">{label}</span>
-            <span className="text-sm font-medium text-admin-text">{value}</span>
+        <div className="flex items-center justify-between gap-3 py-2.5 border-b border-admin-border last:border-b-0">
+            <span className="text-sm text-admin-text2 shrink-0">{label}</span>
+            <span className="text-sm font-medium text-admin-text text-right break-words min-w-0">{value}</span>
         </div>
     );
 }

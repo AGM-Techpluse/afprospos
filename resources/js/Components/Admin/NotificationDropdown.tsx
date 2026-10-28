@@ -75,7 +75,7 @@ export default function NotificationDropdown() {
             {open && (
                 <div
                     role="menu"
-                    className="absolute right-0 top-full mt-2 w-80 bg-admin-surface rounded-admin-card shadow-lg border border-admin-border p-4 z-50 max-h-96 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-admin-surface rounded-admin-card shadow-lg border border-admin-border p-4 z-50 max-h-96 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                     <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold text-admin-text text-sm">Notifications</span>
