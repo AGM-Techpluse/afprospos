@@ -8,15 +8,18 @@ import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 import ProductImage from '../../../../Components/ProductImage';
-import AttributeEditor, { serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
+import Icon from '../../../../Components/Icons/Icon';
+import { VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
 import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
 import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
+import EditProductModal from './EditProductModal';
+import EditUnitConditionModal from './EditUnitConditionModal';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
 type SiblingSku = { id: number; sku_code: string; attributes: Record<string, unknown>; selling_price_minor: number };
 
-type Sku = {
+export type Sku = {
     id: number;
     product_id: number;
     sku_code: string;
@@ -63,7 +66,7 @@ const UNIT_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
 };
 
 /** Turns the backend's {brand,color,storage,material,compatibility,custom:{key:value}} shape into AttributeEditor's row-based editing shape. */
-function toVariantAttributes(attributes: Record<string, unknown>): VariantAttributes {
+export function toVariantAttributes(attributes: Record<string, unknown>): VariantAttributes {
     const custom = attributes.custom;
     const customRows = custom && typeof custom === 'object'
         ? Object.entries(custom as Record<string, unknown>).map(([key, value]) => ({ key, value: String(value) }))
@@ -93,30 +96,6 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
     // don't match this form's singular-bound field names.
     const errors = formErrors as Record<string, string | undefined>;
 
-    const commissionForm = useForm({
-        is_commissionable: sku.is_commissionable,
-        commission_amount_naira: sku.commission_amount_minor !== null ? String(sku.commission_amount_minor / 100) : '',
-    });
-    // The server validates the minor-unit field (`commission_amount_minor`) that
-    // doesn't match this form's naira-bound field name.
-    const commissionErrors = commissionForm.errors as Record<string, string | undefined>;
-
-    function submitCommission(e: FormEvent) {
-        e.preventDefault();
-
-        commissionForm.transform((formData) => ({
-            is_commissionable: formData.is_commissionable,
-            commission_amount_minor: formData.is_commissionable && formData.commission_amount_naira
-                ? Math.round(parseFloat(formData.commission_amount_naira) * 100)
-                : null,
-        }));
-
-        commissionForm.put(`/admin/inventory/products/${sku.id}/commission`);
-    }
-
-    const [editingDescription, setEditingDescription] = useState(false);
-    const descriptionForm = useForm({ description: sku.description ?? '' });
-
     const [updatingUnitId, setUpdatingUnitId] = useState<number | null>(null);
 
     function updateUnitStatus(unitId: number, toStatus: 'damaged' | 'available') {
@@ -128,35 +107,8 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
         );
     }
 
-    function updateUnitCondition(unitId: number, condition: string) {
-        setUpdatingUnitId(unitId);
-        router.post(
-            `/admin/inventory/serialized-units/${unitId}/condition`,
-            { condition },
-            { preserveScroll: true, onFinish: () => setUpdatingUnitId(null) },
-        );
-    }
-
-    const [editingAttributes, setEditingAttributes] = useState(false);
-    const attributesForm = useForm<{ attributes: VariantAttributes }>({ attributes: toVariantAttributes(sku.attributes) });
-    const attributesErrors = attributesForm.errors as Record<string, string | undefined>;
-
-    function submitAttributes(e: FormEvent) {
-        e.preventDefault();
-        attributesForm.transform((formData) => ({ attributes: serializeAttributes(formData.attributes) }));
-        attributesForm.put(`/admin/inventory/products/${sku.id}/attributes`, {
-            preserveScroll: true,
-            onSuccess: () => setEditingAttributes(false),
-        });
-    }
-
-    function submitDescription(e: FormEvent) {
-        e.preventDefault();
-        descriptionForm.put(`/admin/inventory/products/${sku.id}/description`, {
-            preserveScroll: true,
-            onSuccess: () => setEditingDescription(false),
-        });
-    }
+    const [editingProduct, setEditingProduct] = useState(false);
+    const [editingUnit, setEditingUnit] = useState<SerializedUnit | null>(null);
 
     function submitReceive(e: FormEvent) {
         e.preventDefault();
@@ -183,54 +135,22 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
                 description={sku.sku_code}
                 backHref="/admin/inventory/products"
                 backLabel="Back to products"
+                actions={<AdminButton variant="neutral" onClick={() => setEditingProduct(true)}>Edit product</AdminButton>}
             />
+
+            {editingProduct && <EditProductModal sku={sku} onClose={() => setEditingProduct(false)} />}
+            {editingUnit && (
+                <EditUnitConditionModal unit={editingUnit} conditions={conditions} onClose={() => setEditingUnit(null)} />
+            )}
 
             <div className="mb-6 grid gap-4 sm:grid-cols-[200px_minmax(0,1fr)] items-start">
                 <ProductImage src={sku.image_url} alt={`${sku.brand} ${sku.model}`} aspect="square" category={sku.category} className="max-w-[200px]" />
 
                 <div>
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="text-xs font-semibold text-admin-text2">Storefront description</span>
-                        {!editingDescription && (
-                            <button
-                                type="button"
-                                onClick={() => setEditingDescription(true)}
-                                className="text-xs font-semibold text-admin-blue"
-                            >
-                                {sku.description ? 'Edit' : 'Add description'}
-                            </button>
-                        )}
-                    </div>
-
-                    {editingDescription ? (
-                        <form onSubmit={submitDescription} className="flex flex-col gap-2">
-                            <textarea
-                                value={descriptionForm.data.description}
-                                onChange={(e) => descriptionForm.setData('description', e.target.value)}
-                                rows={4}
-                                maxLength={2000}
-                                placeholder="What a customer browsing the storefront should know about this product…"
-                                className="border border-admin-border-strong rounded-admin-button px-2.5 py-1.5 text-sm outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
-                            />
-                            <div className="flex items-center gap-2">
-                                <AdminButton type="submit" variant="neutral" isLoading={descriptionForm.processing}>Save</AdminButton>
-                                <AdminButton
-                                    type="button"
-                                    variant="neutral"
-                                    onClick={() => {
-                                        descriptionForm.setData('description', sku.description ?? '');
-                                        setEditingDescription(false);
-                                    }}
-                                >
-                                    Cancel
-                                </AdminButton>
-                            </div>
-                        </form>
-                    ) : (
-                        <p className="text-sm text-admin-text2 whitespace-pre-wrap">
-                            {sku.description || 'No description yet — this product will show no copy on the storefront.'}
-                        </p>
-                    )}
+                    <span className="text-xs font-semibold text-admin-text2 block mb-1.5">Storefront description</span>
+                    <p className="text-sm text-admin-text2 whitespace-pre-wrap">
+                        {sku.description || 'No description yet — this product will show no copy on the storefront.'}
+                    </p>
                 </div>
             </div>
 
@@ -242,8 +162,8 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
                 <AdminStatCard label="Low-stock threshold" value={sku.low_stock_threshold !== null ? String(sku.low_stock_threshold) : '—'} />
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-                <AdminInfoCard title="Details" icon="info-circle" iconColor="blue">
+            <div>
+                <AdminInfoCard title="Details" icon="info-circle" iconColor="blue" className="max-w-xl">
                     <dl className="divide-y divide-admin-border -my-1 text-sm">
                         <div className="flex justify-between py-2.5">
                             <dt className="text-admin-text2">Category</dt>
@@ -284,58 +204,55 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
                                     : 'Not commissionable'}
                             </dd>
                         </div>
+                        <div className="flex justify-between py-2.5 gap-3">
+                            <dt className="text-admin-text2 shrink-0">Specs</dt>
+                            <dd className="text-admin-text text-right">{variantLabel(sku.attributes)}</dd>
+                        </div>
                     </dl>
                 </AdminInfoCard>
+            </div>
 
+            {/* Its own full-width row, not squeezed into the Details grid — this
+                table has five columns (six once the condition edit control is
+                counted), which was unreadably cramped at half the page width. */}
+            <div className="mt-8">
                 <AdminInfoCard title={sku.is_serialized ? 'Units by shop' : 'Stock by shop'} icon="shop" iconColor="green">
                     {sku.is_serialized ? (
                         sku.serialized_units.length === 0 ? (
                             <p className="text-admin-text2 text-sm">No units received yet.</p>
                         ) : (
+                            <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="text-left text-admin-text2 text-xs">
-                                        <th className="pb-2">IMEI</th>
-                                        <th className="pb-2">Serial</th>
-                                        <th className="pb-2">Shop</th>
-                                        <th className="pb-2">Condition</th>
-                                        <th className="pb-2 text-right">Status</th>
+                                        <th className="pb-2 pr-4">IMEI</th>
+                                        <th className="pb-2 pr-4">Serial</th>
+                                        <th className="pb-2 pr-4">Shop</th>
+                                        <th className="pb-2 pr-4">Condition</th>
+                                        <th className="pb-2 pr-4 text-right">Status</th>
                                         <th className="pb-2 text-right"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-admin-border">
                                     {sku.serialized_units.map((unit) => (
                                         <tr key={unit.id}>
-                                            <td className="py-2 text-admin-text font-mono text-xs">{unit.imei}</td>
-                                            <td className="py-2 text-admin-text font-mono text-xs">{unit.serial_number ?? '-'}</td>
-                                            <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
-                                            <td className="py-2 text-admin-text min-w-[140px]">
-                                                <AdminSelect
-                                                    aria-label="Condition"
-                                                    value={unit.condition}
-                                                    disabled={updatingUnitId === unit.id}
-                                                    onChange={(e) => updateUnitCondition(unit.id, e.target.value)}
-                                                    containerClassName="mb-0"
-                                                    className="!py-1.5 !text-xs"
+                                            <td className="py-2 pr-4 text-admin-text font-mono text-xs whitespace-nowrap">{unit.imei}</td>
+                                            <td className="py-2 pr-4 text-admin-text font-mono text-xs whitespace-nowrap">{unit.serial_number ?? '-'}</td>
+                                            <td className="py-2 pr-4 text-admin-text whitespace-nowrap">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
+                                            <td className="py-2 pr-4 whitespace-nowrap">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingUnit(unit)}
+                                                    className="inline-flex items-center gap-1.5 text-admin-text hover:text-admin-blue"
                                                 >
-                                                    {/* A unit received before its condition was added to (or after it was
-                                                        removed from) the catalog still needs to show its real value rather
-                                                        than silently looking unset — this is the exact gap the admin is
-                                                        here to fix. */}
-                                                    {!conditions.some((condition) => condition.name === unit.condition) && (
-                                                        <option value={unit.condition}>{formatInventoryCondition(unit.condition)} (not in catalog)</option>
-                                                    )}
-                                                    {conditions.map((condition) => (
-                                                        <option key={condition.id} value={condition.name}>
-                                                            {formatInventoryCondition(condition.name)}
-                                                        </option>
-                                                    ))}
-                                                </AdminSelect>
+                                                    {formatInventoryCondition(unit.condition)}
+                                                    <Icon name="pencil" className="text-admin-text3 text-[11px]" />
+                                                </button>
                                             </td>
-                                            <td className="py-2 text-right">
+                                            <td className="py-2 pr-4 text-right whitespace-nowrap">
                                                 <AdminBadge status={UNIT_STATUS_BADGE[unit.status] ?? 'neutral'}>{unit.status}</AdminBadge>
                                             </td>
-                                            <td className="py-2 text-right">
+                                            <td className="py-2 text-right whitespace-nowrap">
                                                 {unit.status === 'available' && (
                                                     <button
                                                         type="button"
@@ -361,6 +278,7 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                         )
                     ) : sku.stock_by_shop.length === 0 ? (
                         <p className="text-admin-text2 text-sm">No stock recorded at any shop yet.</p>
@@ -426,43 +344,6 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
 
             {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
             <div className="mt-8 max-w-lg">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-admin-md font-semibold text-admin-text">Product specs</h2>
-                    {!editingAttributes && (
-                        <button type="button" onClick={() => setEditingAttributes(true)} className="text-xs font-semibold text-admin-blue">
-                            Edit
-                        </button>
-                    )}
-                </div>
-
-                {editingAttributes ? (
-                    <form onSubmit={submitAttributes}>
-                        <AttributeEditor
-                            value={attributesForm.data.attributes}
-                            onChange={(value) => attributesForm.setData('attributes', value)}
-                        />
-                        {attributesErrors.attributes && <p className="text-xs text-admin-red mt-2">{attributesErrors.attributes}</p>}
-                        <div className="flex items-center gap-2 mt-3">
-                            <AdminButton type="submit" variant="neutral" isLoading={attributesForm.processing}>Save</AdminButton>
-                            <AdminButton
-                                type="button"
-                                variant="neutral"
-                                onClick={() => {
-                                    attributesForm.setData('attributes', toVariantAttributes(sku.attributes));
-                                    setEditingAttributes(false);
-                                }}
-                            >
-                                Cancel
-                            </AdminButton>
-                        </div>
-                    </form>
-                ) : (
-                    <p className="text-sm text-admin-text2">{variantLabel(sku.attributes)}</p>
-                )}
-            </div>
-
-            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
-            <div className="mt-8 max-w-lg">
                 <h2 className="text-admin-md font-semibold text-admin-text mb-4">Receive stock</h2>
                 <form onSubmit={submitReceive}>
                     <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
@@ -520,39 +401,6 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
 
                     <AdminButton type="submit" isLoading={processing}>
                         Receive stock
-                    </AdminButton>
-                </form>
-            </div>
-
-            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
-            <div className="mt-8 max-w-lg">
-                <h2 className="text-admin-md font-semibold text-admin-text mb-4">Commission</h2>
-                <form onSubmit={submitCommission}>
-                    <label className="flex items-center gap-2 text-sm text-admin-text mb-4">
-                        <input
-                            type="checkbox"
-                            checked={commissionForm.data.is_commissionable}
-                            onChange={(e) => commissionForm.setData('is_commissionable', e.target.checked)}
-                        />
-                        Commissionable (staff earns a flat commission when this sells)
-                    </label>
-                    {commissionForm.data.is_commissionable && (
-                        <div className="mb-4">
-                            <label className="block text-xs font-semibold text-admin-text mb-1.5">Commission amount (₦)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={commissionForm.data.commission_amount_naira}
-                                onChange={(e) => commissionForm.setData('commission_amount_naira', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                            />
-                            {commissionErrors.commission_amount_minor && (
-                                <p className="text-xs text-admin-red mt-1">{commissionErrors.commission_amount_minor}</p>
-                            )}
-                        </div>
-                    )}
-                    <AdminButton type="submit" isLoading={commissionForm.processing}>
-                        Save commission settings
                     </AdminButton>
                 </form>
             </div>
