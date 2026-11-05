@@ -11,6 +11,15 @@
 
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+    {{-- laravel-vite-plugin's font self-hosting (vite.config.js's bunny()
+         entries) emits fonts-manifest.json/fonts-*.css as build ASSETS, not
+         a Vite entry point, so @vite() above never links them on its own —
+         this call is the one thing that actually renders the font preload
+         + @font-face <style> block. Without it, every self-hosted family
+         (Inter, Glass Antiqua, etc.) silently falls back to the browser's
+         default font in production, even though the files exist on disk
+         and build without error. --}}
+    {{ \Illuminate\Support\Facades\Vite::fonts() }}
     @inertiaHead
 </head>
 <body class="antialiased">
