@@ -18,20 +18,38 @@ final class SerializedUnitsQuery
     /**
      * @return array{data: array<int, array<string, mixed>>, current_page:int, last_page:int, per_page:int, total:int}
      */
-    public function paginate(?string $search, ?int $shopId, ?string $status, int $page, int $perPage = 20): array
-    {
+    public function paginate(
+        ?string $search,
+        ?int $shopId,
+        ?string $status,
+        int $page,
+        int $perPage = 20,
+        ?int $skuId = null,
+        ?string $condition = null,
+    ): array {
         $query = InventoryItemRecord::query()->with(['sku.product'])->orderByDesc('id');
 
+        if ($skuId !== null) {
+            $query->where('sku_id', $skuId);
+        }
+
         if ($search !== null && $search !== '') {
-            $query->where(function ($inner) use ($search): void {
+            // No SKU/brand/model match when scoped to one SKU already —
+            // every row shares the same product, so that part of the
+            // search would just be dead weight on the query.
+            $query->where(function ($inner) use ($search, $skuId): void {
                 $inner->where('imei', 'like', "%{$search}%")
-                    ->orWhereHas('sku', function ($skuQuery) use ($search): void {
+                    ->orWhere('serial_number', 'like', "%{$search}%");
+
+                if ($skuId === null) {
+                    $inner->orWhereHas('sku', function ($skuQuery) use ($search): void {
                         $skuQuery->where('sku_code', 'like', "%{$search}%")
                             ->orWhereHas('product', function ($productQuery) use ($search): void {
                                 $productQuery->where('brand', 'like', "%{$search}%")
                                     ->orWhere('model', 'like', "%{$search}%");
                             });
                     });
+                }
             });
         }
 
@@ -43,12 +61,17 @@ final class SerializedUnitsQuery
             $query->where('status', $status);
         }
 
+        if ($condition !== null && $condition !== '') {
+            $query->where('condition', $condition);
+        }
+
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
         return [
             'data' => $paginator->getCollection()->map(static fn (InventoryItemRecord $item): array => [
                 'id' => $item->id,
                 'imei' => $item->imei,
+                'serial_number' => $item->serial_number,
                 'sku_id' => $item->sku_id,
                 'sku_code' => $item->sku->sku_code,
                 'brand' => $item->sku->product->brand,

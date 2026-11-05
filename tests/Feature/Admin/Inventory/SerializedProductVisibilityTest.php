@@ -42,9 +42,9 @@ class SerializedProductVisibilityTest extends TestCase
 
         $response->assertInertia(fn ($page) => $page
             ->where('sku.stock_by_shop', [])
-            ->where('sku.serialized_units.0.imei', '356938035601009')
-            ->where('sku.serialized_units.0.shop_id', $shop->id)
-            ->where('sku.serialized_units.0.status', 'available'));
+            ->where('units.data.0.imei', '356938035601009')
+            ->where('units.data.0.shop_id', $shop->id)
+            ->where('units.data.0.status', 'available'));
     }
 
     public function test_a_shop_filtered_product_list_includes_a_serialized_sku_with_a_unit_at_that_shop(): void

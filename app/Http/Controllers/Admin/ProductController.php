@@ -27,6 +27,7 @@ use Domain\Inventory\Application\Handlers\UpdateSkuAttributesHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuCommissionHandler;
 use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Application\Queries\ProductCatalogQuery;
+use Domain\Inventory\Application\Queries\SerializedUnitsQuery;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuAttributes;
 use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
@@ -48,6 +49,7 @@ final class ProductController
 
     public function __construct(
         private readonly ProductCatalogQuery $catalog,
+        private readonly SerializedUnitsQuery $serializedUnits,
         private readonly ShopDirectoryQuery $shops,
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly CreateProductHandler $createProduct,
@@ -100,7 +102,7 @@ final class ProductController
         ]);
     }
 
-    public function show(int $product): Response
+    public function show(Request $request, int $product): Response
     {
         $actor = app(ActorContext::class);
         $sku = $this->catalog->find($product);
@@ -108,10 +110,26 @@ final class ProductController
 
         abort_if($sku === null, 404);
 
+        $unitFilters = [
+            'search' => $request->string('search')->toString(),
+            'shop_id' => $request->integer('shop_id') ?: null,
+            'condition' => $request->string('condition')->toString(),
+            'status' => $request->string('status')->toString(),
+        ];
+
         return Inertia::render('Admin/Inventory/Products/Show', [
             'sku' => $sku,
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'conditions' => $masters['conditions'],
+            'units' => $sku['is_serialized'] ? $this->serializedUnits->paginate(
+                search: $unitFilters['search'] ?: null,
+                shopId: $unitFilters['shop_id'],
+                status: $unitFilters['status'] ?: null,
+                page: $request->integer('page', 1),
+                skuId: $product,
+                condition: $unitFilters['condition'] ?: null,
+            ) : null,
+            'unitFilters' => $unitFilters,
         ]);
     }
 

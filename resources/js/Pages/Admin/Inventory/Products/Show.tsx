@@ -1,14 +1,17 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
+import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
+import AdminPagination from '../../../../Components/Admin/AdminPagination';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 import ProductImage from '../../../../Components/ProductImage';
 import Icon from '../../../../Components/Icons/Icon';
+import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 import { VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
 import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
 import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
@@ -16,7 +19,17 @@ import EditProductModal from './EditProductModal';
 import EditUnitConditionModal from './EditUnitConditionModal';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
-type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
+type SerializedUnit = {
+    id: number;
+    imei: string;
+    serial_number: string | null;
+    sku_id: number;
+    shop_id: number;
+    condition: string;
+    status: string;
+};
+type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
+type UnitFilters = { search: string; shop_id: number | null; condition: string; status: string };
 type SiblingSku = { id: number; sku_code: string; attributes: Record<string, unknown>; selling_price_minor: number };
 
 export type Sku = {
@@ -38,7 +51,6 @@ export type Sku = {
     is_commissionable: boolean;
     commission_amount_minor: number | null;
     stock_by_shop: StockByShop[];
-    serialized_units: SerializedUnit[];
     sibling_skus: SiblingSku[];
     on_hand: number;
     reserved: number;
@@ -84,7 +96,15 @@ export function toVariantAttributes(attributes: Record<string, unknown>): Varian
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
-export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shops: Shop[]; conditions: MasterEntry[] }) {
+interface ProductShowProps {
+    sku: Sku;
+    shops: Shop[];
+    conditions: MasterEntry[];
+    units: Paginated<SerializedUnit> | null;
+    unitFilters: UnitFilters;
+}
+
+export default function ProductShow({ sku, shops, conditions, units, unitFilters }: ProductShowProps) {
     const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
         condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',
@@ -109,6 +129,86 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
 
     const [editingProduct, setEditingProduct] = useState(false);
     const [editingUnit, setEditingUnit] = useState<SerializedUnit | null>(null);
+
+    const [unitSearch, setUnitSearch] = useState(unitFilters.search);
+    const [unitShopId, setUnitShopId] = useState(unitFilters.shop_id);
+    const [unitCondition, setUnitCondition] = useState(unitFilters.condition);
+    const [unitStatus, setUnitStatus] = useState(unitFilters.status);
+    const [unitsLoading, setUnitsLoading] = useState(false);
+    const skipNextUnitsFetch = useRef(true);
+
+    function unitQuery(extra: Record<string, unknown> = {}) {
+        return {
+            search: unitSearch || undefined,
+            shop_id: unitShopId ?? '',
+            condition: unitCondition || undefined,
+            status: unitStatus || undefined,
+            ...extra,
+        };
+    }
+
+    useEffect(() => {
+        if (skipNextUnitsFetch.current) {
+            skipNextUnitsFetch.current = false;
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(`/admin/inventory/products/${sku.id}`, unitQuery(), {
+                only: ['units', 'unitFilters'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                showProgress: false,
+                onStart: () => setUnitsLoading(true),
+                onFinish: () => setUnitsLoading(false),
+            });
+        }, 350);
+
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [unitSearch, unitShopId, unitCondition, unitStatus]);
+
+    function goToUnitsPage(page: number) {
+        router.get(`/admin/inventory/products/${sku.id}`, unitQuery({ page }), {
+            only: ['units', 'unitFilters'],
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            showProgress: false,
+            onStart: () => setUnitsLoading(true),
+            onFinish: () => setUnitsLoading(false),
+        });
+    }
+
+    function refreshUnits() {
+        router.reload({ only: ['units'], onStart: () => setUnitsLoading(true), onFinish: () => setUnitsLoading(false) });
+    }
+
+    const unitColumns: DataTableColumn<SerializedUnit>[] = [
+        { key: 'imei', label: 'IMEI' },
+        { key: 'serial_number', label: 'Serial', render: (row) => row.serial_number ?? '-' },
+        { key: 'shop_id', label: 'Shop', render: (row) => shops.find((shop) => shop.id === row.shop_id)?.name ?? 'Unknown shop' },
+        {
+            key: 'condition',
+            label: 'Condition',
+            render: (row) => (
+                <button
+                    type="button"
+                    onClick={() => setEditingUnit(row)}
+                    className="inline-flex items-center gap-1.5 text-admin-text hover:text-admin-blue"
+                >
+                    {formatInventoryCondition(row.condition)}
+                    <Icon name="pencil" className="text-admin-text3 text-[11px]" />
+                </button>
+            ),
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => <AdminBadge status={UNIT_STATUS_BADGE[row.status] ?? 'neutral'}>{row.status}</AdminBadge>,
+        },
+    ];
 
     function submitReceive(e: FormEvent) {
         e.preventDefault();
@@ -212,100 +312,157 @@ export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shop
                 </AdminInfoCard>
             </div>
 
-            {/* Its own full-width row, not squeezed into the Details grid — this
-                table has five columns (six once the condition edit control is
-                counted), which was unreadably cramped at half the page width. */}
-            <div className="mt-8">
-                <AdminInfoCard title={sku.is_serialized ? 'Units by shop' : 'Stock by shop'} icon="shop" iconColor="green">
-                    {sku.is_serialized ? (
-                        sku.serialized_units.length === 0 ? (
-                            <p className="text-admin-text2 text-sm">No units received yet.</p>
+            {/* A real browsable table, not an AdminInfoCard — a serialized SKU
+                can easily have 50+ units across several shops, so this needs
+                its own search/filters and pagination rather than listing
+                every unit from one unpaginated prop (CPNC's admin table
+                pattern, same ResponsiveDataTable as Inventory > Serialized
+                units). */}
+            {sku.is_serialized && units ? (
+                <div className="mt-8">
+                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Units by shop</h2>
+                    <ResponsiveDataTable
+                        columns={unitColumns}
+                        rows={units.data}
+                        getRowKey={(row) => row.id}
+                        mobilePrimaryField="imei"
+                        mobileStatusField="status"
+                        mobileDetailFields={['serial_number', 'shop_id', 'condition']}
+                        loading={unitsLoading}
+                        toolbar={
+                            <>
+                                <div className="relative flex-1 min-w-[160px] max-w-[260px]">
+                                    <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-admin-text3 text-xs" />
+                                    <input
+                                        type="text"
+                                        value={unitSearch}
+                                        onChange={(e) => setUnitSearch(e.target.value)}
+                                        placeholder="Filter by IMEI or serial…"
+                                        className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
+                                    />
+                                </div>
+                                <AdminSelect
+                                    aria-label="Filter by shop"
+                                    value={unitShopId ?? ''}
+                                    onChange={(e) => setUnitShopId(e.target.value ? Number(e.target.value) : null)}
+                                    containerClassName="mb-0"
+                                >
+                                    <option value="">All shops</option>
+                                    {shops.map((shop) => (
+                                        <option key={shop.id} value={shop.id}>
+                                            {shop.name}
+                                        </option>
+                                    ))}
+                                </AdminSelect>
+                                <AdminSelect
+                                    aria-label="Filter by condition"
+                                    value={unitCondition}
+                                    onChange={(e) => setUnitCondition(e.target.value)}
+                                    containerClassName="mb-0"
+                                >
+                                    <option value="">All conditions</option>
+                                    {conditions.map((condition) => (
+                                        <option key={condition.id} value={condition.name}>
+                                            {formatInventoryCondition(condition.name)}
+                                        </option>
+                                    ))}
+                                </AdminSelect>
+                                <AdminSelect
+                                    aria-label="Filter by status"
+                                    value={unitStatus}
+                                    onChange={(e) => setUnitStatus(e.target.value)}
+                                    containerClassName="mb-0"
+                                >
+                                    <option value="">All statuses</option>
+                                    <option value="available">Available</option>
+                                    <option value="reserved">Reserved</option>
+                                    <option value="transferring">Transferring</option>
+                                    <option value="sold">Sold</option>
+                                    <option value="damaged">Damaged</option>
+                                </AdminSelect>
+                                <div className="flex-1" />
+                                <AdminButton type="button" variant="neutral" onClick={refreshUnits} isLoading={unitsLoading} loadingText="Refreshing…">
+                                    Refresh
+                                </AdminButton>
+                            </>
+                        }
+                        renderActions={(row) => (
+                            <>
+                                {row.status === 'available' && (
+                                    <button
+                                        type="button"
+                                        disabled={updatingUnitId === row.id}
+                                        onClick={() => updateUnitStatus(row.id, 'damaged')}
+                                        className="text-xs font-semibold text-admin-red disabled:opacity-50"
+                                    >
+                                        Mark damaged
+                                    </button>
+                                )}
+                                {row.status === 'damaged' && (
+                                    <button
+                                        type="button"
+                                        disabled={updatingUnitId === row.id}
+                                        onClick={() => updateUnitStatus(row.id, 'available')}
+                                        className="text-xs font-semibold text-admin-blue disabled:opacity-50"
+                                    >
+                                        Restore
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        emptyState={
+                            <AdminEmptyState
+                                icon="upc-scan"
+                                title="No units found"
+                                description={
+                                    unitFilters.search || unitFilters.shop_id || unitFilters.condition || unitFilters.status
+                                        ? 'No units match these filters.'
+                                        : 'No units received yet.'
+                                }
+                            />
+                        }
+                        footer={
+                            units.total > 0 ? (
+                                <AdminPagination
+                                    currentPage={units.current_page}
+                                    totalItems={units.total}
+                                    pageSize={units.per_page}
+                                    onPageChange={goToUnitsPage}
+                                />
+                            ) : undefined
+                        }
+                    />
+                </div>
+            ) : (
+                <div className="mt-8">
+                    <AdminInfoCard title="Stock by shop" icon="shop" iconColor="green">
+                        {sku.stock_by_shop.length === 0 ? (
+                            <p className="text-admin-text2 text-sm">No stock recorded at any shop yet.</p>
                         ) : (
-                            <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="text-left text-admin-text2 text-xs">
-                                        <th className="pb-2 pr-4">IMEI</th>
-                                        <th className="pb-2 pr-4">Serial</th>
-                                        <th className="pb-2 pr-4">Shop</th>
-                                        <th className="pb-2 pr-4">Condition</th>
-                                        <th className="pb-2 pr-4 text-right">Status</th>
-                                        <th className="pb-2 text-right"></th>
+                                        <th className="pb-2">Shop</th>
+                                        <th className="pb-2 text-right">On hand</th>
+                                        <th className="pb-2 text-right">Reserved</th>
+                                        <th className="pb-2 text-right">Available</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-admin-border">
-                                    {sku.serialized_units.map((unit) => (
-                                        <tr key={unit.id}>
-                                            <td className="py-2 pr-4 text-admin-text font-mono text-xs whitespace-nowrap">{unit.imei}</td>
-                                            <td className="py-2 pr-4 text-admin-text font-mono text-xs whitespace-nowrap">{unit.serial_number ?? '-'}</td>
-                                            <td className="py-2 pr-4 text-admin-text whitespace-nowrap">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
-                                            <td className="py-2 pr-4 whitespace-nowrap">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEditingUnit(unit)}
-                                                    className="inline-flex items-center gap-1.5 text-admin-text hover:text-admin-blue"
-                                                >
-                                                    {formatInventoryCondition(unit.condition)}
-                                                    <Icon name="pencil" className="text-admin-text3 text-[11px]" />
-                                                </button>
-                                            </td>
-                                            <td className="py-2 pr-4 text-right whitespace-nowrap">
-                                                <AdminBadge status={UNIT_STATUS_BADGE[unit.status] ?? 'neutral'}>{unit.status}</AdminBadge>
-                                            </td>
-                                            <td className="py-2 text-right whitespace-nowrap">
-                                                {unit.status === 'available' && (
-                                                    <button
-                                                        type="button"
-                                                        disabled={updatingUnitId === unit.id}
-                                                        onClick={() => updateUnitStatus(unit.id, 'damaged')}
-                                                        className="text-xs font-semibold text-admin-red disabled:opacity-50"
-                                                    >
-                                                        Mark damaged
-                                                    </button>
-                                                )}
-                                                {unit.status === 'damaged' && (
-                                                    <button
-                                                        type="button"
-                                                        disabled={updatingUnitId === unit.id}
-                                                        onClick={() => updateUnitStatus(unit.id, 'available')}
-                                                        className="text-xs font-semibold text-admin-blue disabled:opacity-50"
-                                                    >
-                                                        Restore
-                                                    </button>
-                                                )}
-                                            </td>
+                                    {sku.stock_by_shop.map((row) => (
+                                        <tr key={row.shop_id}>
+                                            <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === row.shop_id)?.name ?? 'Unknown shop'}</td>
+                                            <td className="py-2 text-right text-admin-text">{row.on_hand}</td>
+                                            <td className="py-2 text-right text-admin-text">{row.reserved}</td>
+                                            <td className="py-2 text-right text-admin-text font-semibold">{row.available}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            </div>
-                        )
-                    ) : sku.stock_by_shop.length === 0 ? (
-                        <p className="text-admin-text2 text-sm">No stock recorded at any shop yet.</p>
-                    ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left text-admin-text2 text-xs">
-                                    <th className="pb-2">Shop</th>
-                                    <th className="pb-2 text-right">On hand</th>
-                                    <th className="pb-2 text-right">Reserved</th>
-                                    <th className="pb-2 text-right">Available</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-admin-border">
-                                {sku.stock_by_shop.map((row) => (
-                                    <tr key={row.shop_id}>
-                                        <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === row.shop_id)?.name ?? 'Unknown shop'}</td>
-                                        <td className="py-2 text-right text-admin-text">{row.on_hand}</td>
-                                        <td className="py-2 text-right text-admin-text">{row.reserved}</td>
-                                        <td className="py-2 text-right text-admin-text font-semibold">{row.available}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </AdminInfoCard>
-            </div>
+                        )}
+                    </AdminInfoCard>
+                </div>
+            )}
 
             {(
                 <div className="mt-8">

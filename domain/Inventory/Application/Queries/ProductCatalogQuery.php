@@ -153,17 +153,11 @@ final class ProductCatalogQuery
             ])->all();
 
             // Serialized SKUs have no stockLevels row at all (quantity
-            // doesn't apply to an individually-tracked unit) — each unit is
-            // its own row instead, so list them directly rather than
-            // leaving `stock_by_shop` empty and implying there's no stock.
-            $data['serialized_units'] = $sku->items->map(static fn ($item): array => [
-                'id' => $item->id,
-                'imei' => $item->imei,
-                'serial_number' => $item->serial_number,
-                'shop_id' => $item->current_shop_id,
-                'condition' => $item->condition,
-                'status' => $item->status,
-            ])->all();
+            // doesn't apply to an individually-tracked unit) — each unit's
+            // own list lives in ProductController::show()'s separate,
+            // paginated/filterable `units` prop (SerializedUnitsQuery)
+            // instead of being shipped here in full; a serialized SKU can
+            // easily have 50+ units, and this payload has no pagination.
 
             // Business-wide totals (summed across every shop) for the
             // detail page's headline stat row (UI/UX §14C.8) — computed
