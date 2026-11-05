@@ -1,4 +1,5 @@
-import React, { forwardRef, isValidElement, KeyboardEvent, ReactElement, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, isValidElement, KeyboardEvent, ReactElement, ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import FormField from '../../Forms/FormField';
 import FormErrorMessage from '../../Forms/FormErrorMessage';
 import FormSuccessMessage from '../../Forms/FormSuccessMessage';
@@ -59,6 +60,8 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
         const [highlighted, setHighlighted] = useState(0);
         const containerRef = useRef<HTMLDivElement>(null);
         const listRef = useRef<HTMLUListElement>(null);
+        /** Screen coordinates for the portaled options panel — see the note above the portal below for why this exists. */
+        const [panelPosition, setPanelPosition] = useState<{ top: number; left: number; width: number; openUpward: boolean } | null>(null);
 
         const options = useMemo(() => collectOptions(children), [children]);
         const selectedIndex = options.findIndex((option) => option.value === String(value ?? ''));
@@ -71,13 +74,64 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
             listRef.current?.focus();
 
             const handleClickOutside = (e: MouseEvent) => {
-                if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+                const target = e.target as Node;
+                const insideTrigger = containerRef.current?.contains(target) ?? false;
+                const insidePanel = listRef.current?.contains(target) ?? false;
+                if (!insideTrigger && !insidePanel) setOpen(false);
             };
             document.addEventListener('mousedown', handleClickOutside);
 
             return () => document.removeEventListener('mousedown', handleClickOutside);
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [open]);
+
+        /**
+         * The options panel is portaled to document.body (see the render
+         * below) rather than positioned `absolute` inside this component's
+         * own wrapper, because any scrollable ancestor — most notably
+         * AdminModal's body (`overflow-y-auto`, for long modal content) —
+         * clips an absolutely-positioned descendant to its own bounds. That
+         * made a select's open panel get cut off whenever the select sat
+         * inside a modal. A portal escapes that entirely, so position has
+         * to be computed in screen coordinates instead of inherited from
+         * normal CSS flow.
+         */
+        useLayoutEffect(() => {
+            if (!open || !containerRef.current) {
+                setPanelPosition(null);
+                return;
+            }
+
+            const updatePosition = () => {
+                if (!containerRef.current) return;
+                const rect = containerRef.current.getBoundingClientRect();
+                const estimatedPanelHeight = Math.min(256, options.length * 40 + 8);
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const openUpward = spaceBelow < estimatedPanelHeight && rect.top > spaceBelow;
+
+                setPanelPosition({
+                    top: openUpward ? rect.top - 4 : rect.bottom + 4,
+                    left: rect.left,
+                    width: rect.width,
+                    openUpward,
+                });
+            };
+
+            updatePosition();
+
+            // The panel can't track an ancestor's scroll on its own once it's
+            // portaled out of the flow, and repositioning mid-scroll reads as
+            // jittery anyway — closing on scroll matches how a native select
+            // behaves in most browsers.
+            const handleScrollOrResize = () => setOpen(false);
+            window.addEventListener('scroll', handleScrollOrResize, true);
+            window.addEventListener('resize', handleScrollOrResize);
+
+            return () => {
+                window.removeEventListener('scroll', handleScrollOrResize, true);
+                window.removeEventListener('resize', handleScrollOrResize);
+            };
+        }, [open, options.length]);
 
         function choose(index: number) {
             const option = options[index];
@@ -157,13 +211,21 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
                                 className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-admin-text3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
                             />
 
-                            {open && (
+                            {open && panelPosition && createPortal(
                                 <ul
                                     ref={listRef}
                                     role="listbox"
                                     tabIndex={-1}
                                     onKeyDown={handleListKeyDown}
-                                    className="absolute z-30 mt-1 w-full max-h-64 overflow-y-auto bg-white border border-admin-border rounded-admin-card shadow-admin-modal py-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                    style={{
+                                        position: 'fixed',
+                                        left: panelPosition.left,
+                                        width: panelPosition.width,
+                                        ...(panelPosition.openUpward
+                                            ? { bottom: window.innerHeight - panelPosition.top }
+                                            : { top: panelPosition.top }),
+                                    }}
+                                    className="z-[60] max-h-64 overflow-y-auto bg-white border border-admin-border rounded-admin-card shadow-admin-modal py-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                                 >
                                     {options.map((option, index) => (
                                         <li
@@ -182,7 +244,8 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
                                             {option.label}
                                         </li>
                                     ))}
-                                </ul>
+                                </ul>,
+                                document.body,
                             )}
                         </div>
                         {error && <FormErrorMessage className="mt-1 text-xs">{error}</FormErrorMessage>}
