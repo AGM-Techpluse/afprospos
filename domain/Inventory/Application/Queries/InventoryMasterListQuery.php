@@ -18,6 +18,7 @@ final class InventoryMasterListQuery
             'categories' => $this->entries->listByKind('category'),
             'units' => $this->entries->listByKind('unit'),
             'suppliers' => $this->entries->listByKind('supplier'),
+            'conditions' => $this->entries->listByKind('condition'),
         ];
     }
 }

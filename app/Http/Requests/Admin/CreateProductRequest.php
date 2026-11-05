@@ -24,7 +24,7 @@ final class CreateProductRequest extends FormRequest
             'purpose' => ['nullable', 'string', 'in:sale,repair_part,both'],
             'supplier_id' => ['nullable', 'integer', Rule::exists('inventory_master_entries', 'id')->where('kind', 'supplier')],
             'product_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'condition' => ['required', 'string', 'in:new,used_grade_a,used_grade_b,used_grade_c,refurbished'],
+            'condition' => ['required', 'string', 'max:120', Rule::exists('inventory_master_entries', 'name')->where('kind', 'condition')],
             'is_serialized' => ['required', 'boolean'],
             'cost_price_minor' => ['required', 'integer', 'min:0'],
             'markup_percent' => ['nullable', 'numeric', 'min:0'],

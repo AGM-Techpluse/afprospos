@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
+use App\Http\Requests\Admin\UpdateInventoryItemConditionRequest;
 use App\Http\Requests\Admin\UpdateInventoryItemStatusRequest;
+use Domain\Inventory\Application\Commands\UpdateInventoryItemConditionCommand;
 use Domain\Inventory\Application\Commands\UpdateInventoryItemStatusCommand;
+use Domain\Inventory\Application\Handlers\UpdateInventoryItemConditionHandler;
 use Domain\Inventory\Application\Handlers\UpdateInventoryItemStatusHandler;
 use Domain\Inventory\Application\Queries\SerializedUnitsQuery;
 use Domain\Inventory\Domain\Exceptions\InventoryItemStatusTransitionNotAllowed;
+use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
@@ -27,6 +31,7 @@ final class InventorySerializedUnitsController
         private readonly SerializedUnitsQuery $units,
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly UpdateInventoryItemStatusHandler $updateStatus,
+        private readonly UpdateInventoryItemConditionHandler $updateCondition,
     ) {}
 
     public function index(Request $request): Response
@@ -72,6 +77,27 @@ final class InventorySerializedUnitsController
         }
 
         $this->flashSuccess($request->string('to_status')->toString() === 'damaged' ? 'Unit marked damaged' : 'Unit restored to available');
+
+        return redirect()->back();
+    }
+
+    public function updateCondition(UpdateInventoryItemConditionRequest $request, int $item): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $record = InventoryItemRecord::query()->findOrFail($item);
+        abort_unless($actor->canAccessShop($record->current_shop_id), 403);
+
+        try {
+            $this->updateCondition->handle(new UpdateInventoryItemConditionCommand(
+                inventoryItemId: $item,
+                condition: $request->string('condition')->toString(),
+                updatedByStaffId: $actor->staffId->value,
+            ));
+        } catch (UnknownMasterEntry $exception) {
+            throw ValidationException::withMessages(['condition' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Condition updated');
 
         return redirect()->back();
     }

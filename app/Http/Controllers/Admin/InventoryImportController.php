@@ -9,6 +9,7 @@ use Domain\Inventory\Application\Commands\ImportProductsCommand;
 use Domain\Inventory\Application\DTOs\ProductImportRow;
 use Domain\Inventory\Application\DTOs\ProductImportRowResult;
 use Domain\Inventory\Application\Handlers\ImportProductsHandler;
+use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
@@ -47,6 +48,7 @@ final class InventoryImportController
         private readonly ShopDirectoryQuery $shops,
         private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ImportProductsHandler $importProducts,
+        private readonly InventoryMasterListQuery $masterLists,
     ) {}
 
     public function create(): Response
@@ -56,6 +58,7 @@ final class InventoryImportController
         return Inertia::render('Admin/Inventory/Import/Create', [
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'expectedHeader' => self::EXPECTED_HEADER,
+            'conditions' => $this->masterLists->all()['conditions'],
         ]);
     }
 

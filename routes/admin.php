@@ -261,6 +261,11 @@ Route::prefix('admin')
             ->whereNumber('item')
             ->name('inventory.serialized-units.status.update');
 
+        Route::middleware('permission:inventory.edit')
+            ->post('/inventory/serialized-units/{item}/condition', [InventorySerializedUnitsController::class, 'updateCondition'])
+            ->whereNumber('item')
+            ->name('inventory.serialized-units.condition.update');
+
         Route::middleware('permission:inventory.create')
             ->post('/inventory/products/{sku}/receive', [InventoryStockController::class, 'receive'])
             ->whereNumber('sku')

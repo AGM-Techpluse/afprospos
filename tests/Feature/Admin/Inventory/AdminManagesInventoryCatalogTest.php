@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Inventory;
 
 use Database\Seeders\RolePermissionSeeder;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryMasterEntryRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
@@ -12,7 +13,7 @@ use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Categories, base units and suppliers are admin-managed lists that products must be filed under. */
+/** Inventory master data is managed centrally and reused by product and stock workflows. */
 class AdminManagesInventoryCatalogTest extends TestCase
 {
     use RefreshDatabase;
@@ -42,6 +43,81 @@ class AdminManagesInventoryCatalogTest extends TestCase
         $this->assertDatabaseHas('inventory_master_entries', ['kind' => 'category', 'name' => 'Screen protectors']);
         $this->assertDatabaseHas('inventory_master_entries', ['kind' => 'unit', 'name' => 'kegs']);
         $this->assertDatabaseHas('inventory_master_entries', ['kind' => 'supplier', 'name' => 'Acme Wholesale', 'contact_phone' => '08012345678']);
+    }
+
+    public function test_an_admin_can_add_and_use_a_custom_device_condition(): void
+    {
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+
+        $this->actingAs($this->owner, 'staff')
+            ->post('/admin/inventory/masters', ['kind' => 'condition', 'name' => 'open_box'])
+            ->assertRedirect();
+
+        $this->actingAs($this->owner, 'staff')->post('/admin/inventory/products', [
+            'brand' => 'Apple',
+            'model' => 'iPhone 15',
+            'category' => 'Phones',
+            'condition' => 'open_box',
+            'is_serialized' => true,
+            'initial_imeis' => ['356938035601001'],
+            'cost_price_minor' => 400000,
+            'markup_percent' => 15,
+            'shop_id' => $shop->id,
+            'purpose' => 'sale',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('inventory_master_entries', ['kind' => 'condition', 'name' => 'open_box']);
+        $this->assertDatabaseHas('inventory_items', ['imei' => '356938035601001', 'condition' => 'open_box']);
+    }
+
+    public function test_an_unknown_device_condition_is_rejected(): void
+    {
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+
+        $this->actingAs($this->owner, 'staff')->post('/admin/inventory/products', [
+            'brand' => 'Apple',
+            'model' => 'iPhone 15',
+            'category' => 'Phones',
+            'condition' => 'not_saved',
+            'is_serialized' => true,
+            'initial_imeis' => ['356938035601001'],
+            'cost_price_minor' => 400000,
+            'markup_percent' => 15,
+            'shop_id' => $shop->id,
+            'purpose' => 'sale',
+        ])->assertSessionHasErrors('condition');
+
+        $this->assertDatabaseCount('inventory_products', 0);
+    }
+
+    public function test_renaming_a_device_condition_updates_stock_and_an_in_use_condition_cannot_be_deleted(): void
+    {
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+        $this->actingAs($this->owner, 'staff')->post('/admin/inventory/masters', ['kind' => 'condition', 'name' => 'open_box']);
+        $condition = InventoryMasterEntryRecord::query()->where('kind', 'condition')->where('name', 'open_box')->firstOrFail();
+
+        $this->actingAs($this->owner, 'staff')->post('/admin/inventory/products', [
+            'brand' => 'Apple',
+            'model' => 'iPhone 15',
+            'category' => 'Phones',
+            'condition' => 'open_box',
+            'is_serialized' => true,
+            'initial_imeis' => ['356938035601001'],
+            'cost_price_minor' => 400000,
+            'markup_percent' => 15,
+            'shop_id' => $shop->id,
+            'purpose' => 'sale',
+        ])->assertRedirect();
+
+        $this->actingAs($this->owner, 'staff')
+            ->put("/admin/inventory/masters/{$condition->id}", ['name' => 'inspected'])
+            ->assertRedirect();
+
+        $this->assertSame('inspected', InventoryItemRecord::query()->firstOrFail()->condition);
+
+        $this->actingAs($this->owner, 'staff')
+            ->delete("/admin/inventory/masters/{$condition->id}")
+            ->assertSessionHasErrors('name');
     }
 
     public function test_a_duplicate_name_within_a_list_is_rejected_and_nothing_is_created(): void

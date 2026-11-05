@@ -6,14 +6,17 @@ import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminButton from '../../../../Components/Admin/AdminButton';
 import AttributeEditor, { emptyAttributes, serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
+import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
+import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 type Product = { id: number; brand: string; model: string; category: string };
 
 /** INV-BR-18: adds a new non-serialized variant to an existing Product — reached from Products/Show's "Add variant" action. */
-export default function AddVariant({ product, shops, isSerialized }: { product: Product; shops: Shop[]; isSerialized: boolean }) {
+export default function AddVariant({ product, shops, isSerialized, conditions }: { product: Product; shops: Shop[]; isSerialized: boolean; conditions: MasterEntry[] }) {
     const { data, setData, post, transform, processing, errors: formErrors } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
+        condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',
         cost_price_naira: '',
         markup_percent: '',
         selling_price_override_naira: '',
@@ -52,6 +55,7 @@ export default function AddVariant({ product, shops, isSerialized }: { product: 
 
         transform((formData) => ({
             shop_id: parseInt(formData.shop_id, 10),
+            condition: formData.condition,
             is_serialized: isSerialized,
             cost_price_minor: Math.round(parseFloat(formData.cost_price_naira || '0') * 100),
             markup_percent: parseFloat(formData.markup_percent || '0'),
@@ -93,6 +97,14 @@ export default function AddVariant({ product, shops, isSerialized }: { product: 
                     {shops.map((shop) => (
                         <option key={shop.id} value={shop.id}>
                             {shop.name} ({shop.sku_prefix_code})
+                        </option>
+                    ))}
+                </AdminSelect>
+
+                <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
+                    {conditions.map((condition) => (
+                        <option key={condition.id} value={condition.name}>
+                            {formatInventoryCondition(condition.name)}
                         </option>
                     ))}
                 </AdminSelect>

@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin\Inventory;
 
 use Database\Seeders\RolePermissionSeeder;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryMasterEntryRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\ShopRecord;
 use Domain\Shared\Infrastructure\Persistence\Eloquent\StaffRecord;
@@ -16,6 +17,35 @@ use Tests\TestCase;
 class AdminCanImportProductsFromCsvTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_a_csv_can_use_an_admin_managed_device_condition(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $owner = StaffRecord::factory()->create();
+        $owner->assignRole('Shop Owner');
+        $shop = ShopRecord::factory()->create(['sku_prefix_code' => 'MNS']);
+        InventoryMasterEntryRecord::query()->create(['kind' => 'condition', 'name' => 'open_box']);
+
+        $csv = implode("\n", [
+            'brand,model,category,condition,cost_price_minor,markup_percent,quantity,imei,low_stock_threshold',
+            'Apple,iPhone 15,Phones,open_box,400000,15,,123456789012345,',
+        ]);
+
+        $response = $this->actingAs($owner, 'staff')->post('/admin/inventory/import', [
+            'shop_id' => $shop->id,
+            'file' => UploadedFile::fake()->createWithContent('products.csv', $csv),
+        ]);
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->where('results.0.succeeded', true));
+
+        $this->assertDatabaseHas('inventory_items', [
+            'imei' => '123456789012345',
+            'condition' => 'open_box',
+        ]);
+    }
 
     public function test_every_row_gets_a_result_even_when_trailing_optional_columns_are_omitted(): void
     {

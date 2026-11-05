@@ -50,6 +50,7 @@ final class EloquentInventoryItemRepository implements InventoryItemRepository
     {
         InventoryItemRecord::query()->whereKey($item->id()->value)->update([
             'current_shop_id' => $item->currentShopId()->value,
+            'condition' => $item->condition(),
             'status' => $item->status(),
             'reserved_by_type' => $item->reservedByType(),
             'reserved_by_id' => $item->reservedById(),

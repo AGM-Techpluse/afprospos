@@ -9,6 +9,8 @@ import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AdminStatCard from '../../../../Components/Admin/AdminStatCard';
 import ProductImage from '../../../../Components/ProductImage';
 import AttributeEditor, { serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
+import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
+import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
 
 type StockByShop = { shop_id: number; on_hand: number; reserved: number; available: number };
 type SerializedUnit = { id: number; imei: string; serial_number: string | null; shop_id: number; condition: string; status: string };
@@ -79,10 +81,10 @@ function toVariantAttributes(attributes: Record<string, unknown>): VariantAttrib
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
-export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] }) {
+export default function ProductShow({ sku, shops, conditions }: { sku: Sku; shops: Shop[]; conditions: MasterEntry[] }) {
     const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
-        condition: 'new',
+        condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',
         quantity: '',
         imei: '',
         serial_number: '',
@@ -122,6 +124,15 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
         router.post(
             `/admin/inventory/serialized-units/${unitId}/status`,
             { to_status: toStatus },
+            { preserveScroll: true, onFinish: () => setUpdatingUnitId(null) },
+        );
+    }
+
+    function updateUnitCondition(unitId: number, condition: string) {
+        setUpdatingUnitId(unitId);
+        router.post(
+            `/admin/inventory/serialized-units/${unitId}/condition`,
+            { condition },
             { preserveScroll: true, onFinish: () => setUpdatingUnitId(null) },
         );
     }
@@ -298,7 +309,29 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                                             <td className="py-2 text-admin-text font-mono text-xs">{unit.imei}</td>
                                             <td className="py-2 text-admin-text font-mono text-xs">{unit.serial_number ?? '-'}</td>
                                             <td className="py-2 text-admin-text">{shops.find((shop) => shop.id === unit.shop_id)?.name ?? 'Unknown shop'}</td>
-                                            <td className="py-2 text-admin-text capitalize">{unit.condition}</td>
+                                            <td className="py-2 text-admin-text min-w-[140px]">
+                                                <AdminSelect
+                                                    aria-label="Condition"
+                                                    value={unit.condition}
+                                                    disabled={updatingUnitId === unit.id}
+                                                    onChange={(e) => updateUnitCondition(unit.id, e.target.value)}
+                                                    containerClassName="mb-0"
+                                                    className="!py-1.5 !text-xs"
+                                                >
+                                                    {/* A unit received before its condition was added to (or after it was
+                                                        removed from) the catalog still needs to show its real value rather
+                                                        than silently looking unset — this is the exact gap the admin is
+                                                        here to fix. */}
+                                                    {!conditions.some((condition) => condition.name === unit.condition) && (
+                                                        <option value={unit.condition}>{formatInventoryCondition(unit.condition)} (not in catalog)</option>
+                                                    )}
+                                                    {conditions.map((condition) => (
+                                                        <option key={condition.id} value={condition.name}>
+                                                            {formatInventoryCondition(condition.name)}
+                                                        </option>
+                                                    ))}
+                                                </AdminSelect>
+                                            </td>
                                             <td className="py-2 text-right">
                                                 <AdminBadge status={UNIT_STATUS_BADGE[unit.status] ?? 'neutral'}>{unit.status}</AdminBadge>
                                             </td>
@@ -436,6 +469,14 @@ export default function ProductShow({ sku, shops }: { sku: Sku; shops: Shop[] })
                         {shops.map((shop) => (
                             <option key={shop.id} value={shop.id}>
                                 {shop.name} ({shop.sku_prefix_code})
+                            </option>
+                        ))}
+                    </AdminSelect>
+
+                    <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
+                        {conditions.map((condition) => (
+                            <option key={condition.id} value={condition.name}>
+                                {formatInventoryCondition(condition.name)}
                             </option>
                         ))}
                     </AdminSelect>

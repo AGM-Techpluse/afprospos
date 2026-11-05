@@ -25,7 +25,7 @@ final class InventoryItem
         private readonly string $imei,
         private readonly ?string $serialNumber,
         private ShopId $currentShopId,
-        private readonly string $condition,
+        private string $condition,
         private string $status,
         private ?string $reservedByType,
         private ?int $reservedById,
@@ -145,6 +145,19 @@ final class InventoryItem
         }
 
         $this->status = 'available';
+        $this->version++;
+    }
+
+    /**
+     * Corrects the intake-grading fact itself (e.g. a unit entered as
+     * "used_grade_b" was actually "used_grade_a", or the admin's condition
+     * catalog has grown since this unit was received) — unlike
+     * markDamaged()/restoreToAvailable(), this is not a lifecycle
+     * transition, so it carries no status guard.
+     */
+    public function changeCondition(string $condition): void
+    {
+        $this->condition = $condition;
         $this->version++;
     }
 

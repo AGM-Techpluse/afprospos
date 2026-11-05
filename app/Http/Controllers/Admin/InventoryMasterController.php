@@ -24,7 +24,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Admin-managed categories, base units and suppliers. Products are filed under
+ * Admin-managed categories, base units, suppliers and device conditions. Products are filed under
  * these, so the product form's dropdowns and the Settings → Inventory catalog
  * page both read from here.
  */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Inventory\Infrastructure\Persistence\Repositories;
 
 use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
+use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryMasterEntryRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,10 @@ final class EloquentInventoryMasterRepository implements InventoryMasterReposito
             if ($record->kind === 'unit') {
                 ProductRecord::query()->where('unit', $previous)->update(['unit' => $name]);
             }
+
+            if ($record->kind === 'condition') {
+                InventoryItemRecord::query()->where('condition', $previous)->update(['condition' => $name]);
+            }
         });
     }
 
@@ -77,6 +82,7 @@ final class EloquentInventoryMasterRepository implements InventoryMasterReposito
             'category' => ProductRecord::query()->where('category', $name)->exists(),
             'unit' => ProductRecord::query()->where('unit', $name)->exists(),
             'supplier' => ProductRecord::query()->where('supplier_id', $id)->exists(),
+            'condition' => InventoryItemRecord::query()->where('condition', $name)->exists(),
             default => false,
         };
     }

@@ -18,7 +18,7 @@ final class StoreInventoryMasterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kind' => ['required', 'string', Rule::in(['category', 'unit', 'supplier'])],
+            'kind' => ['required', 'string', Rule::in(['category', 'unit', 'supplier', 'condition'])],
             'name' => ['required', 'string', 'max:120'],
             'contact_phone' => ['nullable', 'string', 'max:40', 'required_if:kind,supplier'],
             'contact_email' => ['nullable', 'email', 'max:190'],

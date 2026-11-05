@@ -35,6 +35,10 @@ final class CreateProductWithVariantsHandler
                 throw UnknownMasterEntry::forName('unit', $command->unit);
             }
 
+            if (! $this->masters->exists('condition', $command->condition)) {
+                throw UnknownMasterEntry::forName('condition', $command->condition);
+            }
+
             $productId = $this->products->findOrCreate(
                 $command->brand,
                 $command->model,

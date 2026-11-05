@@ -8,6 +8,8 @@ use App\Support\Transactions\Atomic;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\AddProductVariantCommand;
 use Domain\Inventory\Application\Services\SkuVariantWriter;
+use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
+use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Domain\Repositories\ProductRepository;
 use Domain\Inventory\Domain\ValueObjects\ProductId;
 use Domain\Inventory\Domain\ValueObjects\SkuId;
@@ -17,6 +19,7 @@ final class AddProductVariantHandler
 {
     public function __construct(
         private readonly ProductRepository $products,
+        private readonly InventoryMasterRepository $masters,
         private readonly SkuVariantWriter $skuWriter,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
@@ -25,6 +28,10 @@ final class AddProductVariantHandler
     public function handle(AddProductVariantCommand $command): SkuId
     {
         return $this->atomic->run(function () use ($command): SkuId {
+            if (! $this->masters->exists('condition', $command->condition)) {
+                throw UnknownMasterEntry::forName('condition', $command->condition);
+            }
+
             $productId = new ProductId($command->productId);
             $product = $this->products->get($productId);
 

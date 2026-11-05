@@ -5,9 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class AddProductVariantRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('condition')) {
+            $this->merge(['condition' => 'new']);
+        }
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -17,6 +25,7 @@ final class AddProductVariantRequest extends FormRequest
     {
         return [
             'shop_id' => ['required', 'integer'],
+            'condition' => ['required', 'string', 'max:120', Rule::exists('inventory_master_entries', 'name')->where('kind', 'condition')],
             'is_serialized' => ['nullable', 'boolean'],
             'cost_price_minor' => ['required', 'integer', 'min:0'],
             'markup_percent' => ['nullable', 'numeric', 'min:0'],

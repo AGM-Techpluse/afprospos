@@ -8,6 +8,7 @@ import AdminButton from '../../../../Components/Admin/AdminButton';
 import SkuPreviewCard from '../../../../Components/Admin/SkuPreviewCard';
 import AttributeEditor, { emptyAttributes, serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
 import MasterSelect, { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
+import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
 
 const PURPOSES = [
     { value: 'sale', label: 'Sold to customers' },
@@ -58,12 +59,18 @@ export default function ProductCreate({
     categories,
     units,
     suppliers,
+    conditions,
 }: {
     shops: Shop[];
     categories: MasterEntry[];
     units: MasterEntry[];
     suppliers: MasterEntry[];
+    conditions: MasterEntry[];
 }) {
+    const availableConditions = conditions.length > 0
+        ? conditions.map((condition) => ({ value: condition.name, label: formatInventoryCondition(condition.name) }))
+        : CONDITIONS;
+
     const { data, setData, post, transform, processing, errors: formErrors } = useForm({
         brand: '',
         model: '',
@@ -71,7 +78,7 @@ export default function ProductCreate({
         unit: 'pcs',
         purpose: 'sale',
         supplier_id: '',
-        condition: 'new',
+        condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? 'new',
         is_serialized: true,
         cost_price_naira: '',
         markup_percent: '',
@@ -300,8 +307,8 @@ export default function ProductCreate({
                         error={errors.supplier_id}
                         allowEmpty
                     />
-                    <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)}>
-                        {CONDITIONS.map((c) => (
+                    <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
+                        {availableConditions.map((c) => (
                             <option key={c.value} value={c.value}>
                                 {c.label}
                             </option>

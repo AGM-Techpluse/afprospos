@@ -96,6 +96,7 @@ final class ProductController
             'categories' => $masters['categories'],
             'units' => $masters['units'],
             'suppliers' => $masters['suppliers'],
+            'conditions' => $masters['conditions'],
         ]);
     }
 
@@ -103,12 +104,14 @@ final class ProductController
     {
         $actor = app(ActorContext::class);
         $sku = $this->catalog->find($product);
+        $masters = $this->masterLists->all();
 
         abort_if($sku === null, 404);
 
         return Inertia::render('Admin/Inventory/Products/Show', [
             'sku' => $sku,
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
+            'conditions' => $masters['conditions'],
         ]);
     }
 
@@ -132,6 +135,7 @@ final class ProductController
     {
         $actor = app(ActorContext::class);
         $productData = $this->catalog->findProduct($product);
+        $masters = $this->masterLists->all();
 
         abort_if($productData === null, 404);
 
@@ -139,6 +143,7 @@ final class ProductController
             'product' => $productData,
             'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'isSerialized' => request()->boolean('serialized'),
+            'conditions' => $masters['conditions'],
         ]);
     }
 
@@ -276,7 +281,7 @@ final class ProductController
                 lowStockThreshold: $request->integer('low_stock_threshold') ?: null,
                 shopCode: $shop['sku_prefix_code'],
                 shopId: $shop['id'],
-                condition: 'new',
+                condition: $request->string('condition')->toString(),
                 isSerialized: $request->boolean('is_serialized'),
                 initialQuantity: $request->integer('initial_quantity') ?: null,
                 initialImeis: $request->array('initial_imeis') ?: null,

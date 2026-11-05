@@ -7,6 +7,8 @@ import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import InventorySubNav from '../../../../Components/Admin/InventorySubNav';
 import Icon from '../../../../Components/Icons/Icon';
+import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
+import { formatInventoryCondition } from '../../../../lib/inventoryCondition';
 
 type Shop = { id: number; name: string; sku_prefix_code: string };
 
@@ -18,13 +20,13 @@ type Shop = { id: number; name: string; sku_prefix_code: string };
  * Collapsed behind a clickable card by default so both options fit
  * comfortably in the sidebar without competing with the CSV form.
  */
-function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSerialized: boolean }) {
+function QuickAddProductForm({ shops, isSerialized, conditions }: { shops: Shop[]; isSerialized: boolean; conditions: MasterEntry[] }) {
     const [open, setOpen] = useState(false);
     const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         brand: '',
         model: '',
         category: '',
-        condition: 'new',
+        condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',
         cost_price_naira: '',
         markup_percent: '20',
         shop_id: shops[0]?.id.toString() ?? '',
@@ -101,6 +103,13 @@ function QuickAddProductForm({ shops, isSerialized }: { shops: Shop[]; isSeriali
                         error={errors.category}
                         required
                     />
+                    <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
+                        {conditions.map((condition) => (
+                            <option key={condition.id} value={condition.name}>
+                                {formatInventoryCondition(condition.name)}
+                            </option>
+                        ))}
+                    </AdminSelect>
 
                     <div className="grid grid-cols-2 gap-3">
                         <AdminInput
@@ -299,7 +308,7 @@ function CsvDropzone({ file, onSelect, error }: CsvDropzoneProps) {
     );
 }
 
-export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[]; expectedHeader: string[] }) {
+export default function ImportCreate({ shops, expectedHeader, conditions }: { shops: Shop[]; expectedHeader: string[]; conditions: MasterEntry[] }) {
     const { data, setData, post, processing, errors } = useForm<{ shop_id: string; file: File | null }>({
         shop_id: shops[0]?.id.toString() ?? '',
         file: null,
@@ -352,6 +361,9 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
                     <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4 mb-6">
                         <p className="text-sm font-semibold text-admin-text mb-2">Expected CSV columns</p>
                         <code className="text-xs text-admin-text2 break-all">{expectedHeader.join(',')}</code>
+                        <p className="text-xs text-admin-text2 mt-3">
+                            Condition must match a saved value: {conditions.map((condition) => condition.name).join(', ')}
+                        </p>
                         <p className="text-xs text-admin-text2 mt-2">
                             Fill either <code>quantity</code> (bulk stock) or <code>imei</code> (one serialized unit) per row, not both.
                             <code>low_stock_threshold</code> is optional.
@@ -431,8 +443,8 @@ export default function ImportCreate({ shops, expectedHeader }: { shops: Shop[];
                 </div>
 
                 <div className="lg:border-l lg:border-admin-border lg:pl-8">
-                    <QuickAddProductForm shops={shops} isSerialized={true} />
-                    <QuickAddProductForm shops={shops} isSerialized={false} />
+                    <QuickAddProductForm shops={shops} isSerialized={true} conditions={conditions} />
+                    <QuickAddProductForm shops={shops} isSerialized={false} conditions={conditions} />
                     <DownloadTemplateCard />
                 </div>
             </div>

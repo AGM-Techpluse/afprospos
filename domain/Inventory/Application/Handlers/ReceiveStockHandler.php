@@ -8,7 +8,9 @@ use App\Support\Transactions\Atomic;
 use Domain\Audit\Application\Contracts\AuditWriter;
 use Domain\Inventory\Application\Commands\ReceiveStockCommand;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
+use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
 use Domain\Inventory\Domain\Repositories\InventoryItemRepository;
+use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
 use Domain\Inventory\Domain\Repositories\InventoryStockLevelRepository;
 use Domain\Inventory\Domain\Repositories\SkuRepository;
 use Domain\Inventory\Domain\ValueObjects\SkuId;
@@ -21,6 +23,7 @@ final class ReceiveStockHandler
         private readonly SkuRepository $skus,
         private readonly InventoryItemRepository $items,
         private readonly InventoryStockLevelRepository $stockLevels,
+        private readonly InventoryMasterRepository $masters,
         private readonly AuditWriter $audit,
         private readonly Atomic $atomic,
     ) {}
@@ -30,6 +33,10 @@ final class ReceiveStockHandler
         $skuId = new SkuId($command->skuId);
         $shopId = new ShopId($command->shopId);
         $sku = $this->skus->get($skuId);
+
+        if (! $this->masters->exists('condition', $command->condition)) {
+            throw UnknownMasterEntry::forName('condition', $command->condition);
+        }
 
         if ($sku->isSerialized()) {
             foreach ($command->imeis ?? [] as $imei) {
