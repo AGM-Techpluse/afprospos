@@ -17,15 +17,16 @@ export default defineConfig({
                     weights: [400],
                 }),
                 // UI/UX design system doc §4: "Inter" for admin + customer
-                // body/UI text, "Space Grotesk" for customer display/headings
-                // (tops out at weight 700 on Google/Bunny Fonts — every
-                // font-customer-display usage uses font-bold, not
-                // font-extrabold, to match).
+                // body/UI text, "Glass Antiqua" for customer
+                // display/headings. Glass Antiqua only ships weight 400 on
+                // Google/Bunny Fonts — every font-customer-display usage
+                // paired with font-bold/font-extrabold relies on the
+                // browser's synthetic bold, since no real bold cut exists.
                 bunny('Inter', {
                     weights: [400, 500, 600, 700, 800],
                 }),
-                bunny('Space Grotesk', {
-                    weights: [400, 500, 600, 700],
+                bunny('Glass Antiqua', {
+                    weights: [400],
                 }),
             ],
         }),

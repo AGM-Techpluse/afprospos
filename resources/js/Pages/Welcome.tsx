@@ -8,7 +8,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
         site_theme_accent: string;
     };
     useEffect(() => {
-        // Bootstrap Icons and the self-hosted Inter/Space Grotesk font faces
+        // Bootstrap Icons and the self-hosted Inter/Glass Antiqua font faces
         // are already part of the main app.css bundle (loaded once for the
         // whole Inertia app via app.blade.php's @vite call) — this used to
         // fetch both live from a third-party CDN at runtime instead, which
@@ -78,7 +78,7 @@ export default function Welcome({ palette }: { palette: WelcomePalette }) {
                     --lp-shadow-strong: 0 10px 30px color-mix(in srgb, var(--lp-text) 16%, transparent);
                     --lp-radius-hero: 22px;
                     --lp-radius-pill: 100px;
-                    --font-display: "Space Grotesk", system-ui, sans-serif;
+                    --font-display: "Glass Antiqua", system-ui, sans-serif;
                     --font-ui: "Inter", system-ui, sans-serif;
 
                     font-family: var(--font-ui);

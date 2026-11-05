@@ -589,7 +589,7 @@ Headings / branding:
 
 ```css
 font-family:
-  "Space Grotesk",
+  "Glass Antiqua",
   system-ui,
   sans-serif;
 ```
@@ -603,9 +603,10 @@ font-family:
   sans-serif;
 ```
 
-Space Grotesk tops out at weight 700 (no 800/extrabold instance exists) —
-every heading/branding use pairs it with `font-bold`, never
-`font-extrabold`.
+Glass Antiqua ships only weight 400 (no bold/extrabold instance exists
+anywhere on Google/Bunny Fonts) — every heading/branding use that pairs it
+with `font-bold`/`font-extrabold` relies on the browser's synthetic bold,
+since there is no real bold cut to request instead.
 
 This creates:
 
@@ -3457,7 +3458,7 @@ The following is the recommended production token organization.
     sans-serif;
 
   --font-customer-display:
-    "Space Grotesk",
+    "Glass Antiqua",
     system-ui,
     sans-serif;
 
@@ -3958,7 +3959,7 @@ The following are non-negotiable.
 
 8. Admin uses Inter as the primary UI family.
 
-9. Customer uses Space Grotesk for headings/branding and Inter for utility text.
+9. Customer uses Glass Antiqua for headings/branding and Inter for utility text.
 
 10. JetBrains Mono/Consolas is used for technical identifiers and precision values.
 
