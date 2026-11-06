@@ -64,7 +64,7 @@ export default function AttributeEditor({ value, onChange }: AttributeEditorProp
 
     return (
         <div className="border border-admin-border rounded-admin-card p-3">
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                 <input
                     type="text"
                     value={value.brand}
@@ -105,7 +105,7 @@ export default function AttributeEditor({ value, onChange }: AttributeEditorProp
             {value.custom.length > 0 && (
                 <div className="flex flex-col gap-1.5 mb-2">
                     {value.custom.map((row, index) => (
-                        <div key={index} className="flex items-center gap-1.5">
+                        <div key={index} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-1.5">
                             <input
                                 type="text"
                                 value={row.key}
@@ -123,7 +123,7 @@ export default function AttributeEditor({ value, onChange }: AttributeEditorProp
                             <button
                                 type="button"
                                 onClick={() => removeCustomRow(index)}
-                                className="text-admin-red text-xs underline shrink-0"
+                                className="text-admin-red text-xs underline justify-self-start shrink-0"
                             >
                                 Remove
                             </button>

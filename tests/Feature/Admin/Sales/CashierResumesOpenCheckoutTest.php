@@ -79,6 +79,26 @@ class CashierResumesOpenCheckoutTest extends TestCase
         $response->assertRedirect("/admin/sales/checkout?checkout={$checkout->id}");
     }
 
+    public function test_visiting_an_expired_checkout_redirects_to_the_checkout_entry_screen(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        StaffShopGrantRecord::query()->create(['staff_id' => $cashier->id, 'shop_id' => $shop->id, 'granted_at' => now()]);
+
+        $checkout = SalesCheckoutRecord::factory()->create([
+            'shop_id' => $shop->id,
+            'cashier_staff_id' => $cashier->id,
+            'status' => 'expired',
+        ]);
+
+        $response = $this->actingAs($cashier, 'staff')->get("/admin/sales/checkout?checkout={$checkout->id}");
+
+        $response->assertRedirect('/admin/sales/checkout');
+    }
+
     public function test_a_cashier_never_gets_auto_resumed_into_a_different_cashiers_open_checkout_at_the_same_shop(): void
     {
         $this->seed(RolePermissionSeeder::class);

@@ -30,6 +30,7 @@ class CashierCanOpenConcurrentCheckoutsTest extends TestCase
         $response = $this->actingAs($cashier, 'staff')->post('/admin/sales/checkout', [
             'shop_id' => $shop->id,
             'force_new' => true,
+            'walk_in_name' => 'Second customer',
         ]);
 
         $response->assertRedirect();
@@ -40,6 +41,48 @@ class CashierCanOpenConcurrentCheckoutsTest extends TestCase
         );
         // The original checkout is untouched, still open.
         $this->assertDatabaseHas('sales_checkouts', ['id' => $first->id, 'status' => 'open']);
+    }
+
+    public function test_starting_an_additional_walk_in_checkout_requires_a_name(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        StaffShopGrantRecord::query()->create(['staff_id' => $cashier->id, 'shop_id' => $shop->id, 'granted_at' => now()]);
+
+        SalesCheckoutRecord::factory()->create(['shop_id' => $shop->id, 'cashier_staff_id' => $cashier->id, 'status' => 'open']);
+
+        $response = $this->actingAs($cashier, 'staff')->post('/admin/sales/checkout', [
+            'shop_id' => $shop->id,
+            'force_new' => true,
+        ]);
+
+        $response->assertSessionHasErrors([
+            'walk_in_name' => 'Enter a walk-in name or select a customer before starting another checkout.',
+        ]);
+        $this->assertSame(1, SalesCheckoutRecord::query()->where('cashier_staff_id', $cashier->id)->count());
+    }
+
+    public function test_new_mode_shows_the_customer_form_without_creating_a_checkout(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $cashier = StaffRecord::factory()->create();
+        $cashier->assignRole('Cashier');
+        $shop = ShopRecord::factory()->create();
+        StaffShopGrantRecord::query()->create(['staff_id' => $cashier->id, 'shop_id' => $shop->id, 'granted_at' => now()]);
+
+        SalesCheckoutRecord::factory()->create(['shop_id' => $shop->id, 'cashier_staff_id' => $cashier->id, 'status' => 'open']);
+
+        $response = $this->actingAs($cashier, 'staff')->get('/admin/sales/checkout?new=1');
+
+        $response->assertInertia(fn ($page) => $page
+            ->component('Admin/Sales/Checkout')
+            ->where('checkout', null)
+            ->has('openCheckouts', 1));
+        $this->assertSame(1, SalesCheckoutRecord::query()->where('cashier_staff_id', $cashier->id)->count());
     }
 
     public function test_visiting_the_checkout_screen_with_two_open_checkouts_shows_a_chooser_instead_of_redirecting(): void

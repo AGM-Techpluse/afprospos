@@ -109,7 +109,7 @@ class CheckoutSearchFiltersTest extends TestCase
         $variant = $this->sellable(
             $shop,
             ['brand' => 'Apple', 'model' => 'iPhone 15', 'category' => 'Phones', 'purpose' => 'sale'],
-            attributes: ['color' => 'Black', 'custom' => ['storage' => '128GB']],
+            attributes: ['color' => 'Black', 'storage' => '128GB'],
         );
         $plain = $this->sellable($shop, ['brand' => 'Anker', 'model' => 'Case', 'category' => 'Accessories', 'purpose' => 'sale']);
 

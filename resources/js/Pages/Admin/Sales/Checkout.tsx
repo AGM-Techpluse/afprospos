@@ -134,6 +134,8 @@ function NewCheckoutForm({ shops, forceNew = false }: { shops: Shop[]; forceNew?
                 }}
                 error={errors.customer_id}
                 walkIn={{ name: data.walk_in_name, phone: data.walk_in_phone, email: data.walk_in_email }}
+                walkInNameRequired={forceNew}
+                walkInNameError={errors.walk_in_name}
                 onWalkInChange={(walkIn) =>
                     setData({ ...data, walk_in_name: walkIn.name, walk_in_phone: walkIn.phone, walk_in_email: walkIn.email })
                 }
@@ -271,8 +273,15 @@ export default function SalesCheckout({
             // Switching to one of this cashier's OWN other open checkouts isn't abandoning
             // anything — both stay held exactly as they are, so the guard doesn't apply there.
             const isSwitchingToOwnCheckout = myOtherCheckoutUrls.some((url) => event.detail.visit.url.toString().endsWith(url));
+            const isStartingAnotherCheckout = event.detail.visit.url.toString().endsWith('/admin/sales/checkout?new=1');
 
-            if (event.detail.visit.method !== 'get' || event.detail.visit.only.length > 0 || allowNextVisit || isSwitchingToOwnCheckout) {
+            if (
+                event.detail.visit.method !== 'get'
+                || event.detail.visit.only.length > 0
+                || allowNextVisit
+                || isSwitchingToOwnCheckout
+                || isStartingAnotherCheckout
+            ) {
                 allowNextVisit = false;
                 return;
             }
@@ -315,7 +324,7 @@ export default function SalesCheckout({
                             <AdminStatCard label="Today's revenue" value={formatNaira(todaysSales.total_minor)} variant="blue" fillHeight />
                         </div>
                     )}
-                    {openCheckouts.length > 1 && <OpenCheckoutsList checkouts={openCheckouts} />}
+                    {openCheckouts.length > 0 && <OpenCheckoutsList checkouts={openCheckouts} />}
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
                         <div>
                             <h2 className="text-sm font-semibold text-admin-text mb-3">Your recent sales</h2>
@@ -432,6 +441,10 @@ export default function SalesCheckout({
         completeForm.post(`/admin/sales/checkout/${checkout!.id}/complete`);
     }
 
+    function startAnotherCheckout() {
+        router.visit('/admin/sales/checkout?new=1');
+    }
+
     return (
         <AdminShell>
             <Head title="Checkout" />
@@ -440,7 +453,11 @@ export default function SalesCheckout({
                 title={`Checkout — ${shop?.name ?? 'Unknown shop'}`}
                 description={checkout.customer_name ?? checkout.walk_in_name ?? 'Walk-in customer'}
                 actions={
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <AdminButton type="button" variant="neutral" onClick={startAnotherCheckout} disabled={locked}>
+                            <Icon name="plus-lg" className="mr-1.5" />
+                            New checkout
+                        </AdminButton>
                         {openCheckouts.length > 1 && (
                             <button
                                 type="button"

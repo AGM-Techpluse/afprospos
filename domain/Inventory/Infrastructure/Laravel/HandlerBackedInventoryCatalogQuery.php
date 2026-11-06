@@ -73,7 +73,7 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
         $attributes = $sku->attributes ?? [];
         $parts = [];
 
-        foreach (['color', 'material', 'compatibility'] as $key) {
+        foreach (['brand', 'color', 'storage', 'material', 'compatibility'] as $key) {
             if (! empty($attributes[$key])) {
                 $parts[] = (string) $attributes[$key];
             }

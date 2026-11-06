@@ -123,13 +123,23 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
             // portaled out of the flow, and repositioning mid-scroll reads as
             // jittery anyway — closing on scroll matches how a native select
             // behaves in most browsers.
-            const handleScrollOrResize = () => setOpen(false);
-            window.addEventListener('scroll', handleScrollOrResize, true);
-            window.addEventListener('resize', handleScrollOrResize);
+            // The menu's own scroll is excluded so long option lists remain usable.
+            const handleScroll = (event: Event) => {
+                const target = event.target;
+
+                if (target instanceof Node && listRef.current?.contains(target)) {
+                    return;
+                }
+
+                setOpen(false);
+            };
+            const handleResize = () => setOpen(false);
+            window.addEventListener('scroll', handleScroll, true);
+            window.addEventListener('resize', handleResize);
 
             return () => {
-                window.removeEventListener('scroll', handleScrollOrResize, true);
-                window.removeEventListener('resize', handleScrollOrResize);
+                window.removeEventListener('scroll', handleScroll, true);
+                window.removeEventListener('resize', handleResize);
             };
         }, [open, options.length]);
 
@@ -225,7 +235,7 @@ const AdminSelect = forwardRef<HTMLButtonElement, AdminSelectProps>(
                                             ? { bottom: window.innerHeight - panelPosition.top }
                                             : { top: panelPosition.top }),
                                     }}
-                                    className="z-[60] max-h-64 overflow-y-auto bg-white border border-admin-border rounded-admin-card shadow-admin-modal py-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                    className="z-[60] max-h-64 overflow-y-auto overscroll-contain bg-white border border-admin-border rounded-admin-card shadow-admin-modal py-1 outline-none"
                                 >
                                     {options.map((option, index) => (
                                         <li

@@ -121,6 +121,7 @@ final class SalesController
     public function checkout(Request $request): Response|RedirectResponse
     {
         $checkoutId = $request->integer('checkout') ?: null;
+        $isStartingAnotherCheckout = $request->boolean('new');
         $actor = app(ActorContext::class);
         $openCheckouts = [];
 
@@ -129,13 +130,17 @@ final class SalesController
 
             // Exactly one open checkout is still the common case — resume it with zero friction, same as before.
             // Two or more means the cashier deliberately has several going; let them pick instead of guessing.
-            if (count($openCheckouts) === 1) {
+            if (! $isStartingAnotherCheckout && count($openCheckouts) === 1) {
                 return redirect()->route('admin.sales.checkout', ['checkout' => $openCheckouts[0]['id']]);
             }
         }
 
         $checkout = $checkoutId !== null ? $this->checkoutDetail->find($checkoutId) : null;
         abort_if($checkout !== null && ! $actor->canAccessShop((int) $checkout['shop_id']), 403);
+
+        if ($checkout !== null && $checkout['status'] !== 'open') {
+            return redirect()->route('admin.sales.checkout');
+        }
 
         // Also needed while viewing a specific checkout (not just the chooser screen) — the
         // "leave this checkout?" guard reads these ids to tell "switching to one of my other

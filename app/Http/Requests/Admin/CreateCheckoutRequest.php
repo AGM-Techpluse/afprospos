@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class CreateCheckoutRequest extends FormRequest
 {
@@ -18,10 +19,22 @@ final class CreateCheckoutRequest extends FormRequest
         return [
             'shop_id' => ['required', 'integer', 'exists:shops,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
-            'walk_in_name' => ['nullable', 'string', 'max:150'],
+            'walk_in_name' => [
+                Rule::requiredIf(fn (): bool => $this->boolean('force_new') && ! $this->filled('customer_id')),
+                'nullable',
+                'string',
+                'max:150',
+            ],
             'walk_in_phone' => ['nullable', 'string', 'max:30'],
             'walk_in_email' => ['nullable', 'string', 'max:150'],
             'force_new' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'walk_in_name.required' => 'Enter a walk-in name or select a customer before starting another checkout.',
         ];
     }
 }

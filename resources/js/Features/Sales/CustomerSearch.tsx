@@ -27,6 +27,8 @@ interface CustomerSearchProps {
     walkIn?: WalkInContact;
     /** Providing this opts the caller into the walk-in contact mini-form shown when nothing is selected. */
     onWalkInChange?: (walkIn: WalkInContact) => void;
+    walkInNameRequired?: boolean;
+    walkInNameError?: string;
 }
 
 /**
@@ -36,12 +38,22 @@ interface CustomerSearchProps {
  * ID. Originated on Checkout (selecting nobody keeps it a walk-in sale)
  * and reused as-is by Repair intake.
  */
-export default function CustomerSearch({ value, onChange, error, disabled = false, searchUrl = '/admin/sales/customers/search', walkIn, onWalkInChange }: CustomerSearchProps) {
+export default function CustomerSearch({
+    value,
+    onChange,
+    error,
+    disabled = false,
+    searchUrl = '/admin/sales/customers/search',
+    walkIn,
+    onWalkInChange,
+    walkInNameRequired = false,
+    walkInNameError,
+}: CustomerSearchProps) {
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<CustomerSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
-    const [walkInExpanded, setWalkInExpanded] = useState(false);
+    const [walkInExpanded, setWalkInExpanded] = useState(walkInNameRequired);
     const requestId = useRef(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -113,7 +125,9 @@ export default function CustomerSearch({ value, onChange, error, disabled = fals
 
     return (
         <div className="flex flex-col mb-5 relative" ref={containerRef}>
-            <span className="text-xs font-semibold text-admin-text mb-[5px]">Customer (optional — blank is walk-in)</span>
+            <span className="text-xs font-semibold text-admin-text mb-[5px]">
+                {walkInNameRequired ? 'Customer or walk-in name' : 'Customer (optional — blank is walk-in)'}
+            </span>
             <div className="relative">
                 <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text3" />
                 <input
@@ -174,19 +188,23 @@ export default function CustomerSearch({ value, onChange, error, disabled = fals
 
             {onWalkInChange && (
                 <div className="mt-2">
-                    <button
-                        type="button"
-                        onClick={() => setWalkInExpanded((expanded) => !expanded)}
-                        className="text-xs font-medium text-admin-blue hover:underline"
-                    >
-                        {walkInExpanded ? 'Hide walk-in contact details' : 'Add walk-in contact details (optional)'}
-                    </button>
+                    {!walkInNameRequired && (
+                        <button
+                            type="button"
+                            onClick={() => setWalkInExpanded((expanded) => !expanded)}
+                            className="text-xs font-medium text-admin-blue hover:underline"
+                        >
+                            {walkInExpanded ? 'Hide walk-in contact details' : 'Add walk-in contact details (optional)'}
+                        </button>
+                    )}
 
-                    {walkInExpanded && (
+                    {(walkInNameRequired || walkInExpanded) && (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                             <AdminInput
                                 label="Name"
                                 value={walkIn?.name ?? ''}
+                                required={walkInNameRequired}
+                                error={walkInNameError}
                                 disabled={disabled}
                                 onChange={(e) => onWalkInChange({ name: e.target.value, phone: walkIn?.phone ?? '', email: walkIn?.email ?? '' })}
                             />

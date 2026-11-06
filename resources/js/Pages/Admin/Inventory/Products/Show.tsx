@@ -127,7 +127,7 @@ export default function ProductShow({ sku, shops, conditions, units, unitFilters
         );
     }
 
-    const [editingProduct, setEditingProduct] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<'all' | 'attributes' | null>(null);
     const [editingUnit, setEditingUnit] = useState<SerializedUnit | null>(null);
 
     const [unitSearch, setUnitSearch] = useState(unitFilters.search);
@@ -235,10 +235,12 @@ export default function ProductShow({ sku, shops, conditions, units, unitFilters
                 description={sku.sku_code}
                 backHref="/admin/inventory/products"
                 backLabel="Back to products"
-                actions={<AdminButton variant="neutral" onClick={() => setEditingProduct(true)}>Edit product</AdminButton>}
+                actions={<AdminButton variant="neutral" onClick={() => setEditingProduct('all')}>Edit product</AdminButton>}
             />
 
-            {editingProduct && <EditProductModal sku={sku} onClose={() => setEditingProduct(false)} />}
+            {editingProduct && (
+                <EditProductModal sku={sku} mode={editingProduct} onClose={() => setEditingProduct(null)} />
+            )}
             {editingUnit && (
                 <EditUnitConditionModal unit={editingUnit} conditions={conditions} onClose={() => setEditingUnit(null)} />
             )}
@@ -467,10 +469,24 @@ export default function ProductShow({ sku, shops, conditions, units, unitFilters
             {(
                 <div className="mt-8">
                     <AdminInfoCard title="Variants" icon="grid-3x3-gap" iconColor="blue">
-                        <div className="mb-3">
-                            <div className="flex items-center justify-between py-2.5 border-b border-admin-border">
-                                <span className="text-sm text-admin-text">{variantLabel(sku.attributes)} (this variant)</span>
-                                <span className="text-sm font-medium text-admin-text">{formatNaira(sku.selling_price_minor)}</span>
+                        <div className="mb-4 divide-y divide-admin-border">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-3 px-3 bg-admin-blue-soft border-l-2 border-admin-blue">
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-sm font-semibold text-admin-text truncate">{variantLabel(sku.attributes)}</span>
+                                        <AdminBadge status="info">Current</AdminBadge>
+                                    </div>
+                                    <span className="text-xs text-admin-text3 block mt-0.5 truncate">{sku.sku_code}</span>
+                                </div>
+                                <span className="text-sm font-medium text-admin-text whitespace-nowrap">{formatNaira(sku.selling_price_minor)}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingProduct('attributes')}
+                                    className="col-span-2 sm:col-span-1 justify-self-start sm:justify-self-end inline-flex items-center gap-1.5 text-xs font-semibold text-admin-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-focus rounded-admin-button"
+                                >
+                                    <Icon name="pencil" />
+                                    Edit attributes
+                                </button>
                             </div>
                             {sku.sibling_skus.length === 0 ? (
                                 <p className="text-admin-text2 text-sm py-2.5">No other variants yet.</p>
@@ -480,10 +496,14 @@ export default function ProductShow({ sku, shops, conditions, units, unitFilters
                                         key={sibling.id}
                                         type="button"
                                         onClick={() => router.visit(`/admin/inventory/products/${sibling.id}`)}
-                                        className="w-full flex items-center justify-between py-2.5 border-b border-admin-border last:border-b-0 text-left hover:bg-admin-hover"
+                                        className="group w-full grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-3 px-3 text-left hover:bg-admin-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-admin-focus transition-colors"
                                     >
-                                        <span className="text-sm text-admin-text">{variantLabel(sibling.attributes)}</span>
-                                        <span className="text-sm font-medium text-admin-text">{formatNaira(sibling.selling_price_minor)}</span>
+                                        <span className="min-w-0">
+                                            <span className="text-sm font-medium text-admin-text block truncate">{variantLabel(sibling.attributes)}</span>
+                                            <span className="text-xs text-admin-text3 block mt-0.5 truncate">{sibling.sku_code}</span>
+                                        </span>
+                                        <span className="text-sm font-medium text-admin-text whitespace-nowrap">{formatNaira(sibling.selling_price_minor)}</span>
+                                        <Icon name="chevron-right" className="text-admin-text3 group-hover:text-admin-blue transition-colors" />
                                     </button>
                                 ))
                             )}
