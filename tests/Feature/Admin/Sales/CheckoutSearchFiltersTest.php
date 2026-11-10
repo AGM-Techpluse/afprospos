@@ -120,6 +120,10 @@ class CheckoutSearchFiltersTest extends TestCase
 
         $byId = collect($results)->keyBy('sku_id');
         $this->assertSame('Black · 128GB', $byId[$variant->id]['variant_label']);
+        $this->assertSame('Apple', $byId[$variant->id]['brand']);
+        $this->assertSame('iPhone 15', $byId[$variant->id]['model']);
+        $this->assertSame('Phones', $byId[$variant->id]['category']);
+        $this->assertSame(['color' => 'Black', 'storage' => '128GB'], $byId[$variant->id]['attributes']);
 
         $plainResults = $this->actingAs($cashier, 'staff')
             ->getJson("/admin/sales/search?shop_id={$shop->id}&q=Case")

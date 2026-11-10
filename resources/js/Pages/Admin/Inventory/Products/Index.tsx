@@ -11,6 +11,7 @@ import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import Icon from '../../../../Components/Icons/Icon';
 import ResponsiveDataTable, { DataTableColumn } from '../../../../Components/Tables/ResponsiveDataTable';
 import ProductImage from '../../../../Components/ProductImage';
+import OverflowMarquee from '../../../../Components/OverflowMarquee';
 
 type ProductRow = {
     id: number;
@@ -19,6 +20,12 @@ type ProductRow = {
     model: string;
     category: string;
     image_url: string | null;
+    attributes: Record<string, unknown>;
+    variant_label: string;
+    variant_position: number;
+    variant_count: number;
+    stock_available: number;
+    stock_reserved: number;
     is_serialized: boolean;
     cost_price_minor: number;
     selling_price_minor: number;
@@ -31,7 +38,7 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 
 interface ProductsIndexProps {
     products: Paginated<ProductRow>;
-    filters: { search: string; category: string; brand: string; shop_id: number | null };
+    filters: { search: string; category: string; brand: string; shop_id: number | null; variant: string };
     shops: Shop[];
     categories: string[];
 }
@@ -46,15 +53,50 @@ const COLUMNS: DataTableColumn<ProductRow>[] = [
         label: '',
         render: (row) => <ProductImage src={row.image_url} alt={`${row.brand} ${row.model}`} aspect="square" category={row.category} className="w-10" />,
     },
-    { key: 'sku_code', label: 'SKU' },
-    { key: 'brand', label: 'Brand' },
-    { key: 'model', label: 'Model' },
+    {
+        key: 'product',
+        label: 'Product',
+        render: (row) => (
+            <span className="block w-40 min-w-0">
+                <OverflowMarquee text={row.model} className="font-semibold text-admin-text" />
+                <OverflowMarquee text={row.brand} className="text-admin-xs text-admin-text3" />
+            </span>
+        ),
+    },
+    {
+        key: 'variant',
+        label: 'Variant',
+        render: (row) => (
+            <span className="w-44 min-w-0 flex flex-col items-start gap-1">
+                <AdminBadge status={row.variant_count > 1 ? 'info' : 'neutral'}>
+                    {row.variant_count > 1 ? `Variant ${row.variant_position} of ${row.variant_count}` : 'Single SKU'}
+                </AdminBadge>
+                <OverflowMarquee
+                    text={row.variant_label || (row.variant_count > 1 ? 'No attributes set' : 'Base configuration')}
+                    className="text-admin-xs text-admin-text2"
+                />
+                <span className="text-admin-xs font-mono text-admin-text3">{row.sku_code}</span>
+            </span>
+        ),
+    },
     { key: 'category', label: 'Category' },
     {
         key: 'is_serialized',
         label: 'Type',
         render: (row) => (
             <AdminBadge status={row.is_serialized ? 'info' : 'neutral'}>{row.is_serialized ? 'Serialized' : 'Bulk'}</AdminBadge>
+        ),
+    },
+    {
+        key: 'stock',
+        label: 'Stock',
+        render: (row) => (
+            <span className="block whitespace-nowrap">
+                <span className="font-semibold text-admin-text">{row.stock_available} available</span>
+                {row.stock_reserved > 0 && (
+                    <span className="block text-admin-xs text-admin-yellow-text">{row.stock_reserved} reserved</span>
+                )}
+            </span>
         ),
     },
     { key: 'selling_price_minor', label: 'Price', render: (row) => formatNaira(row.selling_price_minor) },
@@ -65,9 +107,10 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
     const [category, setCategory] = useState(filters.category);
     const [brand, setBrand] = useState(filters.brand);
     const [shopId, setShopId] = useState(filters.shop_id);
+    const [variant, setVariant] = useState(filters.variant);
     const [loading, setLoading] = useState(false);
     const skipNextFetch = useRef(true);
-    const hasActiveFilters = Boolean(filters.search || filters.category || filters.brand || filters.shop_id);
+    const hasActiveFilters = Boolean(search || category || brand || shopId || variant);
 
     useEffect(() => {
         if (skipNextFetch.current) {
@@ -78,18 +121,18 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
         const timeout = setTimeout(() => {
             router.get(
                 '/admin/inventory/products',
-                { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '' },
+                { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '', variant: variant || undefined },
                 { only: ['products'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
             );
         }, 350);
 
         return () => clearTimeout(timeout);
-    }, [search, category, brand, shopId]);
+    }, [search, category, brand, shopId, variant]);
 
     function goToPage(page: number) {
         router.get(
             '/admin/inventory/products',
-            { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '', page },
+            { search: search || undefined, category: category || undefined, brand: brand || undefined, shop_id: shopId ?? '', variant: variant || undefined, page },
             { only: ['products'], preserveState: true, preserveScroll: true, replace: true, showProgress: false, onStart: () => setLoading(true), onFinish: () => setLoading(false) },
         );
     }
@@ -100,6 +143,7 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
         setCategory('');
         setBrand('');
         setShopId(null);
+        setVariant('');
         router.get(
             '/admin/inventory/products',
             {},
@@ -123,9 +167,9 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
                 columns={COLUMNS}
                 rows={products.data}
                 getRowKey={(row) => row.id}
-                mobilePrimaryField="model"
+                mobilePrimaryField="product"
                 mobileStatusField="is_serialized"
-                mobileDetailFields={['sku_code', 'brand', 'category', 'selling_price_minor']}
+                mobileDetailFields={['variant', 'category', 'stock', 'selling_price_minor']}
                 loading={loading}
                 toolbar={
                     <>
@@ -135,7 +179,7 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Filter by SKU, brand, model…"
+                                placeholder="Filter by product, SKU or attributes…"
                                 className="w-full border border-admin-border rounded-admin-button pl-8 pr-3 py-1.5 text-xs bg-admin-bg outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus"
                             />
                         </div>
@@ -159,6 +203,11 @@ export default function ProductsIndex({ products, filters, shops, categories }: 
                                     {shop.name}
                                 </option>
                             ))}
+                        </AdminSelect>
+                        <AdminSelect aria-label="Filter by variant type" value={variant} onChange={(e) => setVariant(e.target.value)} containerClassName="mb-0">
+                            <option value="">All product rows</option>
+                            <option value="variants">Variants only</option>
+                            <option value="single">Single-SKU products</option>
                         </AdminSelect>
                         <div className="flex-1" />
                         {hasActiveFilters && (

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Inventory\Application\Queries;
 
 use Domain\Inventory\Domain\Repositories\InventoryMasterRepository;
+use Domain\Inventory\Domain\Services\SkuVariantLabel;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\ProductRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 
@@ -23,9 +24,28 @@ final class ProductCatalogQuery
     /**
      * @param  string|null  $purpose  'parts' = products used in repairs (repair_part or both); 'sale' = products sold (sale or both)
      */
-    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20, ?int $shopId = null, ?string $purpose = null): array
+    public function paginate(?string $search, ?string $category, ?string $brand, int $page, int $perPage = 20, ?int $shopId = null, ?string $purpose = null, ?string $variant = null): array
     {
-        $query = SkuRecord::query()->with('product')->orderBy('sku_code');
+        $query = SkuRecord::query()
+            ->with('product')
+            ->withSum([
+                'stockLevels as listed_on_hand' => fn ($stockQuery) => $stockQuery
+                    ->when($shopId !== null, fn ($shopStockQuery) => $shopStockQuery->where('shop_id', $shopId)),
+            ], 'on_hand')
+            ->withSum([
+                'stockLevels as listed_reserved' => fn ($stockQuery) => $stockQuery
+                    ->when($shopId !== null, fn ($shopStockQuery) => $shopStockQuery->where('shop_id', $shopId)),
+            ], 'reserved')
+            ->withCount([
+                'items as listed_serialized_available' => fn ($itemQuery) => $itemQuery
+                    ->where('status', 'available')
+                    ->when($shopId !== null, fn ($shopItemQuery) => $shopItemQuery->where('current_shop_id', $shopId)),
+                'items as listed_serialized_reserved' => fn ($itemQuery) => $itemQuery
+                    ->where('status', 'reserved')
+                    ->when($shopId !== null, fn ($shopItemQuery) => $shopItemQuery->where('current_shop_id', $shopId)),
+            ])
+            ->orderBy('product_id')
+            ->orderBy('id');
 
         if ($purpose === 'parts') {
             $query->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', ['repair_part', 'both']));
@@ -38,6 +58,7 @@ final class ProductCatalogQuery
         if ($search !== null && $search !== '') {
             $query->where(function ($inner) use ($search): void {
                 $inner->where('sku_code', 'like', "%{$search}%")
+                    ->orWhere('attributes', 'like', "%{$search}%")
                     ->orWhereHas('product', function ($productQuery) use ($search): void {
                         $productQuery->where('brand', 'like', "%{$search}%")
                             ->orWhere('model', 'like', "%{$search}%");
@@ -53,6 +74,14 @@ final class ProductCatalogQuery
             $query->whereHas('product', fn ($productQuery) => $productQuery->where('brand', $brand));
         }
 
+        if ($variant === 'variants') {
+            $query->whereHas('product', fn ($productQuery) => $productQuery->has('skus', '>=', 2));
+        }
+
+        if ($variant === 'single') {
+            $query->whereHas('product', fn ($productQuery) => $productQuery->has('skus', '=', 1));
+        }
+
         if ($shopId !== null) {
             // A serialized SKU never has a stockLevels row (quantity doesn't
             // apply to an individually-tracked unit) — filtering on
@@ -66,9 +95,10 @@ final class ProductCatalogQuery
         }
 
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+        $variantContext = $this->variantContext($paginator->getCollection()->pluck('product_id')->unique()->all());
 
         return [
-            'data' => $paginator->getCollection()->map(fn (SkuRecord $sku): array => $this->toArray($sku))->all(),
+            'data' => $paginator->getCollection()->map(fn (SkuRecord $sku): array => $this->toArray($sku, variantContext: $variantContext[$sku->id] ?? null))->all(),
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'per_page' => $paginator->perPage(),
@@ -103,9 +133,8 @@ final class ProductCatalogQuery
         $data = $this->toArray($sku, withStockBreakdown: true);
         $data['product_id'] = $sku->product_id;
 
-        // INV-BR-17/18: other non-serialized variants of the same product
-        // (e.g. a screenguard's other brands) — never itself, and never a
-        // serialized sibling (a variant is a non-serialized concept only).
+        // Sibling variants share one product identity but retain the same
+        // stock-tracking mode as the selected SKU.
         $data['sibling_skus'] = SkuRecord::query()
             ->where('product_id', $sku->product_id)
             ->where('is_serialized', $sku->is_serialized)
@@ -122,8 +151,15 @@ final class ProductCatalogQuery
     }
 
     /** @return array<string, mixed> */
-    private function toArray(SkuRecord $sku, bool $withStockBreakdown = false): array
+    private function toArray(SkuRecord $sku, bool $withStockBreakdown = false, ?array $variantContext = null): array
     {
+        $stockReserved = $sku->is_serialized
+            ? (int) ($sku->listed_serialized_reserved ?? 0)
+            : (int) ($sku->listed_reserved ?? 0);
+        $stockAvailable = $sku->is_serialized
+            ? (int) ($sku->listed_serialized_available ?? 0)
+            : max(0, (int) ($sku->listed_on_hand ?? 0) - $stockReserved);
+
         $data = [
             'id' => $sku->id,
             'sku_code' => $sku->sku_code,
@@ -134,6 +170,11 @@ final class ProductCatalogQuery
             'image_url' => $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null,
             'description' => $sku->product->description,
             'attributes' => $sku->attributes,
+            'variant_label' => SkuVariantLabel::fromAttributes($sku->attributes ?? []),
+            'variant_position' => $variantContext['position'] ?? 1,
+            'variant_count' => $variantContext['count'] ?? 1,
+            'stock_available' => $stockAvailable,
+            'stock_reserved' => $stockReserved,
             'is_serialized' => $sku->is_serialized,
             'cost_price_minor' => $sku->cost_price_minor,
             'markup_percent' => (float) $sku->markup_percent,
@@ -178,5 +219,33 @@ final class ProductCatalogQuery
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<int, int>  $productIds
+     * @return array<int, array{position: int, count: int}>
+     */
+    private function variantContext(array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+
+        $context = [];
+        $skuGroups = SkuRecord::query()
+            ->whereIn('product_id', $productIds)
+            ->orderBy('id')
+            ->get(['id', 'product_id'])
+            ->groupBy('product_id');
+
+        foreach ($skuGroups as $skus) {
+            $count = $skus->count();
+
+            foreach ($skus->values() as $index => $sku) {
+                $context[$sku->id] = ['position' => $index + 1, 'count' => $count];
+            }
+        }
+
+        return $context;
     }
 }

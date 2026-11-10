@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Inventory\Infrastructure\Laravel;
 
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
+use Domain\Inventory\Domain\Services\SkuVariantLabel;
 use Domain\Inventory\Domain\Services\StockAvailability;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryStockLevelRecord;
@@ -27,7 +28,8 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
                         ->orWhereHas('product', function ($productQuery) use ($term): void {
                             $productQuery->where('brand', 'like', "%{$term}%")
                                 ->orWhere('model', 'like', "%{$term}%");
-                        });
+                        })
+                        ->orWhere('attributes', 'like', "%{$term}%");
                 });
             })
             ->when($category !== null && $category !== '', fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->where('category', $category)))
@@ -45,6 +47,11 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
             'selling_price_minor' => $sku->selling_price_minor,
             'available' => $this->available($sku, $shopId),
             'variant_label' => $this->variantLabel($sku),
+            'brand' => $sku->product->brand,
+            'model' => $sku->product->model,
+            'category' => $sku->product->category,
+            'description' => $sku->product->description,
+            'attributes' => $sku->attributes ?? [],
             'is_commissionable' => (bool) $sku->is_commissionable,
             'commission_amount_minor' => $sku->commission_amount_minor,
             'image_url' => $this->imageUrl($sku),
@@ -70,22 +77,7 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
      */
     private function variantLabel(SkuRecord $sku): string
     {
-        $attributes = $sku->attributes ?? [];
-        $parts = [];
-
-        foreach (['brand', 'color', 'storage', 'material', 'compatibility'] as $key) {
-            if (! empty($attributes[$key])) {
-                $parts[] = (string) $attributes[$key];
-            }
-        }
-
-        foreach ((array) ($attributes['custom'] ?? []) as $value) {
-            if ($value !== null && $value !== '') {
-                $parts[] = (string) $value;
-            }
-        }
-
-        return implode(' · ', $parts);
+        return SkuVariantLabel::fromAttributes($sku->attributes ?? []);
     }
 
     public function sellableBrands(): array
@@ -114,6 +106,11 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
             'selling_price_minor' => $sku->selling_price_minor,
             'available' => $this->available($sku, $shopId),
             'variant_label' => $this->variantLabel($sku),
+            'brand' => $sku->product->brand,
+            'model' => $sku->product->model,
+            'category' => $sku->product->category,
+            'description' => $sku->product->description,
+            'attributes' => $sku->attributes ?? [],
             'is_commissionable' => (bool) $sku->is_commissionable,
             'commission_amount_minor' => $sku->commission_amount_minor,
             'image_url' => $this->imageUrl($sku),

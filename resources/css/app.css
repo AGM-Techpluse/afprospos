@@ -267,6 +267,24 @@
     100% { background-position: -100% 0; }
 }
 
+.overflow-marquee-track {
+    display: flex;
+    width: max-content;
+    gap: 1.5rem;
+    animation: overflow-marquee 12s linear infinite;
+}
+
+@keyframes overflow-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-50% - 0.75rem)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .overflow-marquee-track {
+        animation: none;
+    }
+}
+
 /* "Print only this element" — isolates a page's `.print-area` from the
    surrounding AdminShell/CustomerShell chrome (sidebar, topbar, buttons)
    on window.print(), since Tailwind's print:hidden only ever hides
