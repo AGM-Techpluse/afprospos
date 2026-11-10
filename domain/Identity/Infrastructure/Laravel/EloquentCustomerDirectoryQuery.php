@@ -46,6 +46,8 @@ final class EloquentCustomerDirectoryQuery implements CustomerDirectoryQuery
             'phone' => $customer->phone,
             'notification_preferences' => $customer->notification_preferences ?? [],
             'marketing_opt_out' => $customer->marketing_opt_out,
+            'is_registered' => $customer->password !== null,
+            'created_at' => $customer->created_at->toIso8601String(),
         ];
     }
 

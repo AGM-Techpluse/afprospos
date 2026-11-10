@@ -31,7 +31,10 @@ interface CustomerDirectoryQuery
      * Notifications' NotificationEngine (NOTIF-BR-16/17) — additive, every
      * existing caller that only reads id/name/email/phone is unaffected.
      *
-     * @return array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool}|null
+     * `is_registered`/`created_at` were added for the Admin Customer detail
+     * page (same two fields `paginate()` already exposes) — also additive.
+     *
+     * @return array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool, is_registered: bool, created_at: string}|null
      */
     public function find(int $id): ?array;
 

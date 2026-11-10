@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../Components/Admin/AdminBadge';
+import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import AdminPagination from '../../../Components/Admin/AdminPagination';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
@@ -105,6 +106,11 @@ export default function CustomersIndex({ customers, filters }: CustomersIndexPro
                 mobileStatusField="is_registered"
                 mobileDetailFields={['phone', 'email', 'created_at']}
                 loading={loading}
+                renderActions={(row) => (
+                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/customers/${row.id}`)}>
+                        View
+                    </AdminButton>
+                )}
                 toolbar={
                     <>
                         <div className="relative flex-1 min-w-[160px] max-w-[260px]">

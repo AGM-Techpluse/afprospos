@@ -53,4 +53,24 @@ final class CustomerOrdersQuery
             'total' => $total,
         ];
     }
+
+    /**
+     * Backs the Admin Customer detail page's headline stats — completed
+     * sales only (an open checkout isn't spend yet), independent of
+     * paginate()'s current page.
+     *
+     * @return array{order_count: int, total_spent_minor: int}
+     */
+    public function summary(int $customerId): array
+    {
+        $totals = SaleRecord::query()
+            ->where('customer_id', $customerId)
+            ->selectRaw('count(*) as order_count, coalesce(sum(total_minor), 0) as total_spent_minor')
+            ->first();
+
+        return [
+            'order_count' => (int) $totals->order_count,
+            'total_spent_minor' => (int) $totals->total_spent_minor,
+        ];
+    }
 }

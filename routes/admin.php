@@ -498,6 +498,11 @@ Route::prefix('admin')
             ->get('/customers', [CustomerDirectoryController::class, 'index'])
             ->name('customers.index');
 
+        Route::middleware('permission:customers.view')
+            ->get('/customers/{customer}', [CustomerDirectoryController::class, 'show'])
+            ->whereNumber('customer')
+            ->name('customers.show');
+
         Route::middleware('permission:settings.view')
             ->get('/settings/appearance', [SiteAppearanceController::class, 'index'])
             ->name('settings.appearance.index');

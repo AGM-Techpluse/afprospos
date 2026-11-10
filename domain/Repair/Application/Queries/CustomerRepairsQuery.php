@@ -34,4 +34,10 @@ final class CustomerRepairsQuery
             'total' => $paginator->total(),
         ];
     }
+
+    /** Backs the Admin Customer detail page's headline stats — independent of paginate()'s current page. */
+    public function count(int $customerId): int
+    {
+        return RepairJobRecord::query()->where('customer_id', $customerId)->count();
+    }
 }
