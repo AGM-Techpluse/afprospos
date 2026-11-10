@@ -73,6 +73,7 @@ type OpenCheckout = {
 interface CheckoutPageProps {
     checkout: CheckoutView | null;
     pendingPaymentTransaction: PendingPaymentTransaction | null;
+    amountPaidMinor: number | null;
     openCheckouts: OpenCheckout[];
     shops: Shop[];
     productCategories: string[];
@@ -213,6 +214,7 @@ function RecentSales({ sales }: { sales: RecentSale[] }) {
 export default function SalesCheckout({
     checkout,
     pendingPaymentTransaction,
+    amountPaidMinor,
     openCheckouts,
     shops,
     recentSales,
@@ -227,7 +229,7 @@ export default function SalesCheckout({
     // poll just these props so every side sees the others' updates without a
     // manual refresh (which would also trip the "leave this checkout?" guard
     // below). Inertia pauses this automatically while the tab isn't visible.
-    usePoll(5000, { only: ['checkout', 'pendingPaymentTransaction'] });
+    usePoll(5000, { only: ['checkout', 'pendingPaymentTransaction', 'amountPaidMinor'] });
     const [inlineError, setInlineError] = useState<{ skuId: number; message: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isExpired, setIsExpired] = useState(false);
@@ -239,6 +241,76 @@ export default function SalesCheckout({
         payment_reference: pendingPaymentTransaction?.provider_reference ?? '',
         existing_payment_transaction_id: pendingPaymentTransaction ? String(pendingPaymentTransaction.id) : '',
     });
+
+    // 'full' keeps the existing single-method completeForm/`/complete` path
+    // completely unchanged for the common case — 'split' and 'partial' both
+    // go through the new `/collect-payment` endpoint instead, which is the
+    // same mechanism for either (one leg under the total vs. several legs
+    // reaching it), just a different number of rows.
+    const [paymentMode, setPaymentMode] = useState<'full' | 'split' | 'partial'>('full');
+    const remainingMinor = checkout ? checkout.total_minor - (amountPaidMinor ?? 0) : 0;
+    const collectForm = useForm<{ payments: { method: string; amount_naira: string; reference: string }[] }>({
+        payments: [
+            { method: 'cash', amount_naira: '', reference: '' },
+            { method: 'pos_terminal', amount_naira: '', reference: '' },
+        ],
+    });
+    const collectErrors = collectForm.errors as Record<string, string | undefined>;
+
+    function setPaymentLeg(index: number, patch: Partial<{ method: string; amount_naira: string; reference: string }>) {
+        collectForm.setData(
+            'payments',
+            collectForm.data.payments.map((leg, i) => (i === index ? { ...leg, ...patch } : leg)),
+        );
+    }
+
+    function addPaymentLeg() {
+        collectForm.setData('payments', [...collectForm.data.payments, { method: 'bank_transfer', amount_naira: '', reference: '' }]);
+    }
+
+    function removePaymentLeg(index: number) {
+        collectForm.setData('payments', collectForm.data.payments.filter((_, i) => i !== index));
+    }
+
+    function switchPaymentMode(mode: 'full' | 'split' | 'partial') {
+        setPaymentMode(mode);
+
+        if (mode === 'partial') {
+            collectForm.setData('payments', [
+                { method: collectForm.data.payments[0]?.method ?? 'cash', amount_naira: (remainingMinor / 100).toFixed(2), reference: '' },
+            ]);
+        } else if (mode === 'split' && collectForm.data.payments.length < 2) {
+            collectForm.setData('payments', [
+                { method: 'cash', amount_naira: '', reference: '' },
+                { method: 'pos_terminal', amount_naira: '', reference: '' },
+            ]);
+        }
+    }
+
+    function submitCollectPayment(e: FormEvent) {
+        e.preventDefault();
+
+        collectForm.transform((data) => ({
+            payments: data.payments
+                .filter((leg) => leg.amount_naira.trim() !== '')
+                .map((leg) => ({
+                    method: leg.method,
+                    amount_minor: Math.round(parseFloat(leg.amount_naira) * 100),
+                    reference: leg.reference.trim() || null,
+                })),
+        }));
+
+        collectForm.post(`/admin/sales/checkout/${checkout!.id}/collect-payment`, {
+            preserveState: (page) => Object.keys(page.props.errors ?? {}).length > 0,
+            onSuccess: () => {
+                setPaymentMode('full');
+                collectForm.setData('payments', [
+                    { method: 'cash', amount_naira: '', reference: '' },
+                    { method: 'pos_terminal', amount_naira: '', reference: '' },
+                ]);
+            },
+        });
+    }
 
     const itemCount = checkout?.items.length ?? 0;
 
@@ -540,23 +612,23 @@ export default function SalesCheckout({
                         </form>
                     ) : (
                         <div className="mb-3">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    disabled={locked}
-                                    onClick={() => setDiscountOpen(true)}
-                                    className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
-                                >
+                            {/* A plain colored-text link here used the dynamic site theme
+                                accent for its color — on a dark accent (this cart panel is
+                                itself dark), that's dark text on a dark background, invisible
+                                regardless of which color an admin picks. A real button with
+                                its own guaranteed-light background doesn't have that problem. */}
+                            <div className="flex items-center gap-2">
+                                <AdminButton type="button" variant="neutral" disabled={locked} onClick={() => setDiscountOpen(true)}>
                                     + Apply discount
-                                </button>
-                                <button
+                                </AdminButton>
+                                <AdminButton
                                     type="button"
+                                    variant="neutral"
                                     disabled={locked}
                                     onClick={() => router.visit(`/admin/warranty/trade-ins/create?checkout=${checkout.id}`)}
-                                    className="text-xs font-semibold text-admin-blue text-left disabled:text-white/40"
                                 >
                                     + Trade-in
-                                </button>
+                                </AdminButton>
                             </div>
 
                             {currentAdjustment && (
@@ -584,14 +656,37 @@ export default function SalesCheckout({
                         </div>
                     )}
 
-                    <form onSubmit={completeSale} className="border-t border-white/15 pt-3">
+                    {!pendingPaymentTransaction && (amountPaidMinor ?? 0) > 0 && (
+                        <div className="bg-ui-warning-soft text-ui-warning-text rounded-admin-button px-2 py-2 text-xs mt-3">
+                            {formatNaira(amountPaidMinor ?? 0)} of {formatNaira(checkout.total_minor)} paid — {formatNaira(remainingMinor)} remaining.
+                        </div>
+                    )}
+
+                    {!pendingPaymentTransaction && (
+                        <div className="flex items-center gap-3 mt-3 text-xs text-white/85">
+                            <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" checked={paymentMode === 'full'} onChange={() => switchPaymentMode('full')} />
+                                Pay in full
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" checked={paymentMode === 'split'} onChange={() => switchPaymentMode('split')} />
+                                Split payment
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" checked={paymentMode === 'partial'} onChange={() => switchPaymentMode('partial')} />
+                                Pay partial amount
+                            </label>
+                        </div>
+                    )}
+
+                    <form onSubmit={paymentMode === 'full' ? completeSale : submitCollectPayment} className="border-t border-white/15 pt-3 mt-2">
                         {pendingPaymentTransaction ? (
                             <div className="bg-admin-blue/10 border border-admin-blue/30 rounded-admin-button px-2 py-2 text-xs text-admin-text mb-2">
                                 Customer submitted a bank transfer
                                 {pendingPaymentTransaction.provider_reference ? ` (ref: ${pendingPaymentTransaction.provider_reference})` : ''} —
                                 confirming below will complete the sale against it.
                             </div>
-                        ) : (
+                        ) : paymentMode === 'full' ? (
                             <>
                                 <AdminSelect aria-label="Payment method" value={completeForm.data.payment_method} onChange={(e) => completeForm.setData('payment_method', e.target.value)} containerClassName="mb-2">
                                     {PAYMENT_METHODS.map((m) => (
@@ -610,6 +705,90 @@ export default function SalesCheckout({
                                     />
                                 )}
                             </>
+                        ) : paymentMode === 'split' ? (
+                            <div className="flex flex-col gap-1.5 mb-2">
+                                {collectForm.data.payments.map((leg, index) => (
+                                    <div key={index} className="flex items-center gap-1.5">
+                                        <AdminSelect
+                                            aria-label={`Method ${index + 1}`}
+                                            value={leg.method}
+                                            onChange={(e) => setPaymentLeg(index, { method: e.target.value })}
+                                            containerClassName="mb-0 flex-1"
+                                        >
+                                            {PAYMENT_METHODS.map((m) => (
+                                                <option key={m.value} value={m.value}>
+                                                    {m.label}
+                                                </option>
+                                            ))}
+                                        </AdminSelect>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="₦"
+                                            aria-label={`Amount ${index + 1}`}
+                                            value={leg.amount_naira}
+                                            onChange={(e) => setPaymentLeg(index, { amount_naira: e.target.value })}
+                                            className="w-20 border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
+                                        />
+                                        {leg.method !== 'cash' && (
+                                            <input
+                                                type="text"
+                                                placeholder="Ref"
+                                                aria-label={`Reference ${index + 1}`}
+                                                value={leg.reference}
+                                                onChange={(e) => setPaymentLeg(index, { reference: e.target.value })}
+                                                className="w-16 border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
+                                            />
+                                        )}
+                                        {collectForm.data.payments.length > 2 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removePaymentLeg(index)}
+                                                aria-label={`Remove method ${index + 1}`}
+                                                className="text-white/70 hover:text-white shrink-0"
+                                            >
+                                                <Icon name="x" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button type="button" onClick={addPaymentLeg} className="text-xs font-semibold text-white self-start underline">
+                                    + Add another method
+                                </button>
+                                {collectErrors.payments && <p className="text-xs text-admin-red">{collectErrors.payments}</p>}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1.5 mb-2">
+                                <AdminSelect
+                                    aria-label="Payment method"
+                                    value={collectForm.data.payments[0]?.method ?? 'cash'}
+                                    onChange={(e) => setPaymentLeg(0, { method: e.target.value })}
+                                    containerClassName="mb-0"
+                                >
+                                    {PAYMENT_METHODS.map((m) => (
+                                        <option key={m.value} value={m.value}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </AdminSelect>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="Amount to collect now (₦)"
+                                    value={collectForm.data.payments[0]?.amount_naira ?? ''}
+                                    onChange={(e) => setPaymentLeg(0, { amount_naira: e.target.value })}
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
+                                />
+                                {collectForm.data.payments[0]?.method !== 'cash' && (
+                                    <input
+                                        type="text"
+                                        placeholder="Reference (terminal/transfer ID)"
+                                        value={collectForm.data.payments[0]?.reference ?? ''}
+                                        onChange={(e) => setPaymentLeg(0, { reference: e.target.value })}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-2 py-1.5 text-xs bg-white"
+                                    />
+                                )}
+                            </div>
                         )}
                         {completeForm.errors.payment_method && (
                             <p className="text-xs text-admin-red mb-2">{completeForm.errors.payment_method}</p>
@@ -618,10 +797,10 @@ export default function SalesCheckout({
                         <div className="flex items-center gap-2">
                             <AdminButton
                                 type="submit"
-                                isLoading={completeForm.processing}
+                                isLoading={paymentMode === 'full' ? completeForm.processing : collectForm.processing}
                                 disabled={checkout.items.length === 0 || locked || hasPendingDiscount}
                             >
-                                Complete sale
+                                {(amountPaidMinor ?? 0) > 0 ? 'Collect remaining balance' : paymentMode === 'partial' ? 'Collect payment' : 'Complete sale'}
                             </AdminButton>
                             <AdminButton type="button" variant="danger-solid" onClick={cancelCheckout}>
                                 Cancel checkout

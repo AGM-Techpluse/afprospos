@@ -28,4 +28,14 @@ interface PaymentTransactionLookup
      * @return array{id: int, status: string, method: string, amount_minor: int, provider_reference: ?string}|null
      */
     public function latestTransactionForPurpose(string $payableType, int $payableId, string $purpose): ?array;
+
+    /**
+     * Every confirmed transaction of one purpose for a payable, oldest first — lets a
+     * caller sum "how much has actually been collected so far" across one or more
+     * payments (a split paid at once, or several partial payments collected over
+     * time), the same way Repair sums its own down-payment/final-payment rows.
+     *
+     * @return array<int, array{id: int, method: string, amount_minor: int}>
+     */
+    public function confirmedTransactionsFor(string $payableType, int $payableId, string $purpose): array;
 }

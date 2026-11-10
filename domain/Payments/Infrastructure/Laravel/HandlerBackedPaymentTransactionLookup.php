@@ -50,6 +50,22 @@ final class HandlerBackedPaymentTransactionLookup implements PaymentTransactionL
         return $this->toArray($matching[0]);
     }
 
+    public function confirmedTransactionsFor(string $payableType, int $payableId, string $purpose): array
+    {
+        $matching = array_values(array_filter(
+            $this->transactions->findByPayable(new PayableType($payableType), $payableId),
+            static fn (PaymentTransaction $transaction): bool => $transaction->purpose()->value === $purpose && $transaction->status() === 'confirmed',
+        ));
+
+        usort($matching, static fn (PaymentTransaction $a, PaymentTransaction $b): int => ($a->id()?->value ?? 0) <=> ($b->id()?->value ?? 0));
+
+        return array_map(static fn (PaymentTransaction $transaction): array => [
+            'id' => $transaction->id()?->value ?? 0,
+            'method' => $transaction->method()->value,
+            'amount_minor' => $transaction->amount()->minor,
+        ], $matching);
+    }
+
     /** @return array{id: int, status: string, method: string, amount_minor: int, provider_reference: ?string} */
     private function toArray(PaymentTransaction $latest): array
     {

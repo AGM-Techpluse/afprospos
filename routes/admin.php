@@ -428,6 +428,11 @@ Route::prefix('admin')
             ->whereNumber('checkout')
             ->name('sales.checkout.complete');
 
+        Route::middleware('permission:sales.create')
+            ->post('/sales/checkout/{checkout}/collect-payment', [SalesController::class, 'collectPayment'])
+            ->whereNumber('checkout')
+            ->name('sales.checkout.collect-payment');
+
         Route::middleware('permission:sales.cancel')
             ->post('/sales/checkout/{checkout}/cancel', [SalesController::class, 'cancel'])
             ->whereNumber('checkout')

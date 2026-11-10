@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\AddCheckoutItemRequest;
 use App\Http\Requests\Admin\ApplyDiscountRequest;
+use App\Http\Requests\Admin\CollectCheckoutPaymentRequest;
 use App\Http\Requests\Admin\CompleteSaleRequest;
 use App\Http\Requests\Admin\CreateCheckoutRequest;
 use App\Http\Requests\Admin\UpdateCheckoutItemQuantityRequest;
@@ -20,6 +21,7 @@ use Domain\Sales\Application\Commands\AddCheckoutItemCommand;
 use Domain\Sales\Application\Commands\ApplyDiscountCommand;
 use Domain\Sales\Application\Commands\ApproveCheckoutDiscountCommand;
 use Domain\Sales\Application\Commands\CancelCheckoutCommand;
+use Domain\Sales\Application\Commands\CollectCheckoutPaymentCommand;
 use Domain\Sales\Application\Commands\CreateCheckoutCommand;
 use Domain\Sales\Application\Commands\CreateSaleFromPaidCheckoutCommand;
 use Domain\Sales\Application\Commands\RemoveCheckoutItemCommand;
@@ -28,6 +30,7 @@ use Domain\Sales\Application\Handlers\AddCheckoutItemHandler;
 use Domain\Sales\Application\Handlers\ApplyDiscountHandler;
 use Domain\Sales\Application\Handlers\ApproveCheckoutDiscountHandler;
 use Domain\Sales\Application\Handlers\CancelCheckoutHandler;
+use Domain\Sales\Application\Handlers\CollectCheckoutPaymentHandler;
 use Domain\Sales\Application\Handlers\CreateCheckoutHandler;
 use Domain\Sales\Application\Handlers\CreateSaleFromPaidCheckoutHandler;
 use Domain\Sales\Application\Handlers\RemoveCheckoutItemHandler;
@@ -40,6 +43,7 @@ use Domain\Sales\Domain\Exceptions\CheckoutReservationExpired;
 use Domain\Sales\Domain\Exceptions\DiscountNotApproved;
 use Domain\Sales\Domain\Exceptions\NoAdjustmentToApprove;
 use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
+use Domain\Sales\Domain\Exceptions\SplitPaymentLegNotImmediatelyConfirmable;
 use Domain\Sales\Domain\Exceptions\WarehouseCannotSell;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\AccessibleShopsQuery;
@@ -73,6 +77,7 @@ final class SalesController
         private readonly ApproveCheckoutDiscountHandler $approveDiscount,
         private readonly CancelCheckoutHandler $cancelCheckout,
         private readonly CreateSaleFromPaidCheckoutHandler $completeSale,
+        private readonly CollectCheckoutPaymentHandler $collectPayment,
     ) {}
 
     public function index(Request $request): Response
@@ -154,6 +159,17 @@ final class SalesController
             'checkout' => $checkout,
             'pendingPaymentTransaction' => $checkout !== null
                 ? $this->paymentLookup->pendingTransactionFor('sales_checkout', $checkout['id'])
+                : null,
+            // Sum of every already-confirmed payment leg for this checkout
+            // (a prior split and/or part payment) — null for the common
+            // case (no part payment yet) so the frontend only shows an
+            // outstanding-balance banner when there's actually a balance
+            // carried over from an earlier submission.
+            'amountPaidMinor' => $checkout !== null
+                ? array_sum(array_column(
+                    $this->paymentLookup->confirmedTransactionsFor('sales_checkout', $checkout['id'], 'sale_payment'),
+                    'amount_minor',
+                ))
                 : null,
             'openCheckouts' => $openCheckouts,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
@@ -350,6 +366,49 @@ final class SalesController
         $this->flashSuccess('Sale completed');
 
         return redirect()->route('admin.sales.receipt', ['sale' => $saleId]);
+    }
+
+    /**
+     * Covers both split payment (2+ methods submitted together, reaching
+     * the full total at once) and part payment (one leg for less than the
+     * total, the checkout staying open for a later submission to finish
+     * it) — see CollectCheckoutPaymentHandler. `complete()` above stays the
+     * single-method-paid-in-full path; this is the alternative for the two
+     * cases it can't express.
+     */
+    public function collectPayment(CollectCheckoutPaymentRequest $request, int $checkout): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $checkoutData = $this->checkoutDetail->find($checkout);
+
+        abort_if($checkoutData === null, 404);
+        abort_unless($actor->canAccessShop((int) $checkoutData['shop_id']), 403);
+
+        $shop = $this->shops->find($checkoutData['shop_id']);
+
+        abort_if($shop === null, 404);
+
+        try {
+            $result = $this->collectPayment->handle(new CollectCheckoutPaymentCommand(
+                checkoutId: $checkout,
+                payments: $request->payments(),
+                confirmedByStaffId: $actor->staffId->value,
+                shopCode: $shop['sku_prefix_code'],
+                existingPaymentTransactionId: $request->integer('existing_payment_transaction_id') ?: null,
+            ));
+        } catch (CheckoutReservationExpired|CheckoutNotOpen|DiscountNotApproved|SplitPaymentLegNotImmediatelyConfirmable $exception) {
+            throw ValidationException::withMessages(['payments' => $exception->getMessage()]);
+        }
+
+        if ($result['sale_id'] !== null) {
+            $this->flashSuccess('Sale completed');
+
+            return redirect()->route('admin.sales.receipt', ['sale' => $result['sale_id']]);
+        }
+
+        $this->flashInfo('Payment recorded', '₦'.number_format($result['remaining_minor'] / 100).' still remaining on this checkout.');
+
+        return redirect()->route('admin.sales.checkout', ['checkout' => $checkout]);
     }
 
     /**
