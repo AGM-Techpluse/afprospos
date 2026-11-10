@@ -1,3 +1,104 @@
+# AfprosPos
+
+## Local development
+
+Run the application development processes:
+
+```powershell
+composer run dev
+```
+
+The queue and scheduler are separate long-running workers. Keep each command in its own terminal when the feature being tested depends on background work.
+
+## Queue worker
+
+Run continuously and process jobs as they arrive:
+
+```powershell
+php artisan queue:work
+```
+
+Process everything currently queued, then exit:
+
+```powershell
+php artisan queue:work --stop-when-empty
+```
+
+Restart a long-running queue worker after deploying code:
+
+```powershell
+php artisan queue:restart
+```
+
+Inspect or retry failed jobs:
+
+```powershell
+php artisan queue:failed
+php artisan queue:retry all
+```
+
+## Scheduler worker
+
+Run the scheduler continuously during local development:
+
+```powershell
+php artisan schedule:work
+```
+
+Run one scheduler tick and exit. This only executes tasks that are due at that moment:
+
+```powershell
+php artisan schedule:run
+```
+
+See all scheduled tasks and their next run times:
+
+```powershell
+php artisan schedule:list
+```
+
+## Checkout expiry
+
+Expire overdue checkouts immediately and release their reserved inventory:
+
+```powershell
+php artisan afprospos:sales:expire-checkouts
+```
+
+Process a larger batch when necessary:
+
+```powershell
+php artisan afprospos:sales:expire-checkouts --limit=500
+```
+
+The scheduler runs checkout expiry every minute. Therefore, the normal continuous command is `php artisan schedule:work`; the direct command above is the reliable one-off command when you need expiry immediately.
+
+## Other scheduled maintenance
+
+Run any maintenance task directly without waiting for its schedule:
+
+```powershell
+# Repair authorization and down-payment deadlines
+php artisan afprospos:repairs:expire-authorizations
+
+# Collection deadlines, abandoned devices, and storage fees
+php artisan afprospos:collection:process-deadlines
+
+# Retry eligible failed notification deliveries
+php artisan afprospos:notifications:retry-failed
+```
+
+Current schedule:
+
+| Task | Frequency |
+| --- | --- |
+| Checkout expiry | Every minute |
+| Repair authorization expiry | Every 15 minutes |
+| Collection deadline processing | Daily |
+| Failed notification retry | Every 10 minutes |
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
