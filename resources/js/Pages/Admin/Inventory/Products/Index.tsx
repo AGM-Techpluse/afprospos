@@ -71,10 +71,12 @@ const COLUMNS: DataTableColumn<ProductRow>[] = [
                 <AdminBadge status={row.variant_count > 1 ? 'info' : 'neutral'}>
                     {row.variant_count > 1 ? `Variant ${row.variant_position} of ${row.variant_count}` : 'Single SKU'}
                 </AdminBadge>
-                <OverflowMarquee
-                    text={row.variant_label || (row.variant_count > 1 ? 'No attributes set' : 'Base configuration')}
-                    className="text-admin-xs text-admin-text2"
-                />
+                <span className="block w-full min-w-0">
+                    <OverflowMarquee
+                        text={row.variant_label || (row.variant_count > 1 ? 'No attributes set' : 'Base configuration')}
+                        className="text-admin-xs text-admin-text2"
+                    />
+                </span>
                 <span className="text-admin-xs font-mono text-admin-text3">{row.sku_code}</span>
             </span>
         ),
