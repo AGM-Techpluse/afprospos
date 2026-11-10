@@ -83,7 +83,9 @@ export default function DeviceCatalogBrandShow({ deviceBrand }: { deviceBrand: D
                                         <Icon name="x" />
                                     </button>
                                 </div>
-                                {expandedModelId === model.id && <ModelFaultsEditor model={model} deviceTypeLabel={deviceBrand.device_type.label} />}
+                                {expandedModelId === model.id && (
+                                    <ModelFaultsEditor model={model} deviceTypeId={deviceBrand.device_type.id} deviceTypeLabel={deviceBrand.device_type.label} />
+                                )}
                             </li>
                         ))}
                     </ul>

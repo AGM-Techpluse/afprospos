@@ -6,12 +6,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\AttachSuggestedPartRequest;
+use App\Http\Requests\Admin\Repairs\DeviceCatalog\BulkAddDeviceProblemTagsRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceBrandRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceModelRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceProblemTagRequest;
 use App\Http\Requests\Admin\Repairs\DeviceCatalog\SaveDeviceTypeRequest;
 use Domain\Inventory\Application\Contracts\InventoryCatalogQuery;
 use Domain\Repair\Application\Commands\AttachSuggestedPartCommand;
+use Domain\Repair\Application\Commands\BulkAddDeviceProblemTagsCommand;
 use Domain\Repair\Application\Commands\CreateDeviceBrandCommand;
 use Domain\Repair\Application\Commands\CreateDeviceModelCommand;
 use Domain\Repair\Application\Commands\CreateDeviceProblemTagCommand;
@@ -26,6 +28,7 @@ use Domain\Repair\Application\Commands\UpdateDeviceModelCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceProblemTagCommand;
 use Domain\Repair\Application\Commands\UpdateDeviceTypeCommand;
 use Domain\Repair\Application\Handlers\AttachSuggestedPartHandler;
+use Domain\Repair\Application\Handlers\BulkAddDeviceProblemTagsHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceBrandHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceModelHandler;
 use Domain\Repair\Application\Handlers\CreateDeviceProblemTagHandler;
@@ -67,6 +70,7 @@ final class DeviceCatalogController
         private readonly CreateDeviceProblemTagHandler $createProblemTag,
         private readonly UpdateDeviceProblemTagHandler $updateProblemTag,
         private readonly DeleteDeviceProblemTagHandler $deleteProblemTag,
+        private readonly BulkAddDeviceProblemTagsHandler $bulkAddProblemTags,
         private readonly AttachSuggestedPartHandler $attachSuggestedPart,
         private readonly DetachSuggestedPartHandler $detachSuggestedPart,
     ) {}
@@ -271,6 +275,33 @@ final class DeviceCatalogController
         $this->deleteProblemTag->handle(new DeleteDeviceProblemTagCommand($tag, $actor->staffId->value));
 
         $this->flashSuccess('Problem tag deleted');
+
+        return redirect()->back();
+    }
+
+    /** Backs the model fault editor's "choose from existing faults" picker — every distinct label already used under this device type, for bulk cloning onto a model. */
+    public function suggestedProblemTagLabels(Request $request): JsonResponse
+    {
+        return response()->json([
+            'labels' => $this->catalog->suggestedLabelsForType(
+                $request->integer('device_type_id'),
+                $request->string('term')->toString() ?: null,
+            ),
+        ]);
+    }
+
+    public function bulkStoreProblemTags(BulkAddDeviceProblemTagsRequest $request): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $result = $this->bulkAddProblemTags->handle(new BulkAddDeviceProblemTagsCommand(
+            deviceModelId: $request->integer('device_model_id'),
+            labels: $request->input('labels'),
+            startingSortOrder: $request->integer('starting_sort_order', 0),
+            createdByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess(count($result['created']).' fault(s) added'.($result['skipped'] !== [] ? ', '.count($result['skipped']).' already present' : ''));
 
         return redirect()->back();
     }

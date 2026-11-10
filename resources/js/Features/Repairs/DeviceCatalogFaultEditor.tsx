@@ -151,6 +151,123 @@ function ProblemTagCommissionInput({ problemTag }: { problemTag: DeviceProblemTa
 }
 
 /**
+ * Lets a model pick up fault labels already typed for a sibling model (or
+ * the type's own defaults) under the same device type, instead of retyping
+ * them — bulk-clones the selected labels onto this model in one request.
+ */
+function ExistingFaultsPicker({
+    deviceTypeId,
+    deviceModelId,
+    existingLabels,
+    startingSortOrder,
+}: {
+    deviceTypeId: number;
+    deviceModelId: number;
+    existingLabels: string[];
+    startingSortOrder: number;
+}) {
+    const [open, setOpen] = useState(false);
+    const [term, setTerm] = useState('');
+    const [labels, setLabels] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [submitting, setSubmitting] = useState(false);
+
+    function load(searchTerm: string) {
+        setLoading(true);
+        fetch(
+            `/admin/settings/device-catalog/problem-tags/suggestions?device_type_id=${deviceTypeId}&term=${encodeURIComponent(searchTerm)}`,
+            { credentials: 'same-origin' },
+        )
+            .then((response) => response.json())
+            .then((json: { labels: string[] }) => setLabels(json.labels))
+            .finally(() => setLoading(false));
+    }
+
+    function toggleOpen() {
+        if (!open) load(term);
+        setOpen(!open);
+    }
+
+    function search(value: string) {
+        setTerm(value);
+        load(value);
+    }
+
+    function toggleLabel(label: string) {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(label)) {
+                next.delete(label);
+            } else {
+                next.add(label);
+            }
+            return next;
+        });
+    }
+
+    function submit() {
+        if (selected.size === 0) return;
+        setSubmitting(true);
+        router.post(
+            '/admin/settings/device-catalog/problem-tags/bulk',
+            { device_model_id: deviceModelId, labels: Array.from(selected), starting_sort_order: startingSortOrder },
+            {
+                preserveScroll: true,
+                showProgress: false,
+                onSuccess: () => { setSelected(new Set()); setOpen(false); setTerm(''); },
+                onFinish: () => setSubmitting(false),
+            },
+        );
+    }
+
+    const existingLower = new Set(existingLabels.map((label) => label.toLowerCase()));
+    const selectable = labels.filter((label) => !existingLower.has(label.toLowerCase()));
+
+    if (!open) {
+        return (
+            <button type="button" onClick={toggleOpen} className="text-xs text-admin-blue hover:underline mt-1.5">
+                + Choose from existing faults
+            </button>
+        );
+    }
+
+    return (
+        <div className="mt-1.5 border border-admin-border rounded-admin-card p-2.5 max-w-xs">
+            <input
+                type="text"
+                value={term}
+                onChange={(e) => search(e.target.value)}
+                placeholder="Search faults…"
+                className={`${inputClass} w-full mb-2`}
+            />
+            <div className="max-h-40 overflow-y-auto flex flex-col gap-1 mb-2">
+                {loading ? (
+                    <p className="text-xs text-admin-text3">Loading…</p>
+                ) : selectable.length === 0 ? (
+                    <p className="text-xs text-admin-text3">No other faults to choose from.</p>
+                ) : (
+                    selectable.map((label) => (
+                        <label key={label} className="flex items-center gap-1.5 text-xs text-admin-text">
+                            <input type="checkbox" checked={selected.has(label)} onChange={() => toggleLabel(label)} />
+                            {label}
+                        </label>
+                    ))
+                )}
+            </div>
+            <div className="flex items-center gap-1.5">
+                <AdminButton type="button" variant="neutral" onClick={submit} disabled={selected.size === 0 || submitting}>
+                    Add {selected.size > 0 ? selected.size : ''} selected
+                </AdminButton>
+                <button type="button" onClick={() => setOpen(false)} className="text-xs text-admin-text3 hover:text-admin-text">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
  * Editable list of fixable-fault tags, reused for both a device type's own
  * (fallback/default) tags and a specific model's override tags — only the
  * `scope` posted to the create endpoint differs.
@@ -218,11 +335,17 @@ export function ProblemTagList({
 }
 
 /** A model's own fixable faults, or (while it has none of its own) its device type's fallback list shown read-only until an override is added. */
-export function ModelFaultsEditor({ model, deviceTypeLabel }: { model: DeviceModel; deviceTypeLabel: string }) {
+export function ModelFaultsEditor({ model, deviceTypeId, deviceTypeLabel }: { model: DeviceModel; deviceTypeId: number; deviceTypeLabel: string }) {
     if (model.has_model_specific_faults) {
         return (
             <div className="mt-2 pl-3 border-l-2 border-admin-border">
                 <ProblemTagList tags={model.fixable_faults} scope={{ device_model_id: model.id }} addPlaceholder="Add another override…" />
+                <ExistingFaultsPicker
+                    deviceTypeId={deviceTypeId}
+                    deviceModelId={model.id}
+                    existingLabels={model.fixable_faults.map((tag) => tag.label)}
+                    startingSortOrder={model.fixable_faults.length}
+                />
             </div>
         );
     }
@@ -243,6 +366,12 @@ export function ModelFaultsEditor({ model, deviceTypeLabel }: { model: DeviceMod
                 </ul>
             )}
             <ProblemTagList tags={[]} scope={{ device_model_id: model.id }} addPlaceholder="Add a model-specific fault…" />
+            <ExistingFaultsPicker
+                deviceTypeId={deviceTypeId}
+                deviceModelId={model.id}
+                existingLabels={[]}
+                startingSortOrder={0}
+            />
         </div>
     );
 }

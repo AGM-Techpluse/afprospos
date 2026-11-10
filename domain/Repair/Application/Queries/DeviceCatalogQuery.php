@@ -344,6 +344,26 @@ final class DeviceCatalogQuery
         ])->values()->all();
     }
 
+    /**
+     * Every distinct fault label already used anywhere under a device type —
+     * its own type-level defaults plus every model's own overrides — so a
+     * model that needs a fault someone already typed for a sibling model
+     * doesn't have to retype it. Not scoped by model: the caller filters out
+     * labels the target model already has.
+     *
+     * @return array<int, string>
+     */
+    public function suggestedLabelsForType(int $deviceTypeId, ?string $term = null): array
+    {
+        return DeviceProblemTagRecord::query()
+            ->where('device_type_id', $deviceTypeId)
+            ->when($term !== null && $term !== '', fn ($query) => $query->where('label', 'like', "%{$term}%"))
+            ->distinct()
+            ->orderBy('label')
+            ->pluck('label')
+            ->all();
+    }
+
     /** @return array{0: Collection<int, Collection<int, DeviceProblemTagRecord>>, 1: Collection<int, Collection<int, DeviceProblemTagRecord>>} */
     private function problemTagsByTypeAndModel(): array
     {

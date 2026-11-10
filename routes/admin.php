@@ -652,6 +652,14 @@ Route::prefix('admin')
             ->name('settings.device-catalog.problem-tags.store');
 
         Route::middleware('permission:repairs.manage')
+            ->get('/settings/device-catalog/problem-tags/suggestions', [DeviceCatalogController::class, 'suggestedProblemTagLabels'])
+            ->name('settings.device-catalog.problem-tags.suggestions');
+
+        Route::middleware('permission:repairs.manage')
+            ->post('/settings/device-catalog/problem-tags/bulk', [DeviceCatalogController::class, 'bulkStoreProblemTags'])
+            ->name('settings.device-catalog.problem-tags.bulk-store');
+
+        Route::middleware('permission:repairs.manage')
             ->put('/settings/device-catalog/problem-tags/{tag}', [DeviceCatalogController::class, 'updateProblemTag'])
             ->whereNumber('tag')
             ->name('settings.device-catalog.problem-tags.update');
