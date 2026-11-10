@@ -108,7 +108,7 @@ final class SalesHistoryQuery
         ];
     }
 
-    /** Backs the Admin Dashboard's "Recent sales" list. */
+    /** Backs the Admin Dashboard's "Recent sales" list — leads with who bought it, not the invoice number, which reads as meaningless noise next to an amount. */
     public function recent(?int $shopId, int $limit = 5): array
     {
         $query = SaleRecord::query();
@@ -117,17 +117,19 @@ final class SalesHistoryQuery
             $query->where('shop_id', $shopId);
         }
 
-        return $query->orderByDesc('created_at')
-            ->limit($limit)
-            ->get()
-            ->map(static fn (SaleRecord $sale): array => [
-                'id' => $sale->id,
-                'shop_id' => $sale->shop_id,
-                'customer_id' => $sale->customer_id,
-                'total_minor' => $sale->total_minor,
-                'payment_method' => $sale->payment_method,
-                'invoice_number' => $sale->invoice_number,
-                'created_at' => $sale->created_at->toIso8601String(),
-            ])->all();
+        $sales = $query->orderByDesc('created_at')->limit($limit)->get();
+        $customers = $this->customers->findMany($sales->pluck('customer_id')->filter()->unique()->all());
+
+        return $sales->map(static fn (SaleRecord $sale): array => [
+            'id' => $sale->id,
+            'shop_id' => $sale->shop_id,
+            'customer_id' => $sale->customer_id,
+            'customer_name' => $sale->customer_id !== null ? ($customers[$sale->customer_id]['name'] ?? null) : null,
+            'walk_in_name' => $sale->walk_in_name,
+            'total_minor' => $sale->total_minor,
+            'payment_method' => $sale->payment_method,
+            'invoice_number' => $sale->invoice_number,
+            'created_at' => $sale->created_at->toIso8601String(),
+        ])->all();
     }
 }

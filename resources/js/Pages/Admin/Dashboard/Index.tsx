@@ -9,6 +9,7 @@ import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
 import Icon from '../../../Components/Icons/Icon';
 import RevenueChart, { RevenuePoint } from '../../../Features/Shop/RevenueChart';
 import RevenueBreakdownChart, { RevenueBreakdownSlice } from '../../../Features/Shop/RevenueBreakdownChart';
+import StockHealthChart from '../../../Features/Inventory/StockHealthChart';
 import { formatNaira } from '../../../lib/money';
 
 type RepairRow = {
@@ -21,6 +22,9 @@ type RepairRow = {
 
 type SaleRow = {
     id: number;
+    customer_id: number | null;
+    customer_name: string | null;
+    walk_in_name: string | null;
     invoice_number: string;
     total_minor: number;
     payment_method: string;
@@ -117,38 +121,27 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
                                         <h2 className="text-sm font-semibold text-white">Inventory health</h2>
                                         <AdminBadge status={health.status}>{health.label}</AdminBadge>
                                     </div>
-                                    <div className="grid grid-cols-3 divide-x divide-white/10 border border-white/10 rounded-admin-button">
-                                        <div className="text-center py-2.5 px-1">
-                                            <div className="text-admin-lg font-bold text-white">{stats.inventoryHealth.total_skus}</div>
-                                            <div className="text-xs text-white/70">Total SKUs</div>
-                                        </div>
-                                        <div className="text-center py-2.5 px-1">
-                                            <div className="text-admin-lg font-bold text-admin-yellow">{stats.inventoryHealth.low_stock_count}</div>
-                                            <div className="text-xs text-white/70">Low stock</div>
-                                        </div>
-                                        <div className="text-center py-2.5 px-1">
-                                            <div className="text-admin-lg font-bold text-admin-red">{stats.inventoryHealth.out_of_stock_count}</div>
-                                            <div className="text-xs text-white/70">Out of stock</div>
-                                        </div>
+                                    <div className="border border-white/10 rounded-admin-button py-3 px-2.5">
+                                        <StockHealthChart counts={stats.inventoryHealth} />
                                     </div>
-                                    <div className="flex flex-col gap-1.5 mt-3">
+                                    <div className="flex flex-row gap-1.5 mt-3">
                                         <AdminButton
                                             type="button"
-                                            variant="dark-ghost"
+                                            variant="neutral"
                                             size="sm"
                                             onClick={() => router.visit('/admin/inventory/stock/low')}
-                                            className="w-full justify-start text-admin-blue"
+                                            className="flex-1 !text-admin-blue"
                                         >
-                                            View low-stock items →
+                                            Low-stock items →
                                         </AdminButton>
                                         <AdminButton
                                             type="button"
-                                            variant="dark-ghost"
+                                            variant="neutral"
                                             size="sm"
                                             onClick={() => router.visit('/admin/inventory/stock/out-of-stock')}
-                                            className="w-full justify-start text-admin-red"
+                                            className="flex-1 !text-admin-red"
                                         >
-                                            View out-of-stock items →
+                                            Out-of-stock items →
                                         </AdminButton>
                                     </div>
                                 </div>
@@ -293,7 +286,9 @@ export default function Dashboard({ quickActions, stats, recentRepairs, recentSa
                                                 className="flex items-center justify-between gap-2 py-2.5 cursor-pointer"
                                                 onClick={() => router.visit(`/admin/sales/${sale.id}`)}
                                             >
-                                                <span className="text-sm text-admin-text truncate">{sale.invoice_number}</span>
+                                                <span className="text-sm text-admin-text truncate">
+                                                    {sale.customer_id ? (sale.customer_name ?? 'Customer') : (sale.walk_in_name ?? 'Walk-in')}
+                                                </span>
                                                 <span className="text-sm font-mono text-admin-text">{formatNaira(sale.total_minor)}</span>
                                             </li>
                                         ))}
