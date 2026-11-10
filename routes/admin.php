@@ -193,6 +193,16 @@ Route::prefix('admin')
             ->whereNumber('shop')
             ->name('shops.update');
 
+        Route::middleware('permission:shops.edit')
+            ->post('/shops/{shop}/deactivate', [ShopController::class, 'deactivate'])
+            ->whereNumber('shop')
+            ->name('shops.deactivate');
+
+        Route::middleware('permission:shops.edit')
+            ->post('/shops/{shop}/activate', [ShopController::class, 'activate'])
+            ->whereNumber('shop')
+            ->name('shops.activate');
+
         // Not permission-gated: any authenticated staff member may switch
         // among shops they already hold an active grant for (or, for the
         // owner, any active shop). The actual scope check happens inside

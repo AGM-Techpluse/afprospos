@@ -77,4 +77,9 @@ final class EloquentShopRepository implements ShopRepository
             'is_warehouse' => $isWarehouse,
         ]);
     }
+
+    public function save(Shop $shop): void
+    {
+        ShopRecord::query()->whereKey($shop->id()->value)->update(['status' => $shop->status()]);
+    }
 }

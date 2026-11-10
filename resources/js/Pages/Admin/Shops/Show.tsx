@@ -39,9 +39,19 @@ export default function ShopShow({ shop, analytics }: { shop: Shop; analytics: S
                 backHref="/admin/shops"
                 backLabel="Back to shops"
                 actions={
-                    <AdminButton variant="neutral" onClick={() => router.visit(`/admin/shops/${shop.id}/edit`)}>
-                        Edit
-                    </AdminButton>
+                    <>
+                        <AdminButton
+                            variant="neutral"
+                            onClick={() =>
+                                router.post(`/admin/shops/${shop.id}/${shop.status === 'active' ? 'deactivate' : 'activate'}`, {}, { preserveScroll: true })
+                            }
+                        >
+                            {shop.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </AdminButton>
+                        <AdminButton variant="neutral" onClick={() => router.visit(`/admin/shops/${shop.id}/edit`)}>
+                            Edit
+                        </AdminButton>
+                    </>
                 }
             />
 

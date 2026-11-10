@@ -8,10 +8,14 @@ use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\Admin\CreateShopRequest;
 use App\Http\Requests\Admin\UpdateShopRequest;
 use Domain\Shared\Application\DTOs\ActorContext;
+use Domain\Shop\Application\Commands\ActivateShopCommand;
 use Domain\Shop\Application\Commands\CreateShopCommand;
+use Domain\Shop\Application\Commands\DeactivateShopCommand;
 use Domain\Shop\Application\Commands\SwitchActiveShopCommand;
 use Domain\Shop\Application\Commands\UpdateShopCommand;
+use Domain\Shop\Application\Handlers\ActivateShopHandler;
 use Domain\Shop\Application\Handlers\CreateShopHandler;
+use Domain\Shop\Application\Handlers\DeactivateShopHandler;
 use Domain\Shop\Application\Handlers\SwitchActiveShopHandler;
 use Domain\Shop\Application\Handlers\UpdateShopHandler;
 use Domain\Shop\Application\Queries\ShopAnalyticsQuery;
@@ -40,6 +44,8 @@ final class ShopController
         private readonly CreateShopHandler $createShop,
         private readonly UpdateShopHandler $updateShop,
         private readonly SwitchActiveShopHandler $switchShop,
+        private readonly DeactivateShopHandler $deactivateShop,
+        private readonly ActivateShopHandler $activateShop,
     ) {}
 
     public function index(Request $request): Response
@@ -131,6 +137,34 @@ final class ShopController
         $this->flashSuccess('Shop created');
 
         return redirect()->route('admin.shops.index');
+    }
+
+    public function deactivate(int $shop): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->deactivateShop->handle(new DeactivateShopCommand(
+            shopId: $shop,
+            deactivatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Shop deactivated');
+
+        return redirect()->route('admin.shops.show', $shop);
+    }
+
+    public function activate(int $shop): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->activateShop->handle(new ActivateShopCommand(
+            shopId: $shop,
+            activatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Shop activated');
+
+        return redirect()->route('admin.shops.show', $shop);
     }
 
     public function switch(Request $request): RedirectResponse

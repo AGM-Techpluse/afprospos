@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Domain\Shop\Domain\Entities;
 
 use Domain\Shared\Domain\ValueObjects\ShopId;
+use Domain\Shop\Domain\Exceptions\ShopAlreadyActive;
+use Domain\Shop\Domain\Exceptions\ShopAlreadyDeactivated;
 
 final class Shop
 {
@@ -12,7 +14,7 @@ final class Shop
         private readonly ShopId $id,
         private readonly string $name,
         private readonly string $skuPrefixCode,
-        private readonly string $status,
+        private string $status,
     ) {}
 
     public static function reconstitute(ShopId $id, string $name, string $skuPrefixCode, string $status): self
@@ -38,5 +40,29 @@ final class Shop
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function status(): string
+    {
+        return $this->status;
+    }
+
+    /** The caller (Handler) is responsible for auditing this — this method only enforces the state-transition invariant itself. */
+    public function deactivate(): void
+    {
+        if (! $this->isActive()) {
+            throw ShopAlreadyDeactivated::forShop($this->id);
+        }
+
+        $this->status = 'inactive';
+    }
+
+    public function activate(): void
+    {
+        if ($this->isActive()) {
+            throw ShopAlreadyActive::forShop($this->id);
+        }
+
+        $this->status = 'active';
     }
 }

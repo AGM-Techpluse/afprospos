@@ -37,4 +37,7 @@ interface ShopRepository
         string $contactEmail,
         bool $isWarehouse = false,
     ): void;
+
+    /** Persists only the entity's mutable status — name/address/etc. still go through update(). */
+    public function save(Shop $shop): void;
 }
