@@ -1,5 +1,5 @@
 import { FormEvent } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
@@ -10,7 +10,6 @@ type Shop = { id: number; name: string };
 type StaffOption = { id: number; name: string };
 
 interface ExpensesCreateProps {
-    shops: Shop[];
     categories: Record<string, string>;
     departments: Record<string, string>;
     paymentMethods: Record<string, string>;
@@ -21,7 +20,9 @@ function todayIsoDate(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
-export default function ExpensesCreate({ shops, categories, departments, paymentMethods, staffOptions }: ExpensesCreateProps) {
+export default function ExpensesCreate({ categories, departments, paymentMethods, staffOptions }: ExpensesCreateProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { data, setData, post, transform, processing, errors: formErrors } = useForm({
         name: '',
         shop_id: '',

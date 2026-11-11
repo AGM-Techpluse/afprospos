@@ -101,7 +101,6 @@ use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseFaultRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\DiagnosisCaseRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
@@ -121,7 +120,6 @@ final class RepairsController
         private readonly RepairJobDetailQuery $detail,
         private readonly RepairJobLookup $repairJobLookup,
         private readonly ShopDirectoryQuery $shops,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly CustomerDirectoryQuery $customers,
         private readonly InventoryCatalogQuery $catalog,
         private readonly CreateRepairJobHandler $createRepairJob,
@@ -179,7 +177,6 @@ final class RepairsController
                 'status' => $request->string('status')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -229,7 +226,6 @@ final class RepairsController
         $shopId = $request->has('shop_id') ? ($request->integer('shop_id') ?: null) : ($actor->activeShopId ?? ($actor->shopIds[0] ?? null));
 
         return Inertia::render('Admin/Repairs/Create', [
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'deviceCatalog' => $this->deviceCatalog->structure(),
             'diagnosisCases' => $this->repairableDiagnosisCases($actor, $shopId),
             'filters' => ['shop_id' => $shopId],
@@ -280,7 +276,6 @@ final class RepairsController
         return Inertia::render('Admin/Repairs/Show', [
             'repair' => $data,
             'shop' => $this->shops->find((int) $data['shop_id']),
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'canApprovePayment' => $actor->hasPermission('repairs.approve-payment'),
             'canAuthorize' => $actor->hasPermission('repairs.authorize'),
             'canTransferRepair' => $actor->isOwner || $actor->hasPermission('repairs.transfer') || $actor->hasPermission('repairs.authorize') || $actor->hasPermission('repairs.assign'),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import ReportMetricCard from '../../../Features/Reports/ReportMetricCard';
 import { DoughnutBreakdown, HorizontalBar, TrendLine } from '../../../Features/Reports/ReportCharts';
 import { ReportPanel, ReportShell } from '../../../Features/Reports/ReportShell';
@@ -65,13 +65,13 @@ export default function RepairReports({
     report,
     repair_list: repairList,
     filters,
-    shops,
 }: {
     report: Report;
     repair_list: Paginated<RepairRow>;
     filters: ReportFilters;
-    shops: ShopOption[];
 }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: ShopOption[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [status, setStatus] = useState('');
 
     function reload(next: { status?: string; page?: number }) {

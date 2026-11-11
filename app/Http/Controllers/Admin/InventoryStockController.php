@@ -19,7 +19,6 @@ use Domain\Inventory\Application\Queries\LowStockQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +35,6 @@ final class InventoryStockController
         private readonly StockLevelQuery $stockLevels,
         private readonly LowStockQuery $lowStock,
         private readonly ShopDirectoryQuery $shops,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ReceiveStockHandler $receiveStock,
         private readonly AdjustStockHandler $adjustStock,
         private readonly InitiateInventoryTransferHandler $initiateTransfer,
@@ -58,7 +56,6 @@ final class InventoryStockController
                 'search' => $request->string('search')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -71,7 +68,6 @@ final class InventoryStockController
         return Inertia::render('Admin/Inventory/Stock/LowStock', [
             'items' => $this->lowStock->forShop($shopId),
             'filters' => ['shop_id' => $shopId],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -84,7 +80,6 @@ final class InventoryStockController
         return Inertia::render('Admin/Inventory/Stock/OutOfStock', [
             'items' => $this->lowStock->outOfStock($shopId),
             'filters' => ['shop_id' => $shopId],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 

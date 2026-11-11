@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -35,7 +35,6 @@ type Shop = { id: number; name: string };
 
 interface CollectionShowProps {
     collectionCase: CollectionCaseDetail;
-    shops: Shop[];
     canTransferCollection: boolean;
 }
 
@@ -46,7 +45,9 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     resolved: 'success',
 };
 
-export default function CollectionShow({ collectionCase: item, shops, canTransferCollection }: CollectionShowProps) {
+export default function CollectionShow({ collectionCase: item, canTransferCollection }: CollectionShowProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const confirm = useConfirm();
     const [processing, setProcessing] = useState(false);
     const [note, setNote] = useState('');

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
@@ -13,7 +13,9 @@ type Shop = { id: number; name: string; sku_prefix_code: string };
 type Product = { id: number; brand: string; model: string; category: string };
 
 /** INV-BR-18: adds a new non-serialized variant to an existing Product — reached from Products/Show's "Add variant" action. */
-export default function AddVariant({ product, shops, isSerialized, conditions }: { product: Product; shops: Shop[]; isSerialized: boolean; conditions: MasterEntry[] }) {
+export default function AddVariant({ product, isSerialized, conditions }: { product: Product; isSerialized: boolean; conditions: MasterEntry[] }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { data, setData, post, transform, processing, errors: formErrors } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
         condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',

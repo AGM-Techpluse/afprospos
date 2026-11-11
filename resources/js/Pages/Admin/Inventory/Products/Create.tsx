@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
@@ -55,18 +55,18 @@ function emptyVariantRow(): VariantRow {
 }
 
 export default function ProductCreate({
-    shops,
     categories,
     units,
     suppliers,
     conditions,
 }: {
-    shops: Shop[];
     categories: MasterEntry[];
     units: MasterEntry[];
     suppliers: MasterEntry[];
     conditions: MasterEntry[];
 }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const availableConditions = conditions.length > 0
         ? conditions.map((condition) => ({ value: condition.name, label: formatInventoryCondition(condition.name) }))
         : CONDITIONS;

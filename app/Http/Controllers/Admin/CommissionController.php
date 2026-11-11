@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Admin;
 use Domain\Commission\Application\Queries\CommissionReportQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +16,6 @@ final class CommissionController
     public function __construct(
         private readonly CommissionReportQuery $report,
         private readonly StaffDirectoryQuery $staff,
-        private readonly AccessibleShopsQuery $accessibleShops,
     ) {}
 
     public function index(Request $request): Response
@@ -45,7 +43,6 @@ final class CommissionController
                 'from_date' => $fromDate,
                 'to_date' => $toDate,
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'staffOptions' => $this->staff->paginate(search: null, status: 'active', role: null, page: 1, perPage: 200)['data'],
         ]);
     }

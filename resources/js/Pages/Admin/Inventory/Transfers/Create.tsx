@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
@@ -365,7 +365,9 @@ function SerializedUnitTransferForm({ shops }: { shops: Shop[] }) {
     );
 }
 
-export default function TransferCreate({ shops, categories }: { shops: Shop[]; categories: string[] }) {
+export default function TransferCreate({ categories }: { categories: string[] }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [mode, setMode] = useState<'bulk' | 'serialized'>('bulk');
 
     return (

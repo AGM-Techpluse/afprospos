@@ -35,7 +35,6 @@ use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobProblemTagRecord;
 use Domain\Repair\Infrastructure\Persistence\Eloquent\RepairJobRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -52,7 +51,6 @@ final class DiagnosisCasesController
     use FlashesToast;
 
     public function __construct(
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ShopDirectoryQuery $shops,
         private readonly CustomerDirectoryQuery $customers,
         private readonly CustomerDirectoryService $customerDirectory,
@@ -154,7 +152,6 @@ final class DiagnosisCasesController
                 'total' => $cases->total(),
             ],
             'filters' => ['search' => $search, 'status' => $status, 'outcome' => $outcome, 'shop_id' => $shopId],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -164,7 +161,6 @@ final class DiagnosisCasesController
         $shopId = $actor->activeShopId ?? ($actor->shopIds[0] ?? null);
 
         return Inertia::render('Admin/DiagnosisCases/Create', [
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'deviceCatalog' => $this->deviceCatalog->structure(),
             'commonComponents' => $this->commonComponents->list(),
             'technicians' => $shopId !== null ? $this->technicians($shopId) : [],

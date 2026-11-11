@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../../Components/Admin/AdminBadge';
@@ -23,7 +23,9 @@ type Transfer = {
 
 type Shop = { id: number; name: string };
 
-export default function TransferShow({ transfer, shops }: { transfer: Transfer; shops: Shop[] }) {
+export default function TransferShow({ transfer }: { transfer: Transfer }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { post, processing } = useForm();
     const shopName = (id: number) => shops.find((shop) => shop.id === id)?.name ?? 'Unknown shop';
 

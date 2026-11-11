@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../../Components/Admin/AdminBadge';
@@ -27,10 +27,11 @@ type Shop = { id: number; name: string };
 interface OutOfStockProps {
     items: OutOfStockItem[];
     filters: { shop_id: number | null };
-    shops: Shop[];
 }
 
-export default function OutOfStock({ items, filters, shops }: OutOfStockProps) {
+export default function OutOfStock({ items, filters }: OutOfStockProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [loading, setLoading] = useState(false);
     const shopName = (id: number) => shops.find((shop) => shop.id === id)?.name ?? 'Unknown shop';
 

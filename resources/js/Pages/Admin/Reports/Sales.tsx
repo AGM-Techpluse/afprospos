@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import ReportMetricCard from '../../../Features/Reports/ReportMetricCard';
 import { DoughnutBreakdown, HorizontalBar, TrendLine } from '../../../Features/Reports/ReportCharts';
 import { ReportPanel, ReportShell } from '../../../Features/Reports/ReportShell';
@@ -36,7 +36,9 @@ const salesColumns: DataTableColumn<SaleRow>[] = [
     { key: 'total_minor', label: 'Total', render: (row) => formatNaira(row.total_minor) },
 ];
 
-export default function SalesReports({ report, sales_list: salesList, filters, shops }: { report: Report; sales_list: Paginated<SaleRow>; filters: ReportFilters; shops: ShopOption[] }) {
+export default function SalesReports({ report, sales_list: salesList, filters }: { report: Report; sales_list: Paginated<SaleRow>; filters: ReportFilters }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: ShopOption[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     function goToPage(page: number) {
         router.get(
             '/admin/reports/sales',

@@ -22,7 +22,6 @@ use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Inventory\Domain\Exceptions\InsufficientAvailableStock;
 use Domain\Inventory\Domain\Exceptions\ItemNotTransferable;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +35,6 @@ final class InventoryTransferController
 
     public function __construct(
         private readonly InventoryTransferQuery $transfers,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly StockLevelQuery $stockLevels,
         private readonly ProductCatalogQuery $catalog,
         private readonly SerializedUnitsQuery $serializedUnits,
@@ -48,10 +46,7 @@ final class InventoryTransferController
 
     public function create(): Response
     {
-        $actor = app(ActorContext::class);
-
         return Inertia::render('Admin/Inventory/Transfers/Create', [
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => $this->catalog->categories(),
         ]);
     }
@@ -135,7 +130,6 @@ final class InventoryTransferController
                 'status' => $request->string('status')->toString(),
                 'shop_id' => $shopId,
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -149,7 +143,6 @@ final class InventoryTransferController
 
         return Inertia::render('Admin/Inventory/Transfers/Show', [
             'transfer' => $detail,
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 

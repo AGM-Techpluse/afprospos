@@ -16,7 +16,6 @@ use Domain\Inventory\Domain\Exceptions\InventoryItemStatusTransitionNotAllowed;
 use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
 use Domain\Inventory\Infrastructure\Persistence\Eloquent\InventoryItemRecord;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -29,7 +28,6 @@ final class InventorySerializedUnitsController
 
     public function __construct(
         private readonly SerializedUnitsQuery $units,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly UpdateInventoryItemStatusHandler $updateStatus,
         private readonly UpdateInventoryItemConditionHandler $updateCondition,
     ) {}
@@ -55,7 +53,6 @@ final class InventorySerializedUnitsController
                 'shop_id' => $shopId,
                 'status' => $status ?? '',
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 

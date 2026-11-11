@@ -14,7 +14,6 @@ use Domain\Finance\Application\Handlers\UpdateExpenseHandler;
 use Domain\Finance\Application\Queries\ExpensesQuery;
 use Domain\Identity\Application\Queries\StaffDirectoryQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +28,6 @@ final class ExpensesController
 
     public function __construct(
         private readonly ExpensesQuery $expenses,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly StaffDirectoryQuery $staff,
         private readonly RecordExpenseHandler $recordExpense,
         private readonly UpdateExpenseHandler $updateExpense,
@@ -47,7 +45,6 @@ final class ExpensesController
             'expenses' => $this->expenses->paginate(shopId: $shopId, category: $category, department: $department, page: $request->integer('page', 1)),
             'totalMinor' => $this->expenses->totalMinor($shopId, $category, $department),
             'filters' => ['shop_id' => $shopId, 'category' => $category ?? '', 'department' => $department ?? ''],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => config('afprospos.expense_categories'),
             'departments' => config('afprospos.expense_departments'),
             'paymentMethods' => config('afprospos.expense_payment_methods'),
@@ -57,10 +54,7 @@ final class ExpensesController
 
     public function create(): Response
     {
-        $actor = app(ActorContext::class);
-
         return Inertia::render('Admin/Finance/Expenses/Create', [
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => config('afprospos.expense_categories'),
             'departments' => config('afprospos.expense_departments'),
             'paymentMethods' => config('afprospos.expense_payment_methods'),

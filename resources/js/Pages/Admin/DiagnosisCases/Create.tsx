@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -17,7 +17,6 @@ type Shop = { id: number; name: string; is_warehouse?: boolean };
 type Technician = { id: number; name: string };
 
 interface Props {
-    shops: Shop[];
     technicians: Technician[];
     deviceCatalog: DeviceType[];
     commonComponents: CommonComponentOption[];
@@ -33,7 +32,9 @@ function PreviewRow({ label, value, dim = false }: { label: string; value: React
     );
 }
 
-export default function DiagnosisCaseCreate({ shops, technicians, deviceCatalog, commonComponents }: Props) {
+export default function DiagnosisCaseCreate({ technicians, deviceCatalog, commonComponents }: Props) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const intakeShops = shops.filter((shop) => !shop.is_warehouse);
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
     /** Only for the preview card — device_make/device_model already carry brand/model for submission, but the type label itself isn't part of the payload. */

@@ -11,7 +11,6 @@ use Domain\Inventory\Application\Handlers\ReconcileStockCountsHandler;
 use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Application\Queries\StockLevelQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,7 +27,6 @@ final class InventoryReconciliationController
     public function __construct(
         private readonly StockLevelQuery $stockLevels,
         private readonly InventoryMasterListQuery $masterLists,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly ReconcileStockCountsHandler $reconcile,
     ) {}
 
@@ -48,7 +46,6 @@ final class InventoryReconciliationController
                 'shop_id' => $shopId,
                 'category' => $category,
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => array_column($this->masterLists->all()['categories'], 'name'),
             'reasons' => config('afprospos.stock_reconciliation_reasons'),
         ]);

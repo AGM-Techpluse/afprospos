@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
@@ -39,7 +39,6 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 interface ProductsIndexProps {
     products: Paginated<ProductRow>;
     filters: { search: string; category: string; brand: string; shop_id: number | null; variant: string };
-    shops: Shop[];
     categories: string[];
 }
 
@@ -104,7 +103,9 @@ const COLUMNS: DataTableColumn<ProductRow>[] = [
     { key: 'selling_price_minor', label: 'Price', render: (row) => formatNaira(row.selling_price_minor) },
 ];
 
-export default function ProductsIndex({ products, filters, shops, categories }: ProductsIndexProps) {
+export default function ProductsIndex({ products, filters, categories }: ProductsIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [search, setSearch] = useState(filters.search);
     const [category, setCategory] = useState(filters.category);
     const [brand, setBrand] = useState(filters.brand);

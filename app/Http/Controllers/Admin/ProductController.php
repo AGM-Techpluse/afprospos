@@ -33,7 +33,6 @@ use Domain\Inventory\Domain\Exceptions\DuplicateSkuCode;
 use Domain\Inventory\Domain\Exceptions\ImeiAlreadyExists;
 use Domain\Inventory\Domain\Exceptions\UnknownMasterEntry;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +50,6 @@ final class ProductController
         private readonly ProductCatalogQuery $catalog,
         private readonly SerializedUnitsQuery $serializedUnits,
         private readonly ShopDirectoryQuery $shops,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly CreateProductHandler $createProduct,
         private readonly CreateProductWithVariantsHandler $createProductWithVariants,
         private readonly AddProductVariantHandler $addVariant,
@@ -85,18 +83,15 @@ final class ProductController
                 'shop_id' => $shopId,
                 'variant' => $request->string('variant')->toString(),
             ],
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => $this->catalog->categories(),
         ]);
     }
 
     public function create(): Response
     {
-        $actor = app(ActorContext::class);
         $masters = $this->masterLists->all();
 
         return Inertia::render('Admin/Inventory/Products/Create', [
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'categories' => $masters['categories'],
             'units' => $masters['units'],
             'suppliers' => $masters['suppliers'],
@@ -106,7 +101,6 @@ final class ProductController
 
     public function show(Request $request, int $product): Response
     {
-        $actor = app(ActorContext::class);
         $sku = $this->catalog->find($product);
         $masters = $this->masterLists->all();
 
@@ -121,7 +115,6 @@ final class ProductController
 
         return Inertia::render('Admin/Inventory/Products/Show', [
             'sku' => $sku,
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'conditions' => $masters['conditions'],
             'units' => $sku['is_serialized'] ? $this->serializedUnits->paginate(
                 search: $unitFilters['search'] ?: null,
@@ -153,7 +146,6 @@ final class ProductController
     /** The add-variant form for an already-existing Product — reached from Products/Show's "Add variant" action, keyed by product id (not a Sku id — see ProductCatalogQuery::findProduct). */
     public function addVariantForm(int $product): Response
     {
-        $actor = app(ActorContext::class);
         $productData = $this->catalog->findProduct($product);
         $masters = $this->masterLists->all();
 
@@ -161,7 +153,6 @@ final class ProductController
 
         return Inertia::render('Admin/Inventory/Products/AddVariant', [
             'product' => $productData,
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'isSerialized' => request()->boolean('serialized'),
             'conditions' => $masters['conditions'],
         ]);

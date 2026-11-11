@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminEmptyState from '../../../Components/Admin/AdminEmptyState';
@@ -29,7 +29,6 @@ type StaffOption = { id: number; name: string };
 interface CommissionIndexProps {
     entries: Paginated<CommissionEntry>;
     filters: { staff_id: number | null; shop_id: number | null; from_date: string | null; to_date: string | null };
-    shops: Shop[];
     staffOptions: StaffOption[];
 }
 
@@ -53,7 +52,9 @@ const COLUMNS: DataTableColumn<CommissionEntry>[] = [
     { key: 'status', label: 'Status', render: (row) => <span className="capitalize">{row.status}</span> },
 ];
 
-export default function CommissionIndex({ entries, filters, shops, staffOptions }: CommissionIndexProps) {
+export default function CommissionIndex({ entries, filters, staffOptions }: CommissionIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [staffId, setStaffId] = useState(filters.staff_id?.toString() ?? '');
     const [shopId, setShopId] = useState(filters.shop_id?.toString() ?? '');
     const [fromDate, setFromDate] = useState(filters.from_date ?? '');

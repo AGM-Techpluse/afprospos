@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
@@ -25,7 +25,6 @@ type Shop = { id: number; name: string };
 interface ReconciliationIndexProps {
     stock: StockRow[];
     filters: { shop_id: number | null; category: string };
-    shops: Shop[];
     categories: string[];
     reasons: Record<string, string>;
 }
@@ -34,7 +33,9 @@ type RowState = { physical: string; reasonCode: string; note: string };
 
 const EMPTY_ROW: RowState = { physical: '', reasonCode: '', note: '' };
 
-export default function ReconciliationIndex({ stock, filters, shops, categories, reasons }: ReconciliationIndexProps) {
+export default function ReconciliationIndex({ stock, filters, categories, reasons }: ReconciliationIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [shopId, setShopId] = useState(filters.shop_id);
     const [category, setCategory] = useState(filters.category);
     const [rows, setRows] = useState<Record<number, RowState>>({});

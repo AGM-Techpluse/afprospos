@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
@@ -98,13 +98,14 @@ type Shop = { id: number; name: string; sku_prefix_code: string };
 
 interface ProductShowProps {
     sku: Sku;
-    shops: Shop[];
     conditions: MasterEntry[];
     units: Paginated<SerializedUnit> | null;
     unitFilters: UnitFilters;
 }
 
-export default function ProductShow({ sku, shops, conditions, units, unitFilters }: ProductShowProps) {
+export default function ProductShow({ sku, conditions, units, unitFilters }: ProductShowProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
         shop_id: shops[0]?.id.toString() ?? '',
         condition: conditions.find((condition) => condition.name === 'new')?.name ?? conditions[0]?.name ?? '',

@@ -46,7 +46,6 @@ use Domain\Sales\Domain\Exceptions\SerializedItemQuantityMustBeOne;
 use Domain\Sales\Domain\Exceptions\SplitPaymentLegNotImmediatelyConfirmable;
 use Domain\Sales\Domain\Exceptions\WarehouseCannotSell;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -67,7 +66,6 @@ final class SalesController
         private readonly InventoryMasterListQuery $masterLists,
         private readonly CustomerDirectoryQuery $customerDirectory,
         private readonly ShopDirectoryQuery $shops,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly PaymentTransactionLookup $paymentLookup,
         private readonly CreateCheckoutHandler $createCheckout,
         private readonly AddCheckoutItemHandler $addItem,
@@ -174,7 +172,6 @@ final class SalesController
             'openCheckouts' => $openCheckouts,
             'recentSales' => $checkout === null ? $this->history->recentForCashier($actor->staffId->value) : [],
             'todaysSales' => $checkout === null ? $this->history->todayForCashier($actor->staffId->value) : null,
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'productCategories' => array_column($this->masterLists->all()['categories'], 'name'),
             'productBrands' => $this->catalog->sellableBrands(),
             'checkoutReservationMinutes' => (int) config('afprospos.checkout_reservation_minutes'),

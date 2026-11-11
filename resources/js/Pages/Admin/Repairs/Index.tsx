@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -32,7 +32,6 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 interface RepairsIndexProps {
     repairs: Paginated<RepairRow>;
     filters: { status: string; shop_id: number | null };
-    shops: Shop[];
 }
 
 const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
@@ -51,7 +50,9 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     failed_requires_resolution: 'danger',
 };
 
-export default function RepairsIndex({ repairs, filters, shops }: RepairsIndexProps) {
+export default function RepairsIndex({ repairs, filters }: RepairsIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
     const shopName = (shopId: number) => shops.find((shop) => shop.id === shopId)?.name ?? 'Unknown shop';
 

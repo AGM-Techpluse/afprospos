@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router, usePoll } from '@inertiajs/react';
+import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -83,7 +83,6 @@ type Shop = { id: number; name: string };
 interface RepairShowProps {
     repair: RepairDetail;
     shop: Shop | null;
-    shops: Shop[];
     technicians: Technician[];
     canApprovePayment: boolean;
     canAuthorize: boolean;
@@ -107,7 +106,9 @@ const DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED = ['handover', 'completed', 'cancel
 /** Mirrors RepairJob::assertSupplementalQuoteRequestable()'s exact status gate. */
 const SUPPLEMENTAL_QUOTE_REQUESTABLE_STATUSES = ['in_progress', 'awaiting_parts', 'qc_pending', 'handover'];
 
-export default function RepairShow({ repair, shop, shops, technicians, canApprovePayment, canAuthorize, canTransferRepair }: RepairShowProps) {
+export default function RepairShow({ repair, shop, technicians, canApprovePayment, canAuthorize, canTransferRepair }: RepairShowProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const confirm = useConfirm();
     // Multiple staff act on the same repair from different desks (frontdesk
     // collects payment, Manager sets requirements/approves) — poll just the

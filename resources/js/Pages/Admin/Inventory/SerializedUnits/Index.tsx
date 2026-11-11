@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
@@ -30,7 +30,6 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 interface SerializedUnitsIndexProps {
     units: Paginated<UnitRow>;
     filters: { search: string; shop_id: number | null; status: string };
-    shops: Shop[];
 }
 
 const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
@@ -40,7 +39,9 @@ const STATUS_BADGE: Record<string, AdminBadgeStatus> = {
     sold: 'neutral',
 };
 
-export default function SerializedUnitsIndex({ units, filters, shops }: SerializedUnitsIndexProps) {
+export default function SerializedUnitsIndex({ units, filters }: SerializedUnitsIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [search, setSearch] = useState(filters.search);
     const [shopId, setShopId] = useState(filters.shop_id);
     const [status, setStatus] = useState(filters.status);

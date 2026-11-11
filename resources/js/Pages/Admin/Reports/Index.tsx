@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import Icon from '../../../Components/Icons/Icon';
@@ -17,7 +17,9 @@ const MODULES: Record<string, { title: string; description: string; icon: string
     commission: { title: 'Commission report', description: 'Commission earned from fault-fix repairs and commissionable device sales, by staff.', icon: 'cash-coin' },
 };
 
-export default function ReportsIndex({ cards, filters, shops }: { cards: Record<string, Card>; filters: ReportFilters; shops: ShopOption[] }) {
+export default function ReportsIndex({ cards, filters }: { cards: Record<string, Card>; filters: ReportFilters }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: ShopOption[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     return (
         <AdminShell>
             <Head title="Reports" />

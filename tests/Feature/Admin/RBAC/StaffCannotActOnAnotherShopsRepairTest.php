@@ -69,8 +69,8 @@ class StaffCannotActOnAnotherShopsRepairTest extends TestCase
 
         $createResponse = $this->actingAs($cashier, 'staff')->get('/admin/repairs/create');
         $createResponse->assertInertia(fn ($page) => $page
-            ->where('shops.0.id', $shopA->id)
-            ->has('shops', 1));
+            ->where('shopSwitcher.accessible.0.id', $shopA->id)
+            ->has('shopSwitcher.accessible', 1));
 
         $customer = CustomerRecord::factory()->create();
 

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
@@ -39,7 +39,6 @@ interface ExpensesIndexProps {
     expenses: Paginated<ExpenseRow>;
     totalMinor: number;
     filters: { shop_id: number | null; category: string; department: string };
-    shops: Shop[];
     categories: Record<string, string>;
     departments: Record<string, string>;
     paymentMethods: Record<string, string>;
@@ -211,7 +210,9 @@ function EditExpenseModal({
 
 const FUND_TYPE_BADGE = { disbursement: 'neutral', reimbursement: 'info' } as const;
 
-export default function ExpensesIndex({ expenses, totalMinor, filters, shops, categories, departments, paymentMethods, staffOptions }: ExpensesIndexProps) {
+export default function ExpensesIndex({ expenses, totalMinor, filters, categories, departments, paymentMethods, staffOptions }: ExpensesIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [editing, setEditing] = useState<ExpenseRow | null>(null);
 
     function applyFilters(next: Partial<{ shop_id: number | null; category: string; department: string }>) {

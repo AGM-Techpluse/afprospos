@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -20,12 +20,13 @@ type DiagnosisCase = {
 };
 
 interface RepairCreateProps {
-    shops: Shop[];
     diagnosisCases: DiagnosisCase[];
     filters: { shop_id: number | null };
 }
 
-export default function RepairCreate({ shops, diagnosisCases, filters }: RepairCreateProps) {
+export default function RepairCreate({ diagnosisCases, filters }: RepairCreateProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const [term, setTerm] = useState('');
     const [creatingId, setCreatingId] = useState<number | null>(null);
 

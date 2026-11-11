@@ -13,7 +13,6 @@ use Domain\Reports\Application\Queries\SalesReportsQuery;
 use Domain\Reports\Application\Queries\StaffReportsQuery;
 use Domain\Sales\Application\Queries\SalesHistoryQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,12 +28,10 @@ final class ReportsController
         private readonly RepairsListQuery $repairsList,
         private readonly SalesHistoryQuery $salesHistory,
         private readonly LowStockQuery $lowStock,
-        private readonly AccessibleShopsQuery $shops,
     ) {}
 
     public function index(): Response
     {
-        $actor = app(ActorContext::class);
         $filters = $this->filters();
 
         return Inertia::render('Admin/Reports/Index', [
@@ -46,7 +43,6 @@ final class ReportsController
                 'commission' => $this->commission->card($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
             ],
             'filters' => $filters['public'],
-            'shops' => $this->shops->forStaff($actor->staffId->value, $actor->isOwner),
         ]);
     }
 
@@ -66,7 +62,6 @@ final class ReportsController
                 toDate: $filters['end'],
             ),
             'filters' => $filters['public'],
-            'shops' => $this->accessibleShops(),
         ]);
     }
 
@@ -86,7 +81,6 @@ final class ReportsController
                 toDate: $filters['end'],
             ),
             'filters' => $filters['public'],
-            'shops' => $this->accessibleShops(),
         ]);
     }
 
@@ -104,7 +98,6 @@ final class ReportsController
                 restrictToShopIds: $filters['restrict_to_shop_ids'],
             ),
             'filters' => $filters['public'],
-            'shops' => $this->accessibleShops(),
         ]);
     }
 
@@ -116,7 +109,6 @@ final class ReportsController
             'report' => $this->staff->report($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
             'commission_by_staff' => $this->commission->totalsByStaff($filters['start'], $filters['end'], $filters['shop_id'], $filters['restrict_to_shop_ids']),
             'filters' => $filters['public'],
-            'shops' => $this->accessibleShops(),
         ]);
     }
 
@@ -171,13 +163,5 @@ final class ReportsController
             'last_month' => [Carbon::today()->subMonthNoOverflow()->startOfMonth(), Carbon::today()->subMonthNoOverflow()->endOfMonth()],
             default => [Carbon::today()->subDays(29)->startOfDay(), Carbon::today()->endOfDay()],
         };
-    }
-
-    /** @return array<int, array{id:int, name:string, sku_prefix_code:string, is_warehouse:bool}> */
-    private function accessibleShops(): array
-    {
-        $actor = app(ActorContext::class);
-
-        return $this->shops->forStaff($actor->staffId->value, $actor->isOwner);
     }
 }

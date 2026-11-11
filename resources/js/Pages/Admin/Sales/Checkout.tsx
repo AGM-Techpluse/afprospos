@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Head, router, useForm, usePoll } from '@inertiajs/react';
+import { Head, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
@@ -75,7 +75,6 @@ interface CheckoutPageProps {
     pendingPaymentTransaction: PendingPaymentTransaction | null;
     amountPaidMinor: number | null;
     openCheckouts: OpenCheckout[];
-    shops: Shop[];
     productCategories: string[];
     productBrands: string[];
     checkoutReservationMinutes: number;
@@ -216,13 +215,14 @@ export default function SalesCheckout({
     pendingPaymentTransaction,
     amountPaidMinor,
     openCheckouts,
-    shops,
     recentSales,
     todaysSales,
     canApproveDiscount,
     productCategories,
     productBrands,
 }: CheckoutPageProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const confirm = useConfirm();
     // Multiple staff act on the same checkout from different desks (cashier builds
     // the cart, Shop Owner approves a discount, customer pays by bank transfer) —

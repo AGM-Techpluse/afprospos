@@ -1,5 +1,5 @@
 import { ChangeEvent, DragEvent, FormEvent, useMemo, useRef, useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../../Components/Admin/AdminButton';
@@ -308,7 +308,9 @@ function CsvDropzone({ file, onSelect, error }: CsvDropzoneProps) {
     );
 }
 
-export default function ImportCreate({ shops, expectedHeader, conditions }: { shops: Shop[]; expectedHeader: string[]; conditions: MasterEntry[] }) {
+export default function ImportCreate({ expectedHeader, conditions }: { expectedHeader: string[]; conditions: MasterEntry[] }) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { data, setData, post, processing, errors } = useForm<{ shop_id: string; file: File | null }>({
         shop_id: shops[0]?.id.toString() ?? '',
         file: null,

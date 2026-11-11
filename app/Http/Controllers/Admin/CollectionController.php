@@ -25,7 +25,6 @@ use Domain\Collection\Application\Queries\CollectionQueueQuery;
 use Domain\Collection\Domain\Exceptions\ReleaseBlockedByOutstandingBalance;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shared\Domain\Exceptions\DomainException;
-use Domain\Shop\Application\Queries\AccessibleShopsQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -39,7 +38,6 @@ final class CollectionController
     public function __construct(
         private readonly CollectionQueueQuery $queue,
         private readonly CollectionCaseDetailQuery $detail,
-        private readonly AccessibleShopsQuery $accessibleShops,
         private readonly RecordCollectionNotifiedHandler $recordNotified,
         private readonly ExtendCollectionDeadlineHandler $extendDeadline,
         private readonly RecordCollectionOverrideHandler $recordOverride,
@@ -77,7 +75,6 @@ final class CollectionController
 
         return Inertia::render('Admin/Collection/Show', [
             'collectionCase' => $data,
-            'shops' => $this->accessibleShops->forStaff($actor->staffId->value, $actor->isOwner),
             'canTransferCollection' => $actor->isOwner || $actor->hasPermission('collection.transfer') || $actor->hasPermission('collection.process') || $actor->hasPermission('collection.override'),
         ]);
     }

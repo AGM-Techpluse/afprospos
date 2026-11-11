@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge from '../../../../Components/Admin/AdminBadge';
@@ -30,10 +30,11 @@ type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_pa
 interface TransfersIndexProps {
     transfers: Paginated<TransferRow>;
     filters: { status: string; shop_id: number | null };
-    shops: Shop[];
 }
 
-export default function TransfersIndex({ transfers, filters, shops }: TransfersIndexProps) {
+export default function TransfersIndex({ transfers, filters }: TransfersIndexProps) {
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
+    const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const shopName = (id: number) => shops.find((shop) => shop.id === id)?.name ?? 'Unknown shop';
 
     const columns: DataTableColumn<TransferRow>[] = [
