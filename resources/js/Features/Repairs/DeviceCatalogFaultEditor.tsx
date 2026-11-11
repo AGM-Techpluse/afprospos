@@ -110,7 +110,15 @@ function ChipList({
     );
 }
 
-function SuggestedPartsEditor({ problemTag }: { problemTag: DeviceProblemTag }) {
+/**
+ * `defaultSearchTerm` (a model's own name, e.g. "iPhone 15 Pro") pre-fills
+ * and auto-runs the search exactly once when this editor opens, so parts
+ * already named after this model (e.g. "Apple iPhone 15 Pro Screen") show
+ * up immediately without the admin retyping the model name — reuses the
+ * exact same search endpoint/query a manually-typed term already hits, so
+ * it's one extra request per expand, not a new or repeated query path.
+ */
+function SuggestedPartsEditor({ problemTag, defaultSearchTerm }: { problemTag: DeviceProblemTag; defaultSearchTerm?: string }) {
     const [term, setTerm] = useState('');
     const [results, setResults] = useState<{ sku_id: number; sku_code: string; product_name: string }[]>([]);
     const [searching, setSearching] = useState(false);
@@ -127,6 +135,12 @@ function SuggestedPartsEditor({ problemTag }: { problemTag: DeviceProblemTag }) 
             .then((json: { results: { sku_id: number; sku_code: string; product_name: string }[] }) => setResults(json.results))
             .finally(() => setSearching(false));
     }
+
+    useEffect(() => {
+        if (defaultSearchTerm) search(defaultSearchTerm);
+        // Only on mount (once per time this editor opens) — never re-triggered by prop changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     function attach(skuId: number) {
         router.post(
@@ -343,10 +357,12 @@ function FaultRow({
     tag,
     onUpdate,
     onRemove,
+    modelName,
 }: {
     tag: DeviceProblemTag;
     onUpdate: (patch: { label?: string; commission_amount_minor?: number | null }) => void;
     onRemove: () => void;
+    modelName: string;
 }) {
     const [partsOpen, setPartsOpen] = useState(false);
     const commissionValue = tag.commission_amount_minor !== null ? String(tag.commission_amount_minor / 100) : '';
@@ -394,7 +410,7 @@ function FaultRow({
             {partsOpen && (
                 <tr className="border-b border-admin-border last:border-b-0 bg-admin-hover/30">
                     <td colSpan={4} className="px-3 pb-3 pt-1">
-                        <SuggestedPartsEditor problemTag={tag} />
+                        <SuggestedPartsEditor problemTag={tag} defaultSearchTerm={modelName} />
                     </td>
                 </tr>
             )}
@@ -409,7 +425,7 @@ function FaultRow({
  * (all its faults already arrive with the page, so no server round-trip is
  * needed to turn the page).
  */
-function FaultsTable({ tags, deviceModelId }: { tags: DeviceProblemTag[]; deviceModelId: number }) {
+function FaultsTable({ tags, deviceModelId, modelName }: { tags: DeviceProblemTag[]; deviceModelId: number; modelName: string }) {
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const totalPages = Math.max(1, Math.ceil(tags.length / pageSize));
@@ -456,7 +472,7 @@ function FaultsTable({ tags, deviceModelId }: { tags: DeviceProblemTag[]; device
                     </thead>
                     <tbody>
                         {pageTags.map((tag) => (
-                            <FaultRow key={tag.id} tag={tag} onUpdate={(patch) => update(tag, patch)} onRemove={() => remove(tag.id)} />
+                            <FaultRow key={tag.id} tag={tag} onUpdate={(patch) => update(tag, patch)} onRemove={() => remove(tag.id)} modelName={modelName} />
                         ))}
                     </tbody>
                 </table>
@@ -575,7 +591,7 @@ export function ModelFaultsEditor({ model, deviceTypeId, deviceTypeLabel }: { mo
     if (model.has_model_specific_faults) {
         return (
             <div className="mt-3 pl-3 border-l-2 border-admin-border">
-                <FaultsTable tags={model.fixable_faults} deviceModelId={model.id} />
+                <FaultsTable tags={model.fixable_faults} deviceModelId={model.id} modelName={model.name} />
                 <AddFaultForm scope={{ device_model_id: model.id }} placeholder="Add another override…" startingSortOrder={model.fixable_faults.length} />
                 <ExistingFaultsPicker
                     deviceTypeId={deviceTypeId}
