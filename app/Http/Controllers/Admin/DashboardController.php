@@ -11,7 +11,6 @@ use Domain\Repair\Application\Queries\RepairsListQuery;
 use Domain\Sales\Application\Queries\SalesHistoryQuery;
 use Domain\Shared\Application\DTOs\ActorContext;
 use Domain\Shop\Application\Queries\ShopAnalyticsQuery;
-use Domain\Shop\Application\Queries\ShopDirectoryQuery;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,13 +32,16 @@ final class DashboardController
         private readonly InventoryHealthQuery $inventoryHealth,
         private readonly RecentAuditEventsQuery $auditEvents,
         private readonly ShopAnalyticsQuery $shopAnalytics,
-        private readonly ShopDirectoryQuery $shops,
     ) {}
 
     public function __invoke(): Response
     {
         $actor = app(ActorContext::class);
         $shopId = $actor->activeShopId;
+
+        // The active shop's own name/id isn't re-fetched here — HandleInertiaRequests
+        // already shares it on every Admin page as shopSwitcher.active, so the page
+        // reads that instead of paying for a second, redundant query for the same row.
 
         $canViewRepairs = $actor->hasPermission('repairs.view');
         $canCreateRepairs = $actor->hasPermission('repairs.create');
@@ -67,7 +69,6 @@ final class DashboardController
             'recentSales' => $canViewSales ? $this->sales->recent($shopId, 5) : [],
             'loginActivity' => $canViewAudit ? $this->auditEvents->recentLoginActivity(8) : null,
             'shopAnalytics' => $shopId !== null ? $this->shopAnalytics->forShop($shopId) : null,
-            'activeShop' => $shopId !== null ? $this->shops->find($shopId) : null,
         ]);
     }
 }

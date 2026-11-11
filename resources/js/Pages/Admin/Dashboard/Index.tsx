@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -59,7 +59,6 @@ interface DashboardProps {
     /** Only present when the viewer has `audit.view` (Shop Owner today) — absent, not an empty array, for everyone else. */
     loginActivity: LoginEvent[] | null;
     shopAnalytics: { revenue_series: RevenuePoint[]; revenue_breakdown: RevenueBreakdownSlice[] } | null;
-    activeShop: { id: number; name: string } | null;
 }
 
 const REPAIR_STATUS_BADGE: Record<string, AdminBadgeStatus> = {
@@ -99,8 +98,11 @@ function ActionToStatConnector() {
     );
 }
 
-export default function Dashboard({ quickActions, stats, recentRepairs, recentSales, loginActivity, shopAnalytics, activeShop }: DashboardProps) {
+export default function Dashboard({ quickActions, stats, recentRepairs, recentSales, loginActivity, shopAnalytics }: DashboardProps) {
     const health = healthStatus(stats.inventoryHealth);
+    // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same shop row.
+    const { shopSwitcher } = usePage().props as any;
+    const activeShop = shopSwitcher?.active ?? null;
 
     return (
         <AdminShell>
