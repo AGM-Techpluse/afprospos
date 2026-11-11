@@ -125,26 +125,18 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                 }
             />
 
-            <div className="divide-y divide-admin-border">
-                <div className="pb-6 grid gap-6 sm:grid-cols-2">
-                    <AdminSectionCard title="Details">
-                        <dl className="divide-y divide-admin-border p-6 -my-1 text-sm">
-                            <div className="flex justify-between py-2.5">
-                                <dt className="text-admin-text2">Phone</dt>
-                                <dd className="text-admin-text">{staffMember.phone}</dd>
-                            </div>
-                            <div className="flex justify-between py-2.5">
-                                <dt className="text-admin-text2">Status</dt>
-                                <dd>
-                                    <AdminBadge status={staffMember.status === 'active' ? 'success' : 'neutral'}>
-                                        {staffMember.status === 'active' ? 'Active' : 'Deactivated'}
-                                    </AdminBadge>
-                                </dd>
-                            </div>
-                        </dl>
-                    </AdminSectionCard>
+            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm">
+                <span className="flex items-center gap-1.5 text-admin-text2">
+                    <Icon name="telephone" />
+                    {staffMember.phone}
+                </span>
+                <AdminBadge status={staffMember.status === 'active' ? 'success' : 'neutral'}>
+                    {staffMember.status === 'active' ? 'Active' : 'Deactivated'}
+                </AdminBadge>
+            </div>
 
-                    <AdminSectionCard title="Shop access">
+            <div className="grid gap-6 sm:grid-cols-2">
+                <AdminSectionCard title="Shop access">
                         <div className="p-6">
                         <div className="flex flex-col gap-2 mb-3">
                             {grantedShops.length === 0 && <span className="text-admin-text2 text-sm">No shop access granted.</span>}
@@ -178,9 +170,7 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         )}
                         </div>
                     </AdminSectionCard>
-                </div>
 
-                <div className="pt-6">
                     <AdminSectionCard title="Roles">
                         <div className="p-6">
                         <div className="flex flex-wrap gap-3 mb-4">
@@ -216,7 +206,6 @@ export default function StaffShow({ staffMember, grantedShopIds, availableRoles,
                         )}
                         </div>
                     </AdminSectionCard>
-                </div>
             </div>
         </AdminShell>
     );
