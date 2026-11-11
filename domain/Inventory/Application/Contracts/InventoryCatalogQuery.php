@@ -15,6 +15,16 @@ namespace Domain\Inventory\Application\Contracts;
 interface InventoryCatalogQuery
 {
     /**
+     * `$purposes` scopes which catalog a search draws from — defaults to
+     * what a customer can buy (checkout's own long-standing behaviour,
+     * every existing caller keeps it unchanged). A repair-parts picker
+     * (reserving/suggesting a part to physically install) must pass
+     * `['repair_part', 'both']` instead: a product never meant for sale
+     * (purpose = 'repair_part') is otherwise invisible to search, while a
+     * sellable product with no repair relevance (e.g. the phone itself)
+     * can confusingly surface as if it were an installable part.
+     *
+     * @param  string[]  $purposes
      * @return array<int, array{
      *     sku_id: int,
      *     sku_code: string,
@@ -33,7 +43,7 @@ interface InventoryCatalogQuery
      *     image_url: string|null,
      * }>
      */
-    public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null): array;
+    public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null, array $purposes = ['sale', 'both']): array;
 
     /**
      * Brands of products that can be sold at the till — the checkout's brand filter.

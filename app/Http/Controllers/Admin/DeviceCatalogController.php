@@ -340,7 +340,7 @@ final class DeviceCatalogController
         $shopId = $this->resolveShopId($actor);
 
         return response()->json([
-            'results' => $term !== '' && $shopId !== null ? $this->inventoryCatalog->search($term, $shopId) : [],
+            'results' => $term !== '' && $shopId !== null ? $this->inventoryCatalog->search($term, $shopId, purposes: ['repair_part', 'both']) : [],
         ]);
     }
 

@@ -15,12 +15,11 @@ use Domain\Inventory\Infrastructure\Persistence\Eloquent\SkuRecord;
 /** The Contract's implementation — Eloquent is permitted here (Infrastructure query layer, CPNC §2.1), same as ProductCatalogQuery/StockLevelQuery it reuses underneath. */
 final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
 {
-    public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null): array
+    public function search(string $term, int $shopId, int $limit = 20, ?string $category = null, ?string $brand = null, ?string $model = null, array $purposes = ['sale', 'both']): array
     {
         $skus = SkuRecord::query()
             ->with('product')
-            // Repair parts are never sold at the till: only products meant for sale reach checkout search.
-            ->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', ['sale', 'both']))
+            ->whereHas('product', fn ($productQuery) => $productQuery->whereIn('purpose', $purposes))
             ->when($term !== '', function ($query) use ($term): void {
                 $query->where(function ($inner) use ($term): void {
                     $inner->where('sku_code', 'like', "%{$term}%")

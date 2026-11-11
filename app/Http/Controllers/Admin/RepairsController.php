@@ -838,7 +838,7 @@ final class RepairsController
         $term = $request->string('q')->toString();
 
         return response()->json([
-            'results' => $term !== '' ? $this->catalog->search($term, (int) $data['shop_id']) : [],
+            'results' => $term !== '' ? $this->catalog->search($term, (int) $data['shop_id'], purposes: ['repair_part', 'both']) : [],
         ]);
     }
 
