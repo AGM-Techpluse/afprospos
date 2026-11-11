@@ -55,6 +55,10 @@ export default function NotificationDropdown() {
         }
     }
 
+    function markAllRead() {
+        router.post('/admin/notifications/read-all', {}, { preserveScroll: true, preserveState: true, only: ['staffNotifications'] });
+    }
+
     return (
         <div className="relative" ref={containerRef}>
             <button
@@ -79,6 +83,11 @@ export default function NotificationDropdown() {
                 >
                     <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold text-admin-text text-sm">Notifications</span>
+                        {unreadCount > 0 && (
+                            <button type="button" onClick={markAllRead} className="text-[11px] font-semibold text-admin-blue hover:underline cursor-pointer">
+                                Mark all as read
+                            </button>
+                        )}
                     </div>
 
                     {data.length === 0 ? (
@@ -102,6 +111,14 @@ export default function NotificationDropdown() {
                             ))}
                         </div>
                     )}
+
+                    <button
+                        type="button"
+                        onClick={() => router.visit('/admin/notifications')}
+                        className="block w-full text-center mt-3 pt-3 border-t border-admin-border text-xs font-semibold text-admin-blue hover:underline cursor-pointer"
+                    >
+                        View all notifications
+                    </button>
                 </div>
             )}
         </div>

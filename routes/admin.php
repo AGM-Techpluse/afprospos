@@ -86,6 +86,12 @@ Route::prefix('admin')
             ->get('/commission', [CommissionController::class, 'index'])
             ->name('commission.index');
 
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->name('notifications.index');
+
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+            ->name('notifications.read-all');
+
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
             ->whereNumber('notification')
             ->name('notifications.read');

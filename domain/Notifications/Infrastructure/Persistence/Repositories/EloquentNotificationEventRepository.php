@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Notifications\Infrastructure\Persistence\Repositories;
 
+use DateTimeImmutable;
 use Domain\Notifications\Domain\Entities\NotificationEvent;
 use Domain\Notifications\Domain\Repositories\NotificationEventRepository;
 use Domain\Notifications\Domain\ValueObjects\NotificationEventId;
@@ -105,6 +106,39 @@ final class EloquentNotificationEventRepository implements NotificationEventRepo
                 ->whereNull('read_at')
                 ->count(),
         ];
+    }
+
+    public function paginateHistoryForStaff(int $staffId, int $page, int $perPage = 20): array
+    {
+        $paginator = NotificationEventRecord::query()
+            ->where('recipient_type', 'staff')
+            ->where('recipient_id', $staffId)
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $shopIds = $paginator->getCollection()
+            ->map(fn (NotificationEventRecord $record): mixed => $record->payload['shop_id'] ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+        $shopNames = ShopRecord::query()->whereIn('id', $shopIds)->pluck('name', 'id');
+
+        return [
+            'data' => $paginator->getCollection()->map(fn (NotificationEventRecord $record): array => $this->toArray($record, $shopNames))->all(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
+    }
+
+    public function markAllReadForStaff(int $staffId, DateTimeImmutable $now): void
+    {
+        NotificationEventRecord::query()
+            ->where('recipient_type', 'staff')
+            ->where('recipient_id', $staffId)
+            ->whereNull('read_at')
+            ->update(['read_at' => $now]);
     }
 
     public function recentFailedExhausted(int $limit = 20): array

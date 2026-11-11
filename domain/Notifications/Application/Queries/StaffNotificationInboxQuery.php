@@ -16,4 +16,10 @@ final class StaffNotificationInboxQuery
     {
         return $this->notificationEvents->paginateForStaff($staffId, $limit);
     }
+
+    /** @return array{data: array<int, array<string, mixed>>, current_page: int, last_page: int, per_page: int, total: int} */
+    public function history(int $staffId, int $page, int $perPage = 20): array
+    {
+        return $this->notificationEvents->paginateHistoryForStaff($staffId, $page, $perPage);
+    }
 }
