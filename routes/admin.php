@@ -263,6 +263,11 @@ Route::prefix('admin')
             ->name('inventory.products.commission.update');
 
         Route::middleware('permission:inventory.edit')
+            ->put('/inventory/products/{sku}/price', [ProductController::class, 'updatePrice'])
+            ->whereNumber('sku')
+            ->name('inventory.products.price.update');
+
+        Route::middleware('permission:inventory.edit')
             ->put('/inventory/products/{product}/description', [ProductController::class, 'updateDescription'])
             ->whereNumber('product')
             ->name('inventory.products.description.update');

@@ -75,6 +75,29 @@ final class Sku
         $this->sellingPriceOverridden = true;
     }
 
+    /**
+     * Correcting a cost/markup entry mistake after creation (e.g. a wrong
+     * cost price at intake). Recomputes the auto-calculated selling price
+     * from the new inputs unless a manual override is already in effect —
+     * same precedence BRD INV-09 establishes at creation time.
+     */
+    public function updateCostAndMarkup(Money $costPrice, float $markupPercent): void
+    {
+        $this->costPrice = $costPrice;
+        $this->markupPercent = $markupPercent;
+
+        if (! $this->sellingPriceOverridden) {
+            $this->sellingPrice = self::calculateSellingPrice($costPrice, $markupPercent);
+        }
+    }
+
+    /** Reverts to the auto-calculated selling price, discarding any manual override. */
+    public function clearSellingPriceOverride(): void
+    {
+        $this->sellingPriceOverridden = false;
+        $this->sellingPrice = self::calculateSellingPrice($this->costPrice, $this->markupPercent);
+    }
+
     /** The flat staff commission paid when this SKU is sold, earned by the cashier at sale finalization. Null amount means not commissionable. */
     public function setCommission(bool $isCommissionable, ?Money $amount): void
     {

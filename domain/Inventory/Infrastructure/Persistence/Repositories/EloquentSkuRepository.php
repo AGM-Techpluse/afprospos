@@ -86,6 +86,8 @@ final class EloquentSkuRepository implements SkuRepository
     public function save(Sku $sku): void
     {
         SkuRecord::query()->whereKey($sku->id()->value)->update([
+            'cost_price_minor' => $sku->costPrice()->minor,
+            'markup_percent' => $sku->markupPercent(),
             'selling_price_minor' => $sku->sellingPrice()->minor,
             'selling_price_overridden' => $sku->sellingPriceOverridden(),
             'is_commissionable' => $sku->isCommissionable(),

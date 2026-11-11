@@ -31,6 +31,14 @@ export default function EditProductModal({ onClose, sku, mode = 'all' }: EditPro
     });
     const commissionErrors = commissionForm.errors as Record<string, string | undefined>;
 
+    const priceForm = useForm({
+        cost_price_naira: String(sku.cost_price_minor / 100),
+        markup_percent: String(sku.markup_percent),
+        override_selling_price: sku.selling_price_overridden,
+        selling_price_naira: String(sku.selling_price_minor / 100),
+    });
+    const priceErrors = priceForm.errors as Record<string, string | undefined>;
+
     function submitDescription(e: FormEvent) {
         e.preventDefault();
         descriptionForm.put(`/admin/inventory/products/${sku.id}/description`, { preserveScroll: true });
@@ -58,6 +66,18 @@ export default function EditProductModal({ onClose, sku, mode = 'all' }: EditPro
                 : null,
         }));
         commissionForm.put(`/admin/inventory/products/${sku.id}/commission`, { preserveScroll: true });
+    }
+
+    function submitPrice(e: FormEvent) {
+        e.preventDefault();
+        priceForm.transform((formData) => ({
+            cost_price_minor: Math.round(parseFloat(formData.cost_price_naira) * 100),
+            markup_percent: parseFloat(formData.markup_percent),
+            selling_price_minor_override: formData.override_selling_price
+                ? Math.round(parseFloat(formData.selling_price_naira) * 100)
+                : null,
+        }));
+        priceForm.put(`/admin/inventory/products/${sku.id}/price`, { preserveScroll: true });
     }
 
     return (
@@ -102,6 +122,72 @@ export default function EditProductModal({ onClose, sku, mode = 'all' }: EditPro
                         </AdminButton>
                     </form>
                 </section>
+
+                {mode === 'all' && (
+                    <section className="pt-6 border-t border-admin-border">
+                        <h3 className="text-sm font-semibold text-admin-text mb-2">Pricing</h3>
+                        <form onSubmit={submitPrice} className="flex flex-col gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-admin-text mb-1.5">Cost price (₦)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={priceForm.data.cost_price_naira}
+                                        onChange={(e) => priceForm.setData('cost_price_naira', e.target.value)}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                    />
+                                    {priceErrors.cost_price_minor && <p className="text-xs text-admin-red mt-1">{priceErrors.cost_price_minor}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-admin-text mb-1.5">Markup (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={priceForm.data.markup_percent}
+                                        onChange={(e) => priceForm.setData('markup_percent', e.target.value)}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                    />
+                                    {priceErrors.markup_percent && <p className="text-xs text-admin-red mt-1">{priceErrors.markup_percent}</p>}
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm text-admin-text">
+                                <input
+                                    type="checkbox"
+                                    checked={priceForm.data.override_selling_price}
+                                    onChange={(e) => priceForm.setData('override_selling_price', e.target.checked)}
+                                />
+                                Set an exact selling price instead of auto-calculating from cost + markup
+                            </label>
+
+                            {priceForm.data.override_selling_price ? (
+                                <div>
+                                    <label className="block text-xs font-semibold text-admin-text mb-1.5">Selling price (₦)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={priceForm.data.selling_price_naira}
+                                        onChange={(e) => priceForm.setData('selling_price_naira', e.target.value)}
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                    />
+                                    {priceErrors.selling_price_minor_override && (
+                                        <p className="text-xs text-admin-red mt-1">{priceErrors.selling_price_minor_override}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-admin-text2">Selling price will be recalculated from cost price + markup.</p>
+                            )}
+
+                            <AdminButton type="submit" variant="neutral" isLoading={priceForm.processing} className="self-start">
+                                Save pricing
+                            </AdminButton>
+                        </form>
+                    </section>
+                )}
 
                 {mode === 'all' && (
                     <section className="pt-6 border-t border-admin-border">

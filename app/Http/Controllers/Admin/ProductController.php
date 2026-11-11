@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\CreateProductWithVariantsRequest;
 use App\Http\Requests\Admin\UpdateProductDescriptionRequest;
 use App\Http\Requests\Admin\UpdateSkuAttributesRequest;
 use App\Http\Requests\Admin\UpdateSkuCommissionRequest;
+use App\Http\Requests\Admin\UpdateSkuPriceRequest;
 use App\Support\Images\ProductImageProcessor;
 use Domain\Inventory\Application\Commands\AddProductVariantCommand;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
@@ -18,6 +19,7 @@ use Domain\Inventory\Application\Commands\CreateProductWithVariantsCommand;
 use Domain\Inventory\Application\Commands\UpdateProductDescriptionCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuAttributesCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuCommissionCommand;
+use Domain\Inventory\Application\Commands\UpdateSkuPriceCommand;
 use Domain\Inventory\Application\DTOs\VariantInput;
 use Domain\Inventory\Application\Handlers\AddProductVariantHandler;
 use Domain\Inventory\Application\Handlers\CreateProductHandler;
@@ -25,6 +27,7 @@ use Domain\Inventory\Application\Handlers\CreateProductWithVariantsHandler;
 use Domain\Inventory\Application\Handlers\UpdateProductDescriptionHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuAttributesHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuCommissionHandler;
+use Domain\Inventory\Application\Handlers\UpdateSkuPriceHandler;
 use Domain\Inventory\Application\Queries\InventoryMasterListQuery;
 use Domain\Inventory\Application\Queries\ProductCatalogQuery;
 use Domain\Inventory\Application\Queries\SerializedUnitsQuery;
@@ -55,6 +58,7 @@ final class ProductController
         private readonly AddProductVariantHandler $addVariant,
         private readonly InventoryMasterListQuery $masterLists,
         private readonly UpdateSkuCommissionHandler $updateSkuCommission,
+        private readonly UpdateSkuPriceHandler $updateSkuPrice,
         private readonly UpdateProductDescriptionHandler $updateProductDescription,
         private readonly UpdateSkuAttributesHandler $updateSkuAttributes,
         private readonly ProductImageProcessor $images,
@@ -341,6 +345,23 @@ final class ProductController
         ));
 
         $this->flashSuccess('Commission settings updated');
+
+        return redirect()->back();
+    }
+
+    public function updatePrice(UpdateSkuPriceRequest $request, int $sku): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+
+        $this->updateSkuPrice->handle(new UpdateSkuPriceCommand(
+            skuId: $sku,
+            costPriceMinor: $request->integer('cost_price_minor'),
+            markupPercent: (float) $request->input('markup_percent'),
+            sellingPriceMinorOverride: $request->filled('selling_price_minor_override') ? $request->integer('selling_price_minor_override') : null,
+            updatedByStaffId: $actor->staffId->value,
+        ));
+
+        $this->flashSuccess('Pricing updated');
 
         return redirect()->back();
     }
