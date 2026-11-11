@@ -42,7 +42,9 @@ export default function AdminStatCard({ label, value, delta, deltaDirection, var
             <div className={`relative text-xs font-semibold uppercase tracking-wide ${isBlue ? 'text-white/80' : 'text-admin-text2'}`}>
                 {label}
             </div>
-            <div className={`relative text-admin-xl font-bold mt-1 ${isBlue ? 'text-white' : 'text-admin-text'}`}>{value}</div>
+            <div className={`relative text-lg sm:text-xl lg:text-admin-xl font-bold mt-1 truncate ${isBlue ? 'text-white' : 'text-admin-text'}`} title={value}>
+                {value}
+            </div>
             {delta && (
                 <div
                     className={`relative text-xs font-semibold mt-1 ${

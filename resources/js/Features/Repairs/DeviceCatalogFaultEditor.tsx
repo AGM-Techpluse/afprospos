@@ -1,7 +1,8 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import Icon from '../../Components/Icons/Icon';
 import AdminButton from '../../Components/Admin/AdminButton';
+import AdminPagination from '../../Components/Admin/AdminPagination';
 
 export type SuggestedPart = { id: number; sku_id: number; sku_code: string | null; product_name: string | null };
 export type DeviceProblemTag = { id: number; label: string; sort_order: number; commission_amount_minor: number | null; suggested_parts: SuggestedPart[] };
@@ -9,6 +10,75 @@ export type DeviceModel = { id: number; name: string; sort_order: number; fixabl
 
 const inputClass =
     'border border-admin-border-strong rounded-admin-button px-2.5 py-1.5 text-xs outline-none focus:border-admin-blue focus:ring-2 focus:ring-admin-focus bg-white';
+
+/** Click-to-edit cell (Cloudflare/MySQL-table style) — shows plain text until clicked, then becomes a focused input; Enter/blur saves, Escape discards. */
+function InlineEditCell({
+    value,
+    onSave,
+    type = 'text',
+    placeholder,
+    displayValue,
+}: {
+    value: string;
+    onSave: (value: string) => void;
+    type?: 'text' | 'number';
+    placeholder: string;
+    /** What to render in read mode when non-empty — defaults to the raw value. */
+    displayValue?: string;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(value);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!editing) setDraft(value);
+    }, [value, editing]);
+
+    useEffect(() => {
+        if (editing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [editing]);
+
+    function commit() {
+        setEditing(false);
+        if (draft !== value) onSave(draft);
+    }
+
+    if (editing) {
+        return (
+            <input
+                ref={inputRef}
+                type={type}
+                step={type === 'number' ? '0.01' : undefined}
+                min={type === 'number' ? '0' : undefined}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                    if (e.key === 'Escape') {
+                        setDraft(value);
+                        setEditing(false);
+                    }
+                }}
+                placeholder={placeholder}
+                className={`${inputClass} w-full`}
+            />
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="w-full text-left px-1.5 py-1 rounded-admin-button hover:bg-admin-hover transition-colors truncate"
+        >
+            {value.trim() !== '' ? (displayValue ?? value) : <span className="text-admin-text3">{placeholder}</span>}
+        </button>
+    );
+}
 
 function ChipList({
     items,
@@ -226,14 +296,15 @@ function ExistingFaultsPicker({
 
     if (!open) {
         return (
-            <button type="button" onClick={toggleOpen} className="text-xs text-admin-blue hover:underline mt-1.5">
-                + Choose from existing faults
-            </button>
+            <AdminButton type="button" variant="neutral" size="sm" onClick={toggleOpen} className="mt-2">
+                <Icon name="plus-lg" className="mr-1" />
+                Choose from existing faults
+            </AdminButton>
         );
     }
 
     return (
-        <div className="mt-1.5 border border-admin-border rounded-admin-card p-2.5 max-w-xs">
+        <div className="mt-2 border border-admin-border rounded-admin-card p-2.5 max-w-xs bg-admin-surface">
             <input
                 type="text"
                 value={term}
@@ -263,6 +334,138 @@ function ExistingFaultsPicker({
                     Cancel
                 </button>
             </div>
+        </div>
+    );
+}
+
+/** One fault row — label and commission are click-to-edit in place (Cloudflare/MySQL-table style); suggested parts expand into a second row below when clicked. */
+function FaultRow({
+    tag,
+    onUpdate,
+    onRemove,
+}: {
+    tag: DeviceProblemTag;
+    onUpdate: (patch: { label?: string; commission_amount_minor?: number | null }) => void;
+    onRemove: () => void;
+}) {
+    const [partsOpen, setPartsOpen] = useState(false);
+    const commissionValue = tag.commission_amount_minor !== null ? String(tag.commission_amount_minor / 100) : '';
+
+    return (
+        <>
+            <tr className="border-b border-admin-border last:border-b-0 hover:bg-admin-hover/60">
+                <td className="px-3 py-1.5 align-middle">
+                    <InlineEditCell value={tag.label} onSave={(label) => onUpdate({ label })} placeholder="Fault name" />
+                </td>
+                <td className="px-3 py-1.5 align-middle w-28">
+                    <InlineEditCell
+                        value={commissionValue}
+                        onSave={(naira) => onUpdate({ commission_amount_minor: naira.trim() !== '' ? Math.round(parseFloat(naira) * 100) : null })}
+                        type="number"
+                        placeholder="₦0.00"
+                        displayValue={commissionValue !== '' ? `₦${parseFloat(commissionValue).toLocaleString()}` : undefined}
+                    />
+                </td>
+                <td className="px-3 py-1.5 align-middle w-56">
+                    <button type="button" onClick={() => setPartsOpen((prev) => !prev)} className="flex flex-wrap items-center gap-1 w-full text-left">
+                        {tag.suggested_parts.length === 0 ? (
+                            <span className="text-xs text-admin-text3">No parts yet</span>
+                        ) : (
+                            <>
+                                {tag.suggested_parts.slice(0, 2).map((part) => (
+                                    <span key={part.id} className="inline-flex items-center bg-admin-hover text-admin-text text-[11px] rounded-admin-badge px-1.5 py-0.5 truncate max-w-[110px]">
+                                        {part.product_name ?? part.sku_code ?? `SKU #${part.sku_id}`}
+                                    </span>
+                                ))}
+                                {tag.suggested_parts.length > 2 && (
+                                    <span className="text-[11px] text-admin-text3 shrink-0">+{tag.suggested_parts.length - 2}</span>
+                                )}
+                            </>
+                        )}
+                        <Icon name={partsOpen ? 'chevron-up' : 'chevron-down'} className="text-admin-text3 text-[10px] shrink-0 ml-auto" />
+                    </button>
+                </td>
+                <td className="pl-1 pr-3 py-1.5 align-middle w-8 text-right">
+                    <button type="button" onClick={onRemove} className="text-admin-text3 hover:text-admin-red" aria-label={`Remove ${tag.label}`}>
+                        <Icon name="x" />
+                    </button>
+                </td>
+            </tr>
+            {partsOpen && (
+                <tr className="border-b border-admin-border last:border-b-0 bg-admin-hover/30">
+                    <td colSpan={4} className="px-3 pb-3 pt-1">
+                        <SuggestedPartsEditor problemTag={tag} />
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+/**
+ * A model's own fault overrides as a real table — scrollable within a fixed
+ * height (~5 rows) rather than growing the page, with client-side
+ * pagination once a model genuinely accumulates more than one page's worth
+ * (all its faults already arrive with the page, so no server round-trip is
+ * needed to turn the page).
+ */
+function FaultsTable({ tags, deviceModelId }: { tags: DeviceProblemTag[]; deviceModelId: number }) {
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(tags.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const pageTags = tags.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    function update(tag: DeviceProblemTag, patch: { label?: string; commission_amount_minor?: number | null }) {
+        router.put(
+            `/admin/settings/device-catalog/problem-tags/${tag.id}`,
+            {
+                label: patch.label ?? tag.label,
+                sort_order: tag.sort_order,
+                commission_amount_minor: 'commission_amount_minor' in patch
+                    ? (patch.commission_amount_minor ?? '')
+                    : (tag.commission_amount_minor ?? ''),
+            },
+            { preserveScroll: true, showProgress: false },
+        );
+    }
+
+    function remove(tagId: number) {
+        router.delete(`/admin/settings/device-catalog/problem-tags/${tagId}`, { preserveScroll: true, showProgress: false });
+    }
+
+    if (tags.length === 0) {
+        return <p className="text-xs text-admin-text3">No faults yet — add one below.</p>;
+    }
+
+    return (
+        <div className="border border-admin-border rounded-admin-card overflow-hidden bg-admin-surface">
+            {/* overflow-auto (not just -y): on a narrow phone this table scrolls sideways within its own
+                card instead of pushing the whole page wider — the fixed column widths below need more
+                room than a phone screen has, same as any dense data table (ResponsiveDataTable's desktop
+                table does the same with overflow-x-auto). */}
+            <div className="max-h-[230px] overflow-auto">
+                <table className="w-full min-w-[460px] text-xs border-collapse">
+                    <thead>
+                        <tr>
+                            <th className="sticky top-0 z-10 bg-admin-table-head text-left font-semibold text-admin-text2 px-3 py-2">Fault</th>
+                            <th className="sticky top-0 z-10 bg-admin-table-head text-left font-semibold text-admin-text2 px-3 py-2 w-28">Commission</th>
+                            <th className="sticky top-0 z-10 bg-admin-table-head text-left font-semibold text-admin-text2 px-3 py-2 w-56">Suggested parts</th>
+                            <th className="sticky top-0 z-10 bg-admin-table-head w-8" aria-hidden="true" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pageTags.map((tag) => (
+                            <FaultRow key={tag.id} tag={tag} onUpdate={(patch) => update(tag, patch)} onRemove={() => remove(tag.id)} />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {tags.length > pageSize && (
+                <div className="border-t border-admin-border">
+                    <AdminPagination currentPage={currentPage} totalItems={tags.length} pageSize={pageSize} onPageChange={setPage} />
+                </div>
+            )}
         </div>
     );
 }
@@ -334,12 +537,46 @@ export function ProblemTagList({
     );
 }
 
-/** A model's own fixable faults, or (while it has none of its own) its device type's fallback list shown read-only until an override is added. */
+/** A compact "add a new fault" row — posts straight to the create endpoint, used below the table in both of ModelFaultsEditor's states. */
+function AddFaultForm({
+    scope,
+    placeholder,
+    startingSortOrder,
+}: {
+    scope: { device_model_id: number };
+    placeholder: string;
+    startingSortOrder: number;
+}) {
+    const [label, setLabel] = useState('');
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        if (!label.trim()) return;
+        router.post(
+            '/admin/settings/device-catalog/problem-tags',
+            { ...scope, label: label.trim(), sort_order: startingSortOrder },
+            { preserveScroll: true, showProgress: false, onSuccess: () => setLabel('') },
+        );
+    }
+
+    return (
+        <form onSubmit={submit} className="flex items-center gap-1.5 mt-2">
+            <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={placeholder} className={`${inputClass} min-w-0 flex-1`} />
+            <AdminButton type="submit" variant="neutral" size="sm">
+                <Icon name="plus-lg" className="mr-1" />
+                Add
+            </AdminButton>
+        </form>
+    );
+}
+
+/** A model's own fixable faults as a real editable table, or (while it has none of its own) its device type's fallback list shown read-only until an override is added. */
 export function ModelFaultsEditor({ model, deviceTypeId, deviceTypeLabel }: { model: DeviceModel; deviceTypeId: number; deviceTypeLabel: string }) {
     if (model.has_model_specific_faults) {
         return (
-            <div className="mt-2 pl-3 border-l-2 border-admin-border">
-                <ProblemTagList tags={model.fixable_faults} scope={{ device_model_id: model.id }} addPlaceholder="Add another override…" />
+            <div className="mt-3 pl-3 border-l-2 border-admin-border">
+                <FaultsTable tags={model.fixable_faults} deviceModelId={model.id} />
+                <AddFaultForm scope={{ device_model_id: model.id }} placeholder="Add another override…" startingSortOrder={model.fixable_faults.length} />
                 <ExistingFaultsPicker
                     deviceTypeId={deviceTypeId}
                     deviceModelId={model.id}
@@ -351,21 +588,28 @@ export function ModelFaultsEditor({ model, deviceTypeId, deviceTypeLabel }: { mo
     }
 
     return (
-        <div className="mt-2 pl-3 border-l-2 border-admin-border">
-            <p className="text-xs text-admin-text3 mb-1.5">Using {deviceTypeLabel}&apos;s default faults — add one below to override for this model only.</p>
+        <div className="mt-3 pl-3 border-l-2 border-admin-border">
+            <div className="flex items-start gap-1.5 mb-2 text-xs text-admin-text3">
+                <Icon name="info-circle" className="mt-0.5 shrink-0" />
+                <span>Using {deviceTypeLabel}&apos;s default faults — add one below to override for this model only.</span>
+            </div>
             {model.fixable_faults.length > 0 && (
-                <ul className="flex flex-col gap-1 mb-2">
-                    {model.fixable_faults.map((tag) => (
-                        <li key={tag.id} className="text-xs text-admin-text2">
-                            {tag.label}
-                            {tag.commission_amount_minor !== null && (
-                                <span className="text-admin-text3"> — ₦{(tag.commission_amount_minor / 100).toFixed(2)}</span>
-                            )}
-                        </li>
-                    ))}
-                </ul>
+                <div className="border border-admin-border rounded-admin-card overflow-hidden mb-2">
+                    <table className="w-full text-xs border-collapse">
+                        <tbody>
+                            {model.fixable_faults.map((tag) => (
+                                <tr key={tag.id} className="border-b border-admin-border last:border-b-0">
+                                    <td className="px-3 py-1.5 text-admin-text2">{tag.label}</td>
+                                    <td className="px-3 py-1.5 text-admin-text3 text-right w-28">
+                                        {tag.commission_amount_minor !== null ? `₦${(tag.commission_amount_minor / 100).toLocaleString()}` : '—'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
-            <ProblemTagList tags={[]} scope={{ device_model_id: model.id }} addPlaceholder="Add a model-specific fault…" />
+            <AddFaultForm scope={{ device_model_id: model.id }} placeholder="Add a model-specific fault…" startingSortOrder={0} />
             <ExistingFaultsPicker
                 deviceTypeId={deviceTypeId}
                 deviceModelId={model.id}
