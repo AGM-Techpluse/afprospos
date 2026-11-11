@@ -117,6 +117,59 @@ final class HandlerBackedInventoryCatalogQuery implements InventoryCatalogQuery
         ];
     }
 
+    public function findMany(array $skuIds, int $shopId): array
+    {
+        if ($skuIds === []) {
+            return [];
+        }
+
+        $skus = SkuRecord::query()->with('product')->whereIn('id', $skuIds)->get();
+
+        $serializedIds = $skus->filter(fn (SkuRecord $sku): bool => (bool) $sku->is_serialized)->pluck('id');
+        $nonSerializedIds = $skus->filter(fn (SkuRecord $sku): bool => ! $sku->is_serialized)->pluck('id');
+
+        $availableCountsBySerializedSku = InventoryItemRecord::query()
+            ->whereIn('sku_id', $serializedIds)
+            ->where('current_shop_id', $shopId)
+            ->where('status', 'available')
+            ->selectRaw('sku_id, count(*) as available_count')
+            ->groupBy('sku_id')
+            ->pluck('available_count', 'sku_id');
+
+        $stockLevelsBySku = InventoryStockLevelRecord::query()
+            ->whereIn('sku_id', $nonSerializedIds)
+            ->where('shop_id', $shopId)
+            ->get()
+            ->keyBy('sku_id');
+
+        return $skus->mapWithKeys(function (SkuRecord $sku) use ($availableCountsBySerializedSku, $stockLevelsBySku): array {
+            if ($sku->is_serialized) {
+                $available = (int) ($availableCountsBySerializedSku[$sku->id] ?? 0);
+            } else {
+                $level = $stockLevelsBySku[$sku->id] ?? null;
+                $available = StockAvailability::available($level->on_hand ?? 0, $level->reserved ?? 0);
+            }
+
+            return [$sku->id => [
+                'sku_id' => $sku->id,
+                'sku_code' => $sku->sku_code,
+                'product_name' => trim("{$sku->product->brand} {$sku->product->model}"),
+                'is_serialized' => (bool) $sku->is_serialized,
+                'selling_price_minor' => $sku->selling_price_minor,
+                'available' => $available,
+                'variant_label' => $this->variantLabel($sku),
+                'brand' => $sku->product->brand,
+                'model' => $sku->product->model,
+                'category' => $sku->product->category,
+                'description' => $sku->product->description,
+                'attributes' => $sku->attributes ?? [],
+                'is_commissionable' => (bool) $sku->is_commissionable,
+                'commission_amount_minor' => $sku->commission_amount_minor,
+                'image_url' => $this->imageUrl($sku),
+            ]];
+        })->all();
+    }
+
     public function findBySkuCode(string $skuCode): ?array
     {
         $sku = SkuRecord::query()->with('product')->where('sku_code', $skuCode)->first();

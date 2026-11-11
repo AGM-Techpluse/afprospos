@@ -54,19 +54,7 @@ final class SaleDetailQuery
             'payment_reference' => $sale->payment_reference,
             'invoice_number' => $sale->invoice_number,
             'created_at' => $sale->created_at->toIso8601String(),
-            'items' => $sale->checkout->items->map(function ($item) use ($sale): array {
-                $sku = $this->catalog->find($item->sku_id, $sale->shop_id);
-
-                return [
-                    'sku_id' => $item->sku_id,
-                    'sku_code' => $sku['sku_code'] ?? null,
-                    'product_name' => $sku['product_name'] ?? null,
-                    'variant_label' => $sku['variant_label'] ?? null,
-                    'inventory_item_id' => $item->inventory_item_id,
-                    'quantity' => $item->quantity,
-                    'unit_price_minor' => $item->unit_price_minor,
-                ];
-            })->all(),
+            'items' => $this->itemsArray($sale),
             'adjustments' => $sale->checkout->adjustments->map(static fn ($adjustment): array => [
                 'type' => $adjustment->type,
                 'amount_minor' => $adjustment->amount_minor,
@@ -74,5 +62,29 @@ final class SaleDetailQuery
             'subtotal_minor' => $sale->checkout->subtotal_minor,
             'discount_minor' => $sale->checkout->discount_minor,
         ];
+    }
+
+    /**
+     * Batched once per sale instead of once per line item.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function itemsArray(SaleRecord $sale): array
+    {
+        $skus = $this->catalog->findMany($sale->checkout->items->pluck('sku_id')->unique()->all(), $sale->shop_id);
+
+        return $sale->checkout->items->map(function ($item) use ($skus): array {
+            $sku = $skus[$item->sku_id] ?? null;
+
+            return [
+                'sku_id' => $item->sku_id,
+                'sku_code' => $sku['sku_code'] ?? null,
+                'product_name' => $sku['product_name'] ?? null,
+                'variant_label' => $sku['variant_label'] ?? null,
+                'inventory_item_id' => $item->inventory_item_id,
+                'quantity' => $item->quantity,
+                'unit_price_minor' => $item->unit_price_minor,
+            ];
+        })->all();
     }
 }

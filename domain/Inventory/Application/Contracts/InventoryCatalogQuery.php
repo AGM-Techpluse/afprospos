@@ -77,6 +77,32 @@ interface InventoryCatalogQuery
     public function find(int $skuId, int $shopId): ?array;
 
     /**
+     * Batched `find()` — for a known set of SKUs (a checkout/sale's full
+     * line-item list) in one round trip instead of once per item. Keyed by
+     * `sku_id`; a SKU that no longer exists is simply absent from the result.
+     *
+     * @param  int[]  $skuIds
+     * @return array<int, array{
+     *     sku_id: int,
+     *     sku_code: string,
+     *     product_name: string,
+     *     is_serialized: bool,
+     *     selling_price_minor: int,
+     *     available: int,
+     *     variant_label: string,
+     *     brand: string,
+     *     model: string,
+     *     category: string,
+     *     description: string|null,
+     *     attributes: array<string, mixed>,
+     *     is_commissionable: bool,
+     *     commission_amount_minor: int|null,
+     *     image_url: string|null,
+     * }>
+     */
+    public function findMany(array $skuIds, int $shopId): array;
+
+    /**
      * A plain SKU-code lookup with no shop context — unlike `find()`,
      * never needs a per-shop `available` figure (a CSV import resolving
      * a human-typed code to an id doesn't care about stock), so it

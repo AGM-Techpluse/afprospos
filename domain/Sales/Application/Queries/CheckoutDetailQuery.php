@@ -122,21 +122,7 @@ final class CheckoutDetailQuery
             'subtotal_minor' => $checkout->subtotal_minor,
             'discount_minor' => $checkout->discount_minor,
             'total_minor' => $checkout->total_minor,
-            'items' => $checkout->items->map(function ($item) use ($checkout): array {
-                $sku = $this->catalog->find($item->sku_id, $checkout->shop_id);
-
-                return [
-                    'id' => $item->id,
-                    'sku_id' => $item->sku_id,
-                    'sku_code' => $sku['sku_code'] ?? null,
-                    'product_name' => $sku['product_name'] ?? null,
-                    'variant_label' => $sku['variant_label'] ?? null,
-                    'image_url' => $sku['image_url'] ?? null,
-                    'inventory_item_id' => $item->inventory_item_id,
-                    'quantity' => $item->quantity,
-                    'unit_price_minor' => $item->unit_price_minor,
-                ];
-            })->all(),
+            'items' => $this->itemsArray($checkout),
             'adjustments' => $checkout->adjustments->map(static fn ($adjustment): array => [
                 'id' => $adjustment->id,
                 'type' => $adjustment->type,
@@ -147,5 +133,34 @@ final class CheckoutDetailQuery
                 'approved_by_staff_id' => $adjustment->approved_by_staff_id,
             ])->all(),
         ];
+    }
+
+    /**
+     * Batched once per checkout instead of once per line item — this page
+     * polls every 5 seconds while open (Checkout.tsx's usePoll), so an
+     * unbatched per-item lookup here re-ran continuously for every active
+     * cashier, not just once per page load.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function itemsArray(SalesCheckoutRecord $checkout): array
+    {
+        $skus = $this->catalog->findMany($checkout->items->pluck('sku_id')->unique()->all(), $checkout->shop_id);
+
+        return $checkout->items->map(function ($item) use ($skus): array {
+            $sku = $skus[$item->sku_id] ?? null;
+
+            return [
+                'id' => $item->id,
+                'sku_id' => $item->sku_id,
+                'sku_code' => $sku['sku_code'] ?? null,
+                'product_name' => $sku['product_name'] ?? null,
+                'variant_label' => $sku['variant_label'] ?? null,
+                'image_url' => $sku['image_url'] ?? null,
+                'inventory_item_id' => $item->inventory_item_id,
+                'quantity' => $item->quantity,
+                'unit_price_minor' => $item->unit_price_minor,
+            ];
+        })->all();
     }
 }
