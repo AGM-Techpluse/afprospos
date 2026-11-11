@@ -941,7 +941,7 @@ final class RepairsController
     {
         abort_if($shopId !== null && ! $actor->canAccessShop($shopId), 403);
 
-        return DiagnosisCaseRecord::query()
+        $cases = DiagnosisCaseRecord::query()
             ->where('status', 'diagnosed')
             ->where('outcome', 'repairable')
             ->when($shopId !== null, fn ($query) => $query->where('shop_id', $shopId))
@@ -949,24 +949,33 @@ final class RepairsController
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(100)
-            ->get()
-            ->map(function (DiagnosisCaseRecord $case): array {
-                $customer = $case->customer_id !== null ? $this->customers->find($case->customer_id) : null;
+            ->get();
 
-                return [
-                    'id' => $case->id,
-                    'shop_id' => $case->shop_id,
-                    'customer_name' => $customer['name'] ?? null,
-                    'walk_in_name' => $case->walk_in_name,
-                    'device' => trim($case->device_make.' '.$case->device_model),
-                    'device_imei_serial' => $case->device_imei_serial,
-                    'reported_issue' => $case->reported_issue,
-                    'faults' => DiagnosisCaseFaultRecord::query()
-                        ->where('diagnosis_case_id', $case->id)
-                        ->orderBy('id')
-                        ->pluck('label_snapshot')
-                        ->all(),
-                ];
-            })->all();
+        // Batched once for up to 100 rows instead of once per row — this loop
+        // used to run 2 extra queries per case (customer + faults).
+        $customers = $this->customers->findMany(
+            $cases->pluck('customer_id')->filter()->map(static fn (int $id): int => $id)->all()
+        );
+
+        $faultsByCase = DiagnosisCaseFaultRecord::query()
+            ->whereIn('diagnosis_case_id', $cases->pluck('id'))
+            ->orderBy('id')
+            ->get()
+            ->groupBy('diagnosis_case_id');
+
+        return $cases->map(function (DiagnosisCaseRecord $case) use ($customers, $faultsByCase): array {
+            $customer = $case->customer_id !== null ? ($customers[$case->customer_id] ?? null) : null;
+
+            return [
+                'id' => $case->id,
+                'shop_id' => $case->shop_id,
+                'customer_name' => $customer['name'] ?? null,
+                'walk_in_name' => $case->walk_in_name,
+                'device' => trim($case->device_make.' '.$case->device_model),
+                'device_imei_serial' => $case->device_imei_serial,
+                'reported_issue' => $case->reported_issue,
+                'faults' => ($faultsByCase->get($case->id) ?? collect())->pluck('label_snapshot')->all(),
+            ];
+        })->all();
     }
 }

@@ -40,6 +40,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -139,13 +140,29 @@ final class DiagnosisCasesController
 
         $cases = $query->paginate(15)->withQueryString();
         $items = collect($cases->items());
+        $caseIds = $items->pluck('id')->all();
         $customers = $this->customers->findMany(
             $items->pluck('customer_id')->filter()->map(static fn (int $id): int => $id)->all()
         );
 
+        // Batched once for the whole page instead of once per row inside summary() —
+        // this loop used to run 2 extra queries per case (up to 15 per page).
+        $faultsByCase = DiagnosisCaseFaultRecord::query()
+            ->whereIn('diagnosis_case_id', $caseIds)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('diagnosis_case_id');
+
+        $openRepairsByCase = RepairJobRecord::query()
+            ->whereIn('diagnosis_case_id', $caseIds)
+            ->whereNotIn('repair_status', ['completed', 'unrepairable', 'expired_cancelled', 'cancelled'])
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('diagnosis_case_id');
+
         return Inertia::render('Admin/DiagnosisCases/Index', [
             'cases' => [
-                'data' => $items->map(fn (DiagnosisCaseRecord $case): array => $this->summary($case, $customers))->all(),
+                'data' => $items->map(fn (DiagnosisCaseRecord $case): array => $this->summary($case, $customers, $faultsByCase, $openRepairsByCase))->all(),
                 'current_page' => $cases->currentPage(),
                 'last_page' => $cases->lastPage(),
                 'per_page' => $cases->perPage(),
@@ -457,19 +474,34 @@ final class DiagnosisCasesController
         ]);
     }
 
-    /** @return array<string, mixed> */
     /**
+     * $faultsByCase/$openRepairsByCase let a page-of-cases caller (index())
+     * pre-batch both in one query each instead of paying 2 extra queries
+     * per row here — left null for a single-case caller (detail()), which
+     * falls back to querying just the one case it actually needs.
+     *
      * @param  array<int, array{id: int, name: string, email: ?string, phone: string, notification_preferences: array<string, bool>, marketing_opt_out: bool}>  $customers
      * @return array<string, mixed>
      */
-    private function summary(DiagnosisCaseRecord $case, array $customers = []): array
+    private function summary(DiagnosisCaseRecord $case, array $customers = [], ?Collection $faultsByCase = null, ?Collection $openRepairsByCase = null): array
     {
         $customer = $case->customer_id !== null ? ($customers[$case->customer_id] ?? $this->customers->find($case->customer_id)) : null;
-        $openRepair = RepairJobRecord::query()
-            ->where('diagnosis_case_id', $case->id)
-            ->whereNotIn('repair_status', ['completed', 'unrepairable', 'expired_cancelled', 'cancelled'])
-            ->latest('id')
-            ->first();
+
+        $openRepair = $openRepairsByCase !== null
+            ? $openRepairsByCase->get($case->id)?->first()
+            : RepairJobRecord::query()
+                ->where('diagnosis_case_id', $case->id)
+                ->whereNotIn('repair_status', ['completed', 'unrepairable', 'expired_cancelled', 'cancelled'])
+                ->latest('id')
+                ->first();
+
+        $faults = $faultsByCase !== null
+            ? ($faultsByCase->get($case->id) ?? collect())->pluck('label_snapshot')->all()
+            : DiagnosisCaseFaultRecord::query()
+                ->where('diagnosis_case_id', $case->id)
+                ->orderBy('id')
+                ->pluck('label_snapshot')
+                ->all();
 
         return [
             'id' => $case->id,
@@ -483,11 +515,7 @@ final class DiagnosisCasesController
             'open_repair_id' => $openRepair?->id,
             'open_repair_status' => $openRepair?->repair_status,
             'created_at' => $case->created_at->toIso8601String(),
-            'faults' => DiagnosisCaseFaultRecord::query()
-                ->where('diagnosis_case_id', $case->id)
-                ->orderBy('id')
-                ->pluck('label_snapshot')
-                ->all(),
+            'faults' => $faults,
         ];
     }
 
