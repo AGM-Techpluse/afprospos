@@ -12,7 +12,7 @@ interface AdminSectionCardProps {
 /** Standard wrapper for a logical group of dashboard widgets — flat, border-driven per UI/UX §6.1, no shadow. */
 export default function AdminSectionCard({ title, action, children, className = '' }: AdminSectionCardProps) {
     return (
-        <div className={`bg-admin-surface border border-admin-border rounded-admin-card ${className}`}>
+        <div className={`bg-admin-surface border border-admin-border rounded-admin-card card-double-border ${className}`}>
             {title && (
                 <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-admin-border">
                     <h2 className="text-sm font-semibold text-admin-text">{title}</h2>

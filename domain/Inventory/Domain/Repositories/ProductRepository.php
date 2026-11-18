@@ -18,4 +18,6 @@ interface ProductRepository
     public function setImagePath(ProductId $id, string $imagePath): void;
 
     public function setDescription(ProductId $id, ?string $description): void;
+
+    public function updateMetadata(ProductId $id, string $brand, string $model, string $category, string $unit): void;
 }

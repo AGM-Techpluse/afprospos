@@ -3,6 +3,7 @@ import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminDetailRow from '../../../Components/Admin/AdminDetailRow';
 import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
 import AdminButton from '../../../Components/Admin/AdminButton';
@@ -87,15 +88,6 @@ interface RepairShowProps {
     canApprovePayment: boolean;
     canAuthorize: boolean;
     canTransferRepair: boolean;
-}
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-    return (
-        <div className="flex items-center justify-between py-2.5 border-b border-admin-border last:border-b-0">
-            <span className="text-sm text-admin-text2">{label}</span>
-            <span className="text-sm font-medium text-admin-text">{value}</span>
-        </div>
-    );
 }
 
 const CLOSED_STATUSES = ['completed', 'unrepairable', 'expired_cancelled'];
@@ -523,36 +515,99 @@ export default function RepairShow({ repair, shop, technicians, canApprovePaymen
                     }
                 >
                 <div className={`p-6 ${detailsExpanded ? 'block' : 'hidden'} lg:block`}>
-                    {(repair.reported_issue || repair.problem_tags.length > 0) && (
-                        <div className="mb-4 pb-4 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-1">Reported issue</div>
-                            {repair.problem_tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mb-1.5">
-                                    {repair.problem_tags.map((tag) => (
-                                        <span key={tag.id} className="bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
-                                            {tag.label}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                            {repair.reported_issue && <p className="text-sm text-admin-text whitespace-pre-wrap">{repair.reported_issue}</p>}
+                    {/* Customer & Intake Complaint enclosed in a dedicated bordered section */}
+                    <div className="border border-admin-border rounded-admin-card p-4 mb-5 bg-admin-bg/30 space-y-3.5">
+                        <div>
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-1">Customer</div>
+                            <p className="text-sm font-semibold text-admin-text">{repair.customer_name ?? repair.walk_in_name ?? 'Unknown customer'}</p>
+                            <div className="flex flex-wrap gap-x-3 text-xs text-admin-text2 mt-0.5">
+                                {(repair.customer_phone || (!repair.customer_name && repair.walk_in_phone)) && (
+                                    <span>{repair.customer_phone ?? repair.walk_in_phone}</span>
+                                )}
+                                {(repair.customer_email || (!repair.customer_name && repair.walk_in_email)) && (
+                                    <span>{repair.customer_email ?? repair.walk_in_email}</span>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    <div className="mb-4 pb-4 border-b border-admin-border">
-                        <div className="text-sm text-admin-text2 mb-1">Customer</div>
-                        <p className="text-sm font-medium text-admin-text">{repair.customer_name ?? repair.walk_in_name ?? 'Unknown customer'}</p>
-                        {repair.customer_phone && <p className="text-sm text-admin-text2">{repair.customer_phone}</p>}
-                        {repair.customer_email && <p className="text-sm text-admin-text2">{repair.customer_email}</p>}
-                        {!repair.customer_name && repair.walk_in_phone && <p className="text-sm text-admin-text2">{repair.walk_in_phone}</p>}
-                        {!repair.customer_name && repair.walk_in_email && <p className="text-sm text-admin-text2">{repair.walk_in_email}</p>}
+                        {(repair.reported_issue || repair.problem_tags.length > 0) && (
+                            <div className="pt-3 border-t border-admin-border">
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-1.5">Reported issue</div>
+                                {repair.problem_tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                        {repair.problem_tags.map((tag) => (
+                                            <span key={tag.id} className="bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-0.5">
+                                                {tag.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {repair.reported_issue && (
+                                    <p className="text-sm text-admin-text whitespace-pre-wrap leading-relaxed">{repair.reported_issue}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    <DetailRow label="Device" value={`${repair.device_make} ${repair.device_model}`} />
-                    <DetailRow label="Shop" value={shop ? shop.name : 'Unknown shop'} />
-                    <DetailRow label="IMEI / serial" value={repair.device_imei_serial ?? 'Not recorded'} />
+                    {/* Category 1: Device & Assignment */}
+                    <div className="pt-1 pb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-admin-text3">Device & Assignment</span>
+                    </div>
+
+                    <AdminDetailRow label="Device" value={`${repair.device_make} ${repair.device_model}`} />
+                    <AdminDetailRow label="Shop" value={shop ? shop.name : 'Unknown shop'} />
+                    <AdminDetailRow label="IMEI / serial" value={repair.device_imei_serial ?? 'Not recorded'} />
+
+                    <div className="flex items-start py-2.5 border-b border-admin-border">
+                        <div className="shrink-0 w-[130px] flex items-center justify-between pt-0.5">
+                            <span className="text-sm text-admin-text2">Device lock</span>
+                            {!editingLock && !DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED.includes(repair.repair_status) && (
+                                <button type="button" onClick={() => setEditingLock(true)} className="text-xs font-semibold text-admin-blue mr-1">
+                                    {repair.device_lock_present ? 'Edit' : 'Add'}
+                                </button>
+                            )}
+                        </div>
+                        <div className="shrink-0 w-px self-stretch bg-admin-border mx-3" aria-hidden="true" />
+                        <div className="flex-1 min-w-0 text-sm font-medium text-admin-text">
+                            {editingLock ? (
+                                <form onSubmit={saveDeviceLock}>
+                                    <DeviceLockInput lockType={lockType} lockValue={lockValue} onChange={(t, v) => { setLockType(t); setLockValue(v); }} />
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <AdminButton type="submit" variant="neutral" isLoading={processing}>
+                                            Save
+                                        </AdminButton>
+                                        <AdminButton
+                                            type="button"
+                                            variant="neutral"
+                                            onClick={() => {
+                                                setEditingLock(false);
+                                                setLockType(repair.device_lock_type);
+                                                setLockValue(repair.device_lock_value ?? '');
+                                            }}
+                                        >
+                                            Cancel
+                                        </AdminButton>
+                                    </div>
+                                </form>
+                            ) : !repair.device_lock_present ? (
+                                <span className="text-sm text-admin-text3">None set</span>
+                            ) : !repair.device_lock_visible_to_you ? (
+                                <span className="text-sm text-admin-text3">Set — hidden (only technician or owner)</span>
+                            ) : repair.device_lock_type === 'code' ? (
+                                <span className="text-sm font-mono font-medium text-admin-text">{repair.device_lock_value}</span>
+                            ) : (
+                                <PatternLockPad value={repair.device_lock_value?.split('-').map(Number) ?? []} onChange={() => {}} readOnly />
+                            )}
+                        </div>
+                    </div>
+
+                    <AdminDetailRow
+                        label="Technician"
+                        value={repair.technician_staff_id ? (assignedTechnicianName ?? 'Assigned technician') : 'Unassigned'}
+                    />
+                    <AdminDetailRow label="Received" value={new Date(repair.created_at).toLocaleString()} />
                     {repair.diagnosis_case && (
-                        <DetailRow
+                        <AdminDetailRow
                             label="Diagnosis case"
                             value={
                                 <button
@@ -566,7 +621,7 @@ export default function RepairShow({ repair, shop, technicians, canApprovePaymen
                         />
                     )}
                     {repair.reopened_from_repair_job_id && (
-                        <DetailRow
+                        <AdminDetailRow
                             label="Reopened from"
                             value={
                                 <button
@@ -580,175 +635,165 @@ export default function RepairShow({ repair, shop, technicians, canApprovePaymen
                         />
                     )}
 
-                    <div className="py-2.5 border-b border-admin-border">
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm text-admin-text2">Device lock</span>
-                            {!editingLock && !DEVICE_LOCK_EDITABLE_STATUSES_EXCLUDED.includes(repair.repair_status) && (
-                                <button type="button" onClick={() => setEditingLock(true)} className="text-xs font-semibold text-admin-blue">
-                                    {repair.device_lock_present ? 'Edit' : 'Add'}
-                                </button>
-                            )}
-                        </div>
-
-                        {editingLock ? (
-                            <form onSubmit={saveDeviceLock}>
-                                <DeviceLockInput lockType={lockType} lockValue={lockValue} onChange={(t, v) => { setLockType(t); setLockValue(v); }} />
-                                <div className="flex items-center gap-2">
-                                    <AdminButton type="submit" variant="neutral" isLoading={processing}>
-                                        Save
-                                    </AdminButton>
-                                    <AdminButton
-                                        type="button"
-                                        variant="neutral"
-                                        onClick={() => {
-                                            setEditingLock(false);
-                                            setLockType(repair.device_lock_type);
-                                            setLockValue(repair.device_lock_value ?? '');
-                                        }}
-                                    >
-                                        Cancel
-                                    </AdminButton>
-                                </div>
-                            </form>
-                        ) : !repair.device_lock_present ? (
-                            <p className="text-sm text-admin-text3">None set</p>
-                        ) : !repair.device_lock_visible_to_you ? (
-                            <p className="text-sm text-admin-text3">Set — hidden (only the assigned technician or Shop Owner can view it)</p>
-                        ) : repair.device_lock_type === 'code' ? (
-                            <p className="text-sm font-mono font-medium text-admin-text">{repair.device_lock_value}</p>
-                        ) : (
-                            <PatternLockPad value={repair.device_lock_value?.split('-').map(Number) ?? []} onChange={() => {}} readOnly />
-                        )}
+                    {/* Category 2: Financials & Billing */}
+                    <div className="pt-5 pb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-admin-text3">Financials & Billing</span>
                     </div>
 
-                    <DetailRow
+                    <AdminDetailRow label="Financial status" value={<span className="capitalize">{repair.financial_status.replace(/_/g, ' ')}</span>} />
+                    <AdminDetailRow
                         label="Repair cost"
                         value={repair.repair_cost_minor !== null ? formatNaira(repair.repair_cost_minor) : 'Not yet estimated'}
                     />
-                    <DetailRow
+                    <AdminDetailRow
                         label="Quote total"
                         value={repair.quote_total_minor !== null ? formatNaira(repair.quote_total_minor) : '—'}
                     />
                     {repair.supplemental_quotes.some((quote) => quote.status === 'approved') && (
-                        <div className="py-3 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-2">Supplemental charges (added to the quote above)</div>
-                            <ul className="flex flex-col gap-2 text-sm text-admin-text">
+                        <div className="py-2.5 border-b border-admin-border">
+                            <div className="text-xs font-medium text-admin-text2 mb-1.5">Supplemental charges (added to quote above)</div>
+                            <ul className="flex flex-col gap-1 text-sm text-admin-text">
                                 {repair.supplemental_quotes
                                     .filter((quote) => quote.status === 'approved')
                                     .map((quote) => (
-                                        <li key={quote.id} className="flex justify-between gap-3">
-                                            <span className="min-w-0">{quote.reason}</span>
-                                            <span className="shrink-0 font-semibold">{formatNaira(quote.amount_minor)}</span>
+                                        <li key={quote.id} className="flex justify-between items-center py-1 px-2.5 bg-admin-bg/40 rounded-admin-button gap-3">
+                                            <span className="min-w-0 text-xs">{quote.reason}</span>
+                                            <span className="shrink-0 font-semibold text-xs">{formatNaira(quote.amount_minor)}</span>
                                         </li>
                                     ))}
                             </ul>
                         </div>
                     )}
-                    {repair.part_reservations.some((p) => p.status === 'reserved') && (
-                        <div className="py-3 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-2">Parts set aside</div>
-                            <ul className="flex flex-col gap-1 text-sm text-admin-text">
-                                {repair.part_reservations
-                                    .filter((p) => p.status === 'reserved')
-                                    .map((p) => (
-                                        <li key={p.id} className="flex justify-between gap-3">
-                                            <span className="min-w-0 truncate">
-                                                {p.product_name ?? p.sku_code ?? `SKU ${p.sku_id}`} × {p.quantity}
-                                            </span>
-                                            <span className="shrink-0 font-semibold">
-                                                {p.unit_price_minor !== null ? formatNaira(p.unit_price_minor * p.quantity) : '—'}
-                                            </span>
-                                        </li>
-                                    ))}
-                            </ul>
-                        </div>
-                    )}
-                    {repair.part_reservations.some((p) => p.status === 'installed') && (
-                        <div className="py-3 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-2">Parts installed</div>
-                            <ul className="flex flex-col gap-1 text-sm text-admin-text">
-                                {repair.part_reservations
-                                    .filter((p) => p.status === 'installed')
-                                    .map((p) => (
-                                        <li key={p.id} className="flex justify-between gap-3">
-                                            <span className="min-w-0 truncate">
-                                                {p.product_name ?? p.sku_code ?? `SKU ${p.sku_id}`} × {p.quantity}
-                                            </span>
-                                            <span className="shrink-0 font-semibold">
-                                                {p.unit_price_minor !== null ? formatNaira(p.unit_price_minor * p.quantity) : '—'}
-                                            </span>
-                                        </li>
-                                    ))}
-                            </ul>
-                        </div>
-                    )}
-                    <DetailRow
-                        label="Diagnosis fee"
-                        value={repair.diagnosis_fee ? formatNaira(repair.diagnosis_fee.amount_minor) + (repair.diagnosis_fee.paid ? ' · paid' : ' · unpaid') : '—'}
-                    />
-                    <DetailRow
+                    <AdminDetailRow
                         label="Labour charge"
                         value={repair.labour_charge_minor !== null ? formatNaira(repair.labour_charge_minor) : '—'}
                     />
-                    <DetailRow
+                    <AdminDetailRow
+                        label="Diagnosis fee"
+                        value={repair.diagnosis_fee ? formatNaira(repair.diagnosis_fee.amount_minor) + (repair.diagnosis_fee.paid ? ' · paid' : ' · unpaid') : '—'}
+                    />
+                    <AdminDetailRow
                         label="Down payment required"
                         value={repair.down_payment_required_minor !== null ? formatNaira(repair.down_payment_required_minor) : '—'}
                     />
                     {repair.down_payment_paid_minor > 0 && (
-                        <DetailRow label="Down payment paid" value={formatNaira(repair.down_payment_paid_minor)} />
+                        <AdminDetailRow label="Down payment paid" value={formatNaira(repair.down_payment_paid_minor)} />
                     )}
                     {repair.down_payment_required_minor !== null && repair.down_payment_required_minor > repair.down_payment_paid_minor && repair.down_payment_paid_minor > 0 && (
-                        <DetailRow label="Down payment remaining" value={formatNaira(repair.down_payment_required_minor - repair.down_payment_paid_minor)} />
+                        <AdminDetailRow label="Down payment remaining" value={formatNaira(repair.down_payment_required_minor - repair.down_payment_paid_minor)} />
+                    )}
+                    {repair.down_payment_deadline_at && (
+                        <AdminDetailRow
+                            label="Authorization deadline"
+                            value={new Date(repair.down_payment_deadline_at).toLocaleString()}
+                        />
                     )}
                     {repair.failure_service_charge_minor !== null && (
-                        <DetailRow label="Failed repair service charge" value={formatNaira(repair.failure_service_charge_minor)} />
+                        <AdminDetailRow label="Failed repair service charge" value={formatNaira(repair.failure_service_charge_minor)} />
                     )}
                     {repair.failure_refund_due_minor !== null && (
-                        <DetailRow label="Refund due" value={formatNaira(repair.failure_refund_due_minor)} />
+                        <AdminDetailRow label="Refund due" value={formatNaira(repair.failure_refund_due_minor)} />
                     )}
-                    {repair.revealed_faults.length > 0 && (
-                        <div className="py-3 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-2">Diagnosis revealed faults</div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {repair.revealed_faults.map((fault) => (
-                                    <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2 py-1">
-                                        {fault.label}
-                                        <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {repair.fixed_faults.length > 0 && (
-                        <div className="py-3 border-b border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-2">Actually fixed faults</div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {repair.fixed_faults.map((fault) => (
-                                    <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-green-soft text-admin-green-text text-xs font-semibold rounded-admin-badge px-2 py-1">
-                                        {fault.label}
-                                        <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    <DetailRow
-                        label="Authorization deadline"
-                        value={repair.down_payment_deadline_at ? new Date(repair.down_payment_deadline_at).toLocaleString() : '—'}
-                    />
-                    <DetailRow label="Financial status" value={repair.financial_status.replace(/_/g, ' ')} />
                     {repair.unrepairable_settlement_state && (
-                        <DetailRow label="Unrepairable settlement" value={repair.unrepairable_settlement_state.replace(/_/g, ' ')} />
+                        <AdminDetailRow label="Unrepairable settlement" value={repair.unrepairable_settlement_state.replace(/_/g, ' ')} />
                     )}
-                    <DetailRow
-                        label="Technician"
-                        value={repair.technician_staff_id ? (assignedTechnicianName ?? 'Assigned technician') : 'Unassigned'}
-                    />
-                    <DetailRow label="Received" value={new Date(repair.created_at).toLocaleString()} />
 
+                    {/* Category 3: Diagnosis & Faults (at bottom of details) */}
+                    {(repair.revealed_faults.length > 0 || repair.fixed_faults.length > 0) && (
+                        <div className="pt-5 border-t border-admin-border mt-3">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-3">
+                                Diagnosis & Faults
+                            </div>
+                            <div className="space-y-3">
+                                {repair.revealed_faults.length > 0 && (
+                                    <div>
+                                        <div className="text-xs text-admin-text2 mb-1.5">Diagnosis revealed faults</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {repair.revealed_faults.map((fault) => (
+                                                <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-blue-soft text-admin-blue text-xs font-semibold rounded-admin-badge px-2.5 py-1">
+                                                    {fault.label}
+                                                    <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {repair.fixed_faults.length > 0 && (
+                                    <div>
+                                        <div className="text-xs text-admin-text2 mb-1.5">Actually fixed faults</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {repair.fixed_faults.map((fault) => (
+                                                <span key={fault.id} className="inline-flex items-center gap-1.5 bg-admin-green-soft text-admin-green-text text-xs font-semibold rounded-admin-badge px-2.5 py-1">
+                                                    {fault.label}
+                                                    <FaultOriginBadge device_problem_tag_id={fault.device_problem_tag_id} common_component_id={fault.common_component_id} />
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Category 4: Parts (at very bottom of details) */}
+                    {repair.part_reservations.some((p) => p.status === 'reserved' || p.status === 'installed') && (
+                        <div className="pt-5 border-t border-admin-border mt-3">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-3">
+                                Parts
+                            </div>
+                            <div className="space-y-3">
+                                {repair.part_reservations.some((p) => p.status === 'reserved') && (
+                                    <div className="border border-admin-border rounded-admin-card p-3.5 bg-admin-bg/30">
+                                        <div className="text-xs font-semibold text-admin-text2 mb-2 flex items-center justify-between">
+                                            <span>Parts set aside</span>
+                                            <span className="text-[10px] font-medium uppercase tracking-wide text-admin-blue bg-admin-blue-soft px-1.5 py-0.5 rounded">Reserved</span>
+                                        </div>
+                                        <ul className="flex flex-col divide-y divide-admin-border text-sm text-admin-text">
+                                            {repair.part_reservations
+                                                .filter((p) => p.status === 'reserved')
+                                                .map((p) => (
+                                                    <li key={p.id} className="flex justify-between items-center py-2 first:pt-0 last:pb-0 gap-3">
+                                                        <span className="min-w-0 truncate text-xs font-medium">
+                                                            {p.product_name ?? p.sku_code ?? `SKU ${p.sku_id}`} <span className="text-admin-text3">× {p.quantity}</span>
+                                                        </span>
+                                                        <span className="shrink-0 font-semibold text-xs">
+                                                            {p.unit_price_minor !== null ? formatNaira(p.unit_price_minor * p.quantity) : '—'}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {repair.part_reservations.some((p) => p.status === 'installed') && (
+                                    <div className="border border-admin-border rounded-admin-card p-3.5 bg-admin-bg/30">
+                                        <div className="text-xs font-semibold text-admin-text2 mb-2 flex items-center justify-between">
+                                            <span>Parts installed</span>
+                                            <span className="text-[10px] font-medium uppercase tracking-wide text-admin-green-text bg-admin-green-soft px-1.5 py-0.5 rounded">Installed</span>
+                                        </div>
+                                        <ul className="flex flex-col divide-y divide-admin-border text-sm text-admin-text">
+                                            {repair.part_reservations
+                                                .filter((p) => p.status === 'installed')
+                                                .map((p) => (
+                                                    <li key={p.id} className="flex justify-between items-center py-2 first:pt-0 last:pb-0 gap-3">
+                                                        <span className="min-w-0 truncate text-xs font-medium">
+                                                            {p.product_name ?? p.sku_code ?? `SKU ${p.sku_id}`} <span className="text-admin-text3">× {p.quantity}</span>
+                                                        </span>
+                                                        <span className="shrink-0 font-semibold text-xs">
+                                                            {p.unit_price_minor !== null ? formatNaira(p.unit_price_minor * p.quantity) : '—'}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Resolution notes & Collection case */}
                     {repair.resolution_notes && (
                         <div className="mt-4 pt-4 border-t border-admin-border">
-                            <div className="text-sm text-admin-text2 mb-1">Resolution notes</div>
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-1">Resolution notes</div>
                             <p className="text-sm text-admin-text whitespace-pre-wrap">{repair.resolution_notes}</p>
                         </div>
                     )}
@@ -764,7 +809,6 @@ export default function RepairShow({ repair, shop, technicians, canApprovePaymen
                             </button>
                         </div>
                     )}
-
                 </div>
                 </AdminSectionCard>
 

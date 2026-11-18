@@ -166,6 +166,7 @@ final class ProductCatalogQuery
             'brand' => $sku->product->brand,
             'model' => $sku->product->model,
             'category' => $sku->product->category,
+            'unit' => $sku->product->unit,
             'image_path' => $sku->product->image_path,
             'image_url' => $sku->product->image_path !== null ? route('admin.inventory.products.image', ['product' => $sku->id]) : null,
             'description' => $sku->product->description,

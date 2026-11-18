@@ -18,11 +18,12 @@ final class Product
         private readonly string $brand,
         private readonly string $model,
         private readonly string $category,
+        private readonly string $unit,
     ) {}
 
-    public static function reconstitute(ProductId $id, string $brand, string $model, string $category): self
+    public static function reconstitute(ProductId $id, string $brand, string $model, string $category, string $unit): self
     {
-        return new self($id, $brand, $model, $category);
+        return new self($id, $brand, $model, $category, $unit);
     }
 
     public function id(): ProductId
@@ -43,5 +44,10 @@ final class Product
     public function category(): string
     {
         return $this->category;
+    }
+
+    public function unit(): string
+    {
+        return $this->unit;
     }
 }

@@ -1,4 +1,5 @@
-import React, { ReactNode, useEffect, useRef } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from '../Icons/Icon';
 
 interface AdminModalProps {
@@ -26,9 +27,14 @@ const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, se
 export default function AdminModal({ open, title, description, onClose, children, footer, dismissible = true }: AdminModalProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
     const previouslyFocused = useRef<HTMLElement | null>(null);
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
     useEffect(() => {
-        if (!open) return;
+        setPortalTarget(document.querySelector<HTMLElement>('[data-theme]') ?? document.body);
+    }, []);
+
+    useEffect(() => {
+        if (!open || portalTarget === null) return;
 
         previouslyFocused.current = document.activeElement as HTMLElement | null;
         dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
@@ -61,12 +67,12 @@ export default function AdminModal({ open, title, description, onClose, children
             document.removeEventListener('keydown', handleKeyDown);
             previouslyFocused.current?.focus();
         };
-    }, [open, dismissible, onClose]);
+    }, [open, dismissible, onClose, portalTarget]);
 
-    if (!open) return null;
+    if (!open || portalTarget === null) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="presentation">
+    return createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="presentation">
             <div className="absolute inset-0 bg-ui-overlay" onClick={() => dismissible && onClose()} aria-hidden="true" />
 
             <div
@@ -75,9 +81,8 @@ export default function AdminModal({ open, title, description, onClose, children
                 aria-modal="true"
                 aria-labelledby="admin-modal-title"
                 className="
-                    relative bg-ui-surface w-full sm:w-full sm:max-w-lg
+                    relative bg-ui-surface w-full sm:max-w-lg
                     rounded-t-ui-sheet sm:rounded-admin-modal
-                    fixed sm:relative bottom-0 sm:bottom-auto inset-x-0 sm:inset-x-auto
                     shadow-ui-modal max-h-[85vh] flex flex-col
                 "
             >
@@ -102,6 +107,7 @@ export default function AdminModal({ open, title, description, onClose, children
 
                 {footer && <div className="p-6 pt-4 shrink-0">{footer}</div>}
             </div>
-        </div>
+        </div>,
+        portalTarget,
     );
 }

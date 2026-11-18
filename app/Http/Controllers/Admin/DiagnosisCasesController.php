@@ -184,11 +184,25 @@ final class DiagnosisCasesController
         ]);
     }
 
+    public function technicianOptions(Request $request): JsonResponse
+    {
+        $shopId = $request->integer('shop_id');
+        $actor = app(ActorContext::class);
+
+        abort_if($shopId < 1, 422);
+        abort_unless($actor->canAccessShop($shopId), 403);
+
+        return response()->json(['technicians' => $this->technicians($shopId)]);
+    }
+
     public function store(CreateDiagnosisCaseRequest $request): RedirectResponse
     {
         $actor = app(ActorContext::class);
         $shopId = $request->integer('shop_id');
         abort_unless($actor->canAccessShop($shopId), 403);
+
+        $technicianId = $request->integer('diagnosis_technician_staff_id') ?: null;
+        $this->validateTechnicianForShop($technicianId, $shopId);
 
         $walkInName = $request->string('walk_in_name')->toString() ?: null;
         $walkInPhone = $request->string('walk_in_phone')->toString() ?: null;
@@ -206,7 +220,7 @@ final class DiagnosisCasesController
             'walk_in_phone' => $walkInPhone,
             'walk_in_email' => $walkInEmail,
             'device_model_id' => $request->integer('device_model_id') ?: null,
-            'diagnosis_technician_staff_id' => $request->integer('diagnosis_technician_staff_id') ?: null,
+            'diagnosis_technician_staff_id' => $technicianId,
             'created_by_staff_id' => $actor->staffId->value,
             'device_make' => $request->string('device_make')->toString(),
             'device_model' => $request->string('device_model')->toString(),
@@ -266,6 +280,7 @@ final class DiagnosisCasesController
         $actor = app(ActorContext::class);
         $case = DiagnosisCaseRecord::query()->findOrFail($diagnosisCase);
         abort_unless($actor->canAccessShop($case->shop_id), 403);
+        $this->validateTechnicianForShop($request->integer('diagnosis_technician_staff_id'), $case->shop_id);
 
         try {
             $this->assignDiagnosisTechnician->handle(new AssignDiagnosisTechnicianCommand(
@@ -590,6 +605,23 @@ final class DiagnosisCasesController
     private function technicians(int $shopId): array
     {
         return $this->staff->paginate(search: null, status: 'active', role: 'Technician', page: 1, perPage: 100, shopId: $shopId)['data'];
+    }
+
+    private function validateTechnicianForShop(?int $technicianId, int $shopId): void
+    {
+        if ($technicianId === null) {
+            return;
+        }
+
+        $isAvailable = collect($this->technicians($shopId))->contains(
+            static fn (array $technician): bool => $technician['id'] === $technicianId,
+        );
+
+        if (! $isAvailable) {
+            throw ValidationException::withMessages([
+                'diagnosis_technician_staff_id' => 'Select an active technician assigned to this shop.',
+            ]);
+        }
     }
 
     /** @return array<int, array{id:int, status:string, display_label:string, opened_at:string, created_at:string, reopened_from_repair_job_id:int|null}> */

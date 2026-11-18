@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminDetailRow from '../../../Components/Admin/AdminDetailRow';
 import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import { formatNaira } from '../../../lib/money';
@@ -55,28 +56,26 @@ export default function SalesShow({ sale }: { sale: Sale }) {
 
             <AdminSectionCard title="Sale details" className="max-w-2xl">
             <div className="p-6">
-                <dl className="grid grid-cols-2 gap-y-2 text-sm mb-6">
-                    <dt className="text-admin-text2">Shop</dt>
-                    <dd className="text-admin-text text-right">
-                        {sale.shop_name ?? `Shop #${sale.shop_id}`}
-                        <div className="text-[10px] text-admin-text3">#{sale.shop_id}</div>
-                    </dd>
-                    <dt className="text-admin-text2">Customer</dt>
-                    <dd className="text-admin-text text-right">
-                        {sale.customer_id ? (sale.customer_name ?? 'Customer') : sale.walk_in_name ?? 'Walk-in'}
-                        {!sale.customer_id && (sale.walk_in_phone || sale.walk_in_email) && (
-                            <div className="text-xs text-admin-text2">{[sale.walk_in_phone, sale.walk_in_email].filter(Boolean).join(' · ')}</div>
-                        )}
-                    </dd>
-                    <dt className="text-admin-text2">Payment method</dt>
-                    <dd className="text-admin-text text-right capitalize">{sale.payment_method.replace('_', ' ')}</dd>
-                    {sale.payment_reference && (
+                <div className="mb-6">
+                    <AdminDetailRow label="Shop" value={
                         <>
-                            <dt className="text-admin-text2">Reference</dt>
-                            <dd className="text-admin-text text-right">{sale.payment_reference}</dd>
+                            {sale.shop_name ?? `Shop #${sale.shop_id}`}
+                            <div className="text-[10px] text-admin-text3">#{sale.shop_id}</div>
                         </>
+                    } />
+                    <AdminDetailRow label="Customer" value={
+                        <>
+                            {sale.customer_id ? (sale.customer_name ?? 'Customer') : sale.walk_in_name ?? 'Walk-in'}
+                            {!sale.customer_id && (sale.walk_in_phone || sale.walk_in_email) && (
+                                <div className="text-xs text-admin-text2">{[sale.walk_in_phone, sale.walk_in_email].filter(Boolean).join(' · ')}</div>
+                            )}
+                        </>
+                    } />
+                    <AdminDetailRow label="Payment method" value={<span className="capitalize">{sale.payment_method.replace('_', ' ')}</span>} />
+                    {sale.payment_reference && (
+                        <AdminDetailRow label="Reference" value={sale.payment_reference} />
                     )}
-                </dl>
+                </div>
 
                 <table className="w-full text-sm mb-4">
                     <thead>

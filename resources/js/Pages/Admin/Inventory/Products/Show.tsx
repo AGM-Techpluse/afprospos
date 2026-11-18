@@ -4,6 +4,7 @@ import AdminShell from '../../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../../Components/Admin/AdminPageHead';
 import AdminBadge, { AdminBadgeStatus } from '../../../../Components/Admin/AdminBadge';
 import AdminButton from '../../../../Components/Admin/AdminButton';
+import AdminDetailRow from '../../../../Components/Admin/AdminDetailRow';
 import AdminEmptyState from '../../../../Components/Admin/AdminEmptyState';
 import AdminInfoCard from '../../../../Components/Admin/AdminInfoCard';
 import AdminPagination from '../../../../Components/Admin/AdminPagination';
@@ -39,6 +40,7 @@ export type Sku = {
     brand: string;
     model: string;
     category: string;
+    unit: string;
     image_url: string | null;
     description: string | null;
     attributes: Record<string, unknown>;
@@ -99,11 +101,13 @@ type Shop = { id: number; name: string; sku_prefix_code: string };
 interface ProductShowProps {
     sku: Sku;
     conditions: MasterEntry[];
+    categories: MasterEntry[];
+    productUnits: MasterEntry[];
     units: Paginated<SerializedUnit> | null;
     unitFilters: UnitFilters;
 }
 
-export default function ProductShow({ sku, conditions, units, unitFilters }: ProductShowProps) {
+export default function ProductShow({ sku, conditions, categories, productUnits, units, unitFilters }: ProductShowProps) {
     // Already shared on every Admin page by HandleInertiaRequests — avoids a second, redundant query for the same accessible-shops list.
     const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const { data, setData, post, transform, processing, errors: formErrors, reset } = useForm({
@@ -240,7 +244,13 @@ export default function ProductShow({ sku, conditions, units, unitFilters }: Pro
             />
 
             {editingProduct && (
-                <EditProductModal sku={sku} mode={editingProduct} onClose={() => setEditingProduct(null)} />
+                <EditProductModal
+                    sku={sku}
+                    categories={categories}
+                    units={productUnits}
+                    mode={editingProduct}
+                    onClose={() => setEditingProduct(null)}
+                />
             )}
             {editingUnit && (
                 <EditUnitConditionModal unit={editingUnit} conditions={conditions} onClose={() => setEditingUnit(null)} />
@@ -258,61 +268,111 @@ export default function ProductShow({ sku, conditions, units, unitFilters }: Pro
             </div>
 
             {/* UI/UX §14C.8's headline stat row — the total across every shop, so "how many of this do we have" has one clear answer regardless of serialized vs. bulk. Per-shop detail is still below, for the breakdown. */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                <AdminStatCard label="On hand" value={String(sku.on_hand)} />
-                <AdminStatCard label="Reserved" value={String(sku.reserved)} />
-                <AdminStatCard label="Available" value={String(sku.available)} />
-                <AdminStatCard label="Low-stock threshold" value={sku.low_stock_threshold !== null ? String(sku.low_stock_threshold) : '—'} />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <AdminStatCard label="On hand" value={String(sku.on_hand)} variant="blue" />
+                <AdminStatCard label="Reserved" value={String(sku.reserved)} variant="blue" />
+                <AdminStatCard label="Available" value={String(sku.available)} variant="blue" />
+                <AdminStatCard label="Low-stock threshold" value={sku.low_stock_threshold !== null ? String(sku.low_stock_threshold) : '—'} variant="blue" />
             </div>
 
-            <div>
-                <AdminInfoCard title="Details" icon="info-circle" iconColor="blue" className="max-w-xl">
-                    <dl className="divide-y divide-admin-border -my-1 text-sm">
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Category</dt>
-                            <dd className="text-admin-text">{sku.category}</dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Type</dt>
-                            <dd>
-                                <AdminBadge status={sku.is_serialized ? 'info' : 'neutral'}>
-                                    {sku.is_serialized ? 'Serialized' : 'Bulk'}
-                                </AdminBadge>
-                            </dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Cost price</dt>
-                            <dd className="text-admin-text">{formatNaira(sku.cost_price_minor)}</dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Markup</dt>
-                            <dd className="text-admin-text">{sku.markup_percent}%</dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Selling price</dt>
-                            <dd className="text-admin-text">
+            {/* Details + Receive stock side-by-side on desktop, stacked on mobile */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <AdminInfoCard title="Details" icon="info-circle" iconColor="blue">
+                    <AdminDetailRow label="Category" value={sku.category} />
+                    <AdminDetailRow label="Unit" value={sku.unit} />
+                    <AdminDetailRow
+                        label="Type"
+                        value={
+                            <AdminBadge status={sku.is_serialized ? 'info' : 'neutral'}>
+                                {sku.is_serialized ? 'Serialized' : 'Bulk'}
+                            </AdminBadge>
+                        }
+                    />
+                    <AdminDetailRow label="Cost price" value={formatNaira(sku.cost_price_minor)} />
+                    <AdminDetailRow label="Markup" value={`${sku.markup_percent}%`} />
+                    <AdminDetailRow
+                        label="Selling price"
+                        value={
+                            <>
                                 {formatNaira(sku.selling_price_minor)}
                                 {sku.selling_price_overridden && <span className="text-admin-text3"> (override)</span>}
-                            </dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Low stock threshold</dt>
-                            <dd className="text-admin-text">{sku.low_stock_threshold ?? '—'}</dd>
-                        </div>
-                        <div className="flex justify-between py-2.5">
-                            <dt className="text-admin-text2">Commission</dt>
-                            <dd className="text-admin-text">
-                                {sku.is_commissionable && sku.commission_amount_minor !== null
-                                    ? `${formatNaira(sku.commission_amount_minor)} per sale`
-                                    : 'Not commissionable'}
-                            </dd>
-                        </div>
-                        <div className="flex justify-between py-2.5 gap-3">
-                            <dt className="text-admin-text2 shrink-0">Specs</dt>
-                            <dd className="text-admin-text text-right">{variantLabel(sku.attributes)}</dd>
-                        </div>
-                    </dl>
+                            </>
+                        }
+                    />
+                    <AdminDetailRow label="Low stock threshold" value={sku.low_stock_threshold ?? '—'} />
+                    <AdminDetailRow
+                        label="Commission"
+                        value={
+                            sku.is_commissionable && sku.commission_amount_minor !== null
+                                ? `${formatNaira(sku.commission_amount_minor)} per sale`
+                                : 'Not commissionable'
+                        }
+                    />
+                    <AdminDetailRow label="Specs" value={variantLabel(sku.attributes)} />
                 </AdminInfoCard>
+
+                {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
+                <div>
+                    <h2 className="text-admin-md font-semibold text-admin-text mb-4">Receive stock</h2>
+                    <form onSubmit={submitReceive}>
+                        <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
+                            {shops.map((shop) => (
+                                <option key={shop.id} value={shop.id}>
+                                    {shop.name} ({shop.sku_prefix_code})
+                                </option>
+                            ))}
+                        </AdminSelect>
+
+                        <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
+                            {conditions.map((condition) => (
+                                <option key={condition.id} value={condition.name}>
+                                    {formatInventoryCondition(condition.name)}
+                                </option>
+                            ))}
+                        </AdminSelect>
+
+                        {sku.is_serialized ? (
+                            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                    <label className="block text-xs font-semibold text-admin-text mb-1.5">IMEI</label>
+                                    <input
+                                        type="text"
+                                        value={data.imei}
+                                        onChange={(e) => setData('imei', e.target.value)}
+                                        placeholder="15-digit IMEI"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                    />
+                                    {errors.imeis && <p className="text-xs text-admin-red mt-1">{errors.imeis}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-admin-text mb-1.5">Serial number (optional)</label>
+                                    <input
+                                        type="text"
+                                        value={data.serial_number}
+                                        onChange={(e) => setData('serial_number', e.target.value)}
+                                        placeholder="Serial number"
+                                        className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                    />
+                                    {errors.serial_numbers && <p className="text-xs text-admin-red mt-1">{errors.serial_numbers}</p>}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-admin-text mb-1.5">Quantity</label>
+                                <input
+                                    type="number"
+                                    value={data.quantity}
+                                    onChange={(e) => setData('quantity', e.target.value)}
+                                    className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
+                                />
+                            </div>
+                        )}
+
+                        <AdminButton type="submit" isLoading={processing}>
+                            Receive stock
+                        </AdminButton>
+                    </form>
+                </div>
             </div>
 
             {/* A real browsable table, not an AdminInfoCard — a serialized SKU
@@ -520,68 +580,6 @@ export default function ProductShow({ sku, conditions, units, unitFilters }: Pro
                 </div>
             )}
 
-            {/* CLAUDE.md Invariant #19: a <form> never sits inside a decorative card — plain heading directly on the page background. */}
-            <div className="mt-8 max-w-lg">
-                <h2 className="text-admin-md font-semibold text-admin-text mb-4">Receive stock</h2>
-                <form onSubmit={submitReceive}>
-                    <AdminSelect label="Shop" value={data.shop_id} onChange={(e) => setData('shop_id', e.target.value)}>
-                        {shops.map((shop) => (
-                            <option key={shop.id} value={shop.id}>
-                                {shop.name} ({shop.sku_prefix_code})
-                            </option>
-                        ))}
-                    </AdminSelect>
-
-                    <AdminSelect label="Condition" value={data.condition} onChange={(e) => setData('condition', e.target.value)} error={errors.condition}>
-                        {conditions.map((condition) => (
-                            <option key={condition.id} value={condition.name}>
-                                {formatInventoryCondition(condition.name)}
-                            </option>
-                        ))}
-                    </AdminSelect>
-
-                    {sku.is_serialized ? (
-                        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label className="block text-xs font-semibold text-admin-text mb-1.5">IMEI</label>
-                                <input
-                                    type="text"
-                                    value={data.imei}
-                                    onChange={(e) => setData('imei', e.target.value)}
-                                    placeholder="15-digit IMEI"
-                                    className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                                />
-                                {errors.imeis && <p className="text-xs text-admin-red mt-1">{errors.imeis}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-admin-text mb-1.5">Serial number (optional)</label>
-                                <input
-                                    type="text"
-                                    value={data.serial_number}
-                                    onChange={(e) => setData('serial_number', e.target.value)}
-                                    placeholder="Serial number"
-                                    className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                                />
-                                {errors.serial_numbers && <p className="text-xs text-admin-red mt-1">{errors.serial_numbers}</p>}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mb-4">
-                            <label className="block text-xs font-semibold text-admin-text mb-1.5">Quantity</label>
-                            <input
-                                type="number"
-                                value={data.quantity}
-                                onChange={(e) => setData('quantity', e.target.value)}
-                                className="w-full border border-admin-border-strong rounded-admin-button px-admin-field-x py-admin-field-y text-admin-field"
-                            />
-                        </div>
-                    )}
-
-                    <AdminButton type="submit" isLoading={processing}>
-                        Receive stock
-                    </AdminButton>
-                </form>
-            </div>
         </AdminShell>
     );
 }

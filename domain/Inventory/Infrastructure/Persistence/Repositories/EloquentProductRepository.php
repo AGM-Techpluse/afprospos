@@ -15,7 +15,7 @@ final class EloquentProductRepository implements ProductRepository
     {
         $record = ProductRecord::query()->findOrFail($id->value);
 
-        return Product::reconstitute(new ProductId($record->id), $record->brand, $record->model, $record->category);
+        return Product::reconstitute(new ProductId($record->id), $record->brand, $record->model, $record->category, $record->unit);
     }
 
     public function findOrCreate(string $brand, string $model, string $category, string $unit = 'pcs', string $purpose = 'sale', ?int $supplierId = null): ProductId
@@ -36,5 +36,15 @@ final class EloquentProductRepository implements ProductRepository
     public function setDescription(ProductId $id, ?string $description): void
     {
         ProductRecord::query()->whereKey($id->value)->update(['description' => $description]);
+    }
+
+    public function updateMetadata(ProductId $id, string $brand, string $model, string $category, string $unit): void
+    {
+        ProductRecord::query()->whereKey($id->value)->update([
+            'brand' => $brand,
+            'model' => $model,
+            'category' => $category,
+            'unit' => $unit,
+        ]);
     }
 }

@@ -112,6 +112,7 @@
     /* Shadows */
     --shadow-admin-modal: var(--a-shadow-modal);
     --shadow-admin-card: var(--a-shadow-card);
+    --shadow-admin-card-double: var(--a-border-double);
     --shadow-customer-soft: var(--c-shadow-soft);
     --shadow-customer-strong: var(--c-shadow-strong);
     --shadow-ui-modal: var(--ui-shadow-modal);
@@ -277,6 +278,29 @@
 @keyframes overflow-marquee {
     from { transform: translateX(0); }
     to { transform: translateX(calc(-50% - 0.75rem)); }
+}
+
+/* AdminDetailRow label marquee — scrolls right-to-left on hover when text overflows */
+@keyframes detail-label-marquee {
+    0%   { transform: translateX(0); }
+    15%  { transform: translateX(0); }
+    85%  { transform: translateX(var(--marquee-offset, -50%)); }
+    100% { transform: translateX(var(--marquee-offset, -50%)); }
+}
+
+.detail-label-marquee:hover {
+    animation: detail-label-marquee 3.5s ease-in-out infinite;
+}
+
+/* Cloudflare-inspired double-border card treatment (outer border + gap + inner border) */
+.card-double-border {
+    box-shadow: 0 0 0 3px var(--a-bg), 0 0 0 4px var(--a-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .detail-label-marquee:hover {
+        animation: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

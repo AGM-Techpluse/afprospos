@@ -2,12 +2,17 @@ import { FormEvent } from 'react';
 import { useForm } from '@inertiajs/react';
 import AdminModal from '../../../../Components/Admin/AdminModal';
 import AdminButton from '../../../../Components/Admin/AdminButton';
+import AdminInput from '../../../../Components/Admin/Forms/AdminInput';
+import AdminSelect from '../../../../Components/Admin/Forms/AdminSelect';
 import AttributeEditor, { serializeAttributes, VariantAttributes } from '../../../../Features/Inventory/AttributeEditor';
+import type { MasterEntry } from '../../../../Features/Inventory/MasterSelect';
 import { Sku, toVariantAttributes } from './Show';
 
 interface EditProductModalProps {
     onClose: () => void;
     sku: Sku;
+    categories: MasterEntry[];
+    units: MasterEntry[];
     mode?: 'all' | 'attributes';
 }
 
@@ -19,7 +24,13 @@ interface EditProductModalProps {
  * of scattered. Mounted only while open, so each open starts from the
  * current `sku` props with no stale state to reset.
  */
-export default function EditProductModal({ onClose, sku, mode = 'all' }: EditProductModalProps) {
+export default function EditProductModal({ onClose, sku, categories, units, mode = 'all' }: EditProductModalProps) {
+    const metadataForm = useForm({
+        brand: sku.brand,
+        model: sku.model,
+        category: sku.category,
+        unit: sku.unit,
+    });
     const descriptionForm = useForm({ description: sku.description ?? '' });
 
     const attributesForm = useForm<{ attributes: VariantAttributes }>({ attributes: toVariantAttributes(sku.attributes) });
@@ -42,6 +53,11 @@ export default function EditProductModal({ onClose, sku, mode = 'all' }: EditPro
     function submitDescription(e: FormEvent) {
         e.preventDefault();
         descriptionForm.put(`/admin/inventory/products/${sku.id}/description`, { preserveScroll: true });
+    }
+
+    function submitMetadata(e: FormEvent) {
+        e.preventDefault();
+        metadataForm.put(`/admin/inventory/products/${sku.id}/metadata`, { preserveScroll: true });
     }
 
     function submitAttributes(e: FormEvent) {
@@ -90,6 +106,54 @@ export default function EditProductModal({ onClose, sku, mode = 'all' }: EditPro
             <div className="pb-6 flex flex-col gap-6">
                 {mode === 'all' && (
                     <section>
+                        <h3 className="text-sm font-semibold text-admin-text mb-2">Product details</h3>
+                        <form onSubmit={submitMetadata}>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <AdminInput
+                                    label="Brand"
+                                    value={metadataForm.data.brand}
+                                    onChange={(e) => metadataForm.setData('brand', e.target.value)}
+                                    error={metadataForm.errors.brand}
+                                />
+                                <AdminInput
+                                    label="Model"
+                                    value={metadataForm.data.model}
+                                    onChange={(e) => metadataForm.setData('model', e.target.value)}
+                                    error={metadataForm.errors.model}
+                                />
+                                <AdminSelect
+                                    label="Category"
+                                    value={metadataForm.data.category}
+                                    onChange={(e) => metadataForm.setData('category', e.target.value)}
+                                    error={metadataForm.errors.category}
+                                >
+                                    {categories.map((category) => (
+                                        <option key={category.id} value={category.name}>{category.name}</option>
+                                    ))}
+                                </AdminSelect>
+                                <AdminSelect
+                                    label="Unit"
+                                    value={metadataForm.data.unit}
+                                    onChange={(e) => metadataForm.setData('unit', e.target.value)}
+                                    error={metadataForm.errors.unit}
+                                >
+                                    {units.map((unit) => (
+                                        <option key={unit.id} value={unit.name}>{unit.name}</option>
+                                    ))}
+                                </AdminSelect>
+                            </div>
+                            <p className="text-xs text-admin-text2 mb-3">
+                                These details are shared by every variant of this product.
+                            </p>
+                            <AdminButton type="submit" variant="neutral" isLoading={metadataForm.processing}>
+                                Save product details
+                            </AdminButton>
+                        </form>
+                    </section>
+                )}
+
+                {mode === 'all' && (
+                    <section className="pt-6 border-t border-admin-border">
                         <h3 className="text-sm font-semibold text-admin-text mb-2">Storefront description</h3>
                         <form onSubmit={submitDescription} className="flex flex-col gap-2">
                             <textarea

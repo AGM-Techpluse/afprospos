@@ -273,6 +273,11 @@ Route::prefix('admin')
             ->name('inventory.products.description.update');
 
         Route::middleware('permission:inventory.edit')
+            ->put('/inventory/products/{product}/metadata', [ProductController::class, 'updateMetadata'])
+            ->whereNumber('product')
+            ->name('inventory.products.metadata.update');
+
+        Route::middleware('permission:inventory.edit')
             ->put('/inventory/products/{sku}/attributes', [ProductController::class, 'updateAttributes'])
             ->whereNumber('sku')
             ->name('inventory.products.attributes.update');
@@ -719,6 +724,10 @@ Route::prefix('admin')
         Route::middleware('permission:repairs.create')
             ->get('/repairs/diagnosis-cases/create', [DiagnosisCasesController::class, 'create'])
             ->name('diagnosis-cases.create');
+
+        Route::middleware('permission:repairs.create')
+            ->get('/repairs/diagnosis-cases/technicians', [DiagnosisCasesController::class, 'technicianOptions'])
+            ->name('diagnosis-cases.technicians');
 
         Route::middleware('permission:repairs.create')
             ->post('/repairs/diagnosis-cases', [DiagnosisCasesController::class, 'store'])

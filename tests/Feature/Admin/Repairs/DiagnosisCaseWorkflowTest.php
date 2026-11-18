@@ -313,6 +313,7 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $technician = StaffRecord::factory()->create();
         $technician->assignRole('Technician');
         $this->grantShopAccess($cashier, $shop->id);
+        $this->grantShopAccess($technician, $shop->id);
 
         $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
         $deviceModelId = $this->createDeviceModel($deviceType->id);
@@ -354,6 +355,8 @@ final class DiagnosisCaseWorkflowTest extends TestCase
         $otherTechnician = StaffRecord::factory()->create();
         $otherTechnician->assignRole('Technician');
         $this->grantShopAccess($cashier, $shop->id);
+        $this->grantShopAccess($technician, $shop->id);
+        $this->grantShopAccess($otherTechnician, $shop->id);
 
         $deviceType = DeviceTypeRecord::query()->create(['label' => 'Phone', 'icon' => 'phone', 'sort_order' => 1]);
         $deviceModelId = $this->createDeviceModel($deviceType->id);

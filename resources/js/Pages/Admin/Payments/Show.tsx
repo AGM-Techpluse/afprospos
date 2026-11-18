@@ -3,6 +3,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useConfirm } from '../../../hooks/useConfirm';
 import AdminShell from '../../../Components/Admin/AdminShell';
 import AdminPageHead from '../../../Components/Admin/AdminPageHead';
+import AdminDetailRow from '../../../Components/Admin/AdminDetailRow';
+import AdminSectionCard from '../../../Components/Admin/AdminSectionCard';
 import AdminButton from '../../../Components/Admin/AdminButton';
 import AdminBadge, { AdminBadgeStatus } from '../../../Components/Admin/AdminBadge';
 import AdminSelect from '../../../Components/Admin/Forms/AdminSelect';
@@ -85,15 +87,6 @@ const STATUS_LABEL: Record<string, string> = {
     exception: 'Exception',
 };
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-    return (
-        <div className="flex items-center justify-between gap-3 py-2.5 border-b border-admin-border last:border-b-0">
-            <span className="text-sm text-admin-text2 shrink-0">{label}</span>
-            <span className="text-sm font-medium text-admin-text text-right break-words min-w-0">{value}</span>
-        </div>
-    );
-}
-
 export default function PaymentShow({ payment }: PaymentShowProps) {
     const confirm = useConfirm();
     const [resolution, setResolution] = useState('confirmed');
@@ -156,87 +149,125 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
             />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start max-w-4xl">
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6">
-                    <DetailRow
-                        label="For"
-                        value={
-                            <Link href={payment.source.link} className="text-admin-blue hover:underline">
-                                {payment.source.label}
-                            </Link>
-                        }
-                    />
-                    <DetailRow label="Purpose" value={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')} />
-                    <DetailRow label="Customer" value={payment.customer_name ?? <span className="text-admin-text3">Walk-in</span>} />
-                    <DetailRow label="Method" value={payment.method.replace('_', ' ')} />
-                    <DetailRow label="Amount" value={formatNaira(payment.amount_minor)} />
-                    {payment.refunded_amount_minor > 0 && (
-                        <>
-                            <DetailRow label="Refunded so far" value={formatNaira(payment.refunded_amount_minor)} />
-                            <DetailRow label="Remaining refundable" value={formatNaira(payment.remaining_refundable_minor)} />
-                        </>
-                    )}
-                    <DetailRow label="Provider reference" value={payment.provider_reference ?? '—'} />
-                    <DetailRow label="Confirmed by" value={payment.confirmed_by_staff_id ? (payment.confirmed_by_staff_name ?? 'Staff member') : '—'} />
-                    {payment.dispute_opened_at && (
-                        <>
-                            <DetailRow label="Dispute opened" value={new Date(payment.dispute_opened_at).toLocaleString()} />
-                            <DetailRow label="Dispute proof" value={payment.dispute_proof_reference ?? '—'} />
-                            <DetailRow
-                                label="Dispute resolved by"
-                                value={payment.dispute_resolved_by_staff_id ? (payment.dispute_resolved_by_staff_name ?? 'Staff member') : '—'}
-                            />
-                        </>
-                    )}
-                    {payment.refunds.length > 1 && (
-                        <div className="py-2.5 border-b border-admin-border last:border-b-0">
-                            <span className="text-sm text-admin-text2 block mb-1.5">Refunds</span>
-                            <ul className="space-y-1">
-                                {payment.refunds.map((refund, index) => (
-                                    <li key={index} className="flex items-center justify-between text-xs text-admin-text2">
-                                        <span>
-                                            {refund.refunded_by_staff_name ?? 'Staff member'}
-                                            {refund.created_at && ` · ${new Date(refund.created_at).toLocaleDateString()}`}
-                                        </span>
-                                        <span className="font-medium text-admin-text">{formatNaira(refund.amount_minor)}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                <AdminSectionCard title="Payment details">
+                    <div className="p-6">
+                        {/* Customer & Source Reference enclosed in a dedicated bordered box */}
+                        <div className="border border-admin-border rounded-admin-card p-4 mb-5 bg-admin-bg/30">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-0.5">Customer</div>
+                                    <p className="text-sm font-semibold text-admin-text">
+                                        {payment.customer_name ?? 'Walk-in'}
+                                    </p>
+                                </div>
+                                <div className="sm:text-right">
+                                    <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-0.5">Reference source</div>
+                                    <Link href={payment.source.link} className="text-xs font-semibold text-admin-blue hover:underline inline-flex items-center gap-1">
+                                        {payment.source.label} →
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    <DetailRow label="Created" value={new Date(payment.created_at).toLocaleString()} />
 
-                    {payment.sale && (
-                        <div className="pt-4 mt-1">
-                            <span className="text-sm text-admin-text2 block mb-2">Items purchased</span>
-                            <ul className="border border-admin-border rounded-admin-card divide-y divide-admin-border mb-2">
-                                {payment.sale.items.map((item, index) => (
-                                    <li key={index} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                                        <div className="min-w-0">
-                                            <div className="text-sm font-medium text-admin-text truncate">
-                                                {item.product_name ?? 'Unknown product'}
-                                                {item.variant_label && <span className="text-admin-text3"> — {item.variant_label}</span>}
-                                            </div>
-                                            <div className="text-xs text-admin-text3">
-                                                {item.quantity} × {formatNaira(item.unit_price_minor)}
-                                            </div>
-                                        </div>
-                                        <span className="text-sm font-mono text-admin-text shrink-0">{formatNaira(item.line_total_minor)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <DetailRow label="Subtotal" value={formatNaira(payment.sale.subtotal_minor)} />
-                            {payment.sale.discount_minor > 0 ? (
-                                <DetailRow label="Discount applied" value={`− ${formatNaira(payment.sale.discount_minor)}`} />
-                            ) : (
-                                <DetailRow label="Discount applied" value="None" />
-                            )}
-                            <DetailRow label="Total" value={formatNaira(payment.sale.total_minor)} />
+                        {/* Category 1: Transaction details */}
+                        <div className="pt-1 pb-1">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-admin-text3">Transaction Info</span>
                         </div>
-                    )}
-                </div>
 
-                <div className="bg-admin-surface border border-admin-border rounded-admin-card p-6 flex flex-col gap-2">
-                    <h2 className="text-sm font-semibold text-admin-text mb-1">Actions</h2>
+                        <AdminDetailRow label="Purpose" value={PURPOSE_LABEL[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')} />
+                        <AdminDetailRow label="Method" value={<span className="capitalize">{payment.method.replace('_', ' ')}</span>} />
+                        <AdminDetailRow label="Amount" value={<span className="font-bold text-admin-text">{formatNaira(payment.amount_minor)}</span>} />
+                        {payment.sale && (
+                            <>
+                                <AdminDetailRow label="Subtotal" value={formatNaira(payment.sale.subtotal_minor)} />
+                                <AdminDetailRow
+                                    label="Discount applied"
+                                    value={payment.sale.discount_minor > 0 ? `− ${formatNaira(payment.sale.discount_minor)}` : 'None'}
+                                />
+                                <AdminDetailRow
+                                    label="Total"
+                                    value={<span className="font-bold text-admin-text">{formatNaira(payment.sale.total_minor)}</span>}
+                                />
+                            </>
+                        )}
+                        <AdminDetailRow label="Provider reference" value={payment.provider_reference ?? '—'} />
+                        <AdminDetailRow label="Confirmed by" value={payment.confirmed_by_staff_id ? (payment.confirmed_by_staff_name ?? 'Staff member') : '—'} />
+                        <AdminDetailRow label="Created" value={new Date(payment.created_at).toLocaleString()} />
+
+                        {/* Category 2: Refunds & Disputes (if any) */}
+                        {(payment.refunded_amount_minor > 0 || payment.dispute_opened_at || payment.refunds.length > 1) && (
+                            <div className="pt-5 border-t border-admin-border mt-3">
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-1">
+                                    Refunds & Disputes
+                                </div>
+                                {payment.refunded_amount_minor > 0 && (
+                                    <>
+                                        <AdminDetailRow label="Refunded so far" value={formatNaira(payment.refunded_amount_minor)} />
+                                        <AdminDetailRow label="Remaining refundable" value={formatNaira(payment.remaining_refundable_minor)} />
+                                    </>
+                                )}
+                                {payment.dispute_opened_at && (
+                                    <>
+                                        <AdminDetailRow label="Dispute opened" value={new Date(payment.dispute_opened_at).toLocaleString()} />
+                                        <AdminDetailRow label="Dispute proof" value={payment.dispute_proof_reference ?? '—'} />
+                                        <AdminDetailRow
+                                            label="Dispute resolved by"
+                                            value={payment.dispute_resolved_by_staff_id ? (payment.dispute_resolved_by_staff_name ?? 'Staff member') : '—'}
+                                        />
+                                    </>
+                                )}
+                                {payment.refunds.length > 1 && (
+                                    <div className="py-2.5 border-b border-admin-border last:border-b-0">
+                                        <span className="text-xs text-admin-text2 block mb-1.5 font-medium">Refund log</span>
+                                        <ul className="space-y-1">
+                                            {payment.refunds.map((refund, index) => (
+                                                <li key={index} className="flex items-center justify-between text-xs text-admin-text2 py-1 px-2.5 bg-admin-bg/40 rounded-admin-button">
+                                                    <span>
+                                                        {refund.refunded_by_staff_name ?? 'Staff member'}
+                                                        {refund.created_at && ` · ${new Date(refund.created_at).toLocaleDateString()}`}
+                                                    </span>
+                                                    <span className="font-semibold text-admin-text">{formatNaira(refund.amount_minor)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Category 3: Items purchased & breakdown (at the bottom) */}
+                        {payment.sale && (
+                            <div className="pt-5 border-t border-admin-border mt-3">
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-admin-text3 mb-3">
+                                    Items purchased
+                                </div>
+                                <div className="border border-admin-border rounded-admin-card p-3.5 bg-admin-bg/30 mb-4">
+                                    <ul className="flex flex-col divide-y divide-admin-border text-sm text-admin-text">
+                                        {payment.sale.items.map((item, index) => (
+                                            <li key={index} className="flex justify-between items-center py-2 first:pt-0 last:pb-0 gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-semibold text-admin-text truncate">
+                                                        {item.product_name ?? 'Unknown product'}
+                                                        {item.variant_label && <span className="text-admin-text3 font-normal"> · {item.variant_label}</span>}
+                                                    </div>
+                                                    <div className="text-[11px] text-admin-text3 mt-0.5">
+                                                        {item.quantity} × {formatNaira(item.unit_price_minor)}
+                                                    </div>
+                                                </div>
+                                                <span className="shrink-0 font-semibold text-xs text-admin-text font-mono">
+                                                    {formatNaira(item.line_total_minor)}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </AdminSectionCard>
+
+                <AdminSectionCard title="Actions">
+                    <div className="p-6 flex flex-col gap-2">
 
                     {(payment.status === 'pending' || payment.status === 'payment_pending_confirmation') && (
                         <>
@@ -308,6 +339,7 @@ export default function PaymentShow({ payment }: PaymentShowProps) {
                         <p className="text-xs text-admin-text3">This payment is in a terminal state — no further actions are available.</p>
                     )}
                 </div>
+                </AdminSectionCard>
             </div>
         </AdminShell>
     );

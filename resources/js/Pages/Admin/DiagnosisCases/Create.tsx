@@ -37,6 +37,8 @@ export default function DiagnosisCaseCreate({ technicians, deviceCatalog, common
     const shops: Shop[] = (usePage().props as any).shopSwitcher?.accessible ?? [];
     const intakeShops = shops.filter((shop) => !shop.is_warehouse);
     const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
+    const [availableTechnicians, setAvailableTechnicians] = useState(technicians);
+    const [techniciansLoading, setTechniciansLoading] = useState(false);
     /** Only for the preview card — device_make/device_model already carry brand/model for submission, but the type label itself isn't part of the payload. */
     const [deviceTypeLabel, setDeviceTypeLabel] = useState('');
     const { data, setData, post, processing, errors } = useForm({
@@ -58,6 +60,53 @@ export default function DiagnosisCaseCreate({ technicians, deviceCatalog, common
     });
 
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (data.shop_id === '') {
+            setAvailableTechnicians([]);
+            setData('diagnosis_technician_staff_id', '');
+
+            return;
+        }
+
+        const controller = new AbortController();
+        setTechniciansLoading(true);
+
+        fetch(`/admin/repairs/diagnosis-cases/technicians?shop_id=${encodeURIComponent(data.shop_id)}`, {
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to load technicians.');
+                }
+
+                return response.json() as Promise<{ technicians: Technician[] }>;
+            })
+            .then(({ technicians: nextTechnicians }) => {
+                setAvailableTechnicians(nextTechnicians);
+                const selectedStillAvailable = nextTechnicians.some(
+                    (technician) => String(technician.id) === data.diagnosis_technician_staff_id,
+                );
+
+                if (!selectedStillAvailable) {
+                    setData('diagnosis_technician_staff_id', '');
+                }
+            })
+            .catch((error: unknown) => {
+                if (!(error instanceof DOMException && error.name === 'AbortError')) {
+                    setAvailableTechnicians([]);
+                    setData('diagnosis_technician_staff_id', '');
+                }
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) {
+                    setTechniciansLoading(false);
+                }
+            });
+
+        return () => controller.abort();
+    }, [data.shop_id]);
 
     useEffect(() => {
         if (!data.photo) {
@@ -88,7 +137,7 @@ export default function DiagnosisCaseCreate({ technicians, deviceCatalog, common
     }
 
     const modelRequired = data.device_model_id === '';
-    const technicianName = technicians.find((technician) => String(technician.id) === data.diagnosis_technician_staff_id)?.name ?? null;
+    const technicianName = availableTechnicians.find((technician) => String(technician.id) === data.diagnosis_technician_staff_id)?.name ?? null;
     const displayName = customer?.name ?? (data.walk_in_name.trim() || null);
     const displayPhone = customer?.phone ?? (data.walk_in_phone.trim() || null);
     const displayEmail = customer?.email ?? (data.walk_in_email.trim() || null);
@@ -118,9 +167,9 @@ export default function DiagnosisCaseCreate({ technicians, deviceCatalog, common
                         }
                     />
 
-                    <AdminSelect label="Diagnosis technician" value={data.diagnosis_technician_staff_id} onChange={(e) => setData('diagnosis_technician_staff_id', e.target.value)} error={errors.diagnosis_technician_staff_id}>
-                        <option value="">Assign later</option>
-                        {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}
+                    <AdminSelect label="Diagnosis technician" value={data.diagnosis_technician_staff_id} onChange={(e) => setData('diagnosis_technician_staff_id', e.target.value)} error={errors.diagnosis_technician_staff_id} disabled={techniciansLoading}>
+                        <option value="">{techniciansLoading ? 'Loading technicians...' : 'Assign later'}</option>
+                        {availableTechnicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}
                     </AdminSelect>
 
                     <div className="bg-admin-surface border border-admin-border rounded-admin-card p-4 mb-4">

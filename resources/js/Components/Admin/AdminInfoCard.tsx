@@ -37,7 +37,7 @@ interface AdminInfoCardProps {
  */
 export default function AdminInfoCard({ title, icon, iconColor = 'blue', description, actions, children, className = '' }: AdminInfoCardProps) {
     return (
-        <div className={`flex flex-col bg-admin-surface border border-admin-border rounded-admin-card overflow-hidden ${className}`}>
+        <div className={`flex flex-col bg-admin-surface border border-admin-border rounded-admin-card card-double-border overflow-hidden ${className}`}>
             <div className="flex flex-wrap items-start gap-3 px-6 py-4 border-b border-admin-border shrink-0">
                 {icon && (
                     <span

@@ -125,11 +125,9 @@
   --a-bg: #F5F6F8;
   --a-surface: #FFFFFF;
   --a-paper: #FBF9F3;
-  /* Bumped from the original #E4E7EC (near-invisible against --a-bg) to the
-     same weight as --a-border2 per direct user feedback — every card/table
-     border should read as clearly as a button's, not fade into the page. */
-  --a-border: #D0D5DD;
-  --a-border2: #D0D5DD;
+  /* Softened to match Cloudflare's clean, modern UI tokens (#E2E8F0 / #CBD5E1) */
+  --a-border: #E2E8F0;
+  --a-border2: #CBD5E1;
   --a-text: #101828;
   --a-text2: #667085;
   --a-text3: #98A2B3;
@@ -172,6 +170,7 @@
   --a-overlay: rgba(16, 20, 30, .44);
   --a-shadow-modal: 0 8px 24px rgba(16,20,30,.18);
   --a-shadow-card: 0 1px 2px rgba(16,20,30,.04), 0 4px 12px rgba(16,20,30,.06);
+  --a-border-double: 0 0 0 3px var(--a-bg), 0 0 0 4px var(--a-border);
 
   --a-radius-input: 4px;
   --a-radius-button: 6px;

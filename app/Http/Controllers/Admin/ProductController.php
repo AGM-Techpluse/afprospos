@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\AddProductVariantRequest;
 use App\Http\Requests\Admin\CreateProductRequest;
 use App\Http\Requests\Admin\CreateProductWithVariantsRequest;
 use App\Http\Requests\Admin\UpdateProductDescriptionRequest;
+use App\Http\Requests\Admin\UpdateProductMetadataRequest;
 use App\Http\Requests\Admin\UpdateSkuAttributesRequest;
 use App\Http\Requests\Admin\UpdateSkuCommissionRequest;
 use App\Http\Requests\Admin\UpdateSkuPriceRequest;
@@ -17,6 +18,7 @@ use Domain\Inventory\Application\Commands\AddProductVariantCommand;
 use Domain\Inventory\Application\Commands\CreateProductCommand;
 use Domain\Inventory\Application\Commands\CreateProductWithVariantsCommand;
 use Domain\Inventory\Application\Commands\UpdateProductDescriptionCommand;
+use Domain\Inventory\Application\Commands\UpdateProductMetadataCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuAttributesCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuCommissionCommand;
 use Domain\Inventory\Application\Commands\UpdateSkuPriceCommand;
@@ -25,6 +27,7 @@ use Domain\Inventory\Application\Handlers\AddProductVariantHandler;
 use Domain\Inventory\Application\Handlers\CreateProductHandler;
 use Domain\Inventory\Application\Handlers\CreateProductWithVariantsHandler;
 use Domain\Inventory\Application\Handlers\UpdateProductDescriptionHandler;
+use Domain\Inventory\Application\Handlers\UpdateProductMetadataHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuAttributesHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuCommissionHandler;
 use Domain\Inventory\Application\Handlers\UpdateSkuPriceHandler;
@@ -60,6 +63,7 @@ final class ProductController
         private readonly UpdateSkuCommissionHandler $updateSkuCommission,
         private readonly UpdateSkuPriceHandler $updateSkuPrice,
         private readonly UpdateProductDescriptionHandler $updateProductDescription,
+        private readonly UpdateProductMetadataHandler $updateProductMetadata,
         private readonly UpdateSkuAttributesHandler $updateSkuAttributes,
         private readonly ProductImageProcessor $images,
     ) {}
@@ -120,6 +124,8 @@ final class ProductController
         return Inertia::render('Admin/Inventory/Products/Show', [
             'sku' => $sku,
             'conditions' => $masters['conditions'],
+            'categories' => $masters['categories'],
+            'productUnits' => $masters['units'],
             'units' => $sku['is_serialized'] ? $this->serializedUnits->paginate(
                 search: $unitFilters['search'] ?: null,
                 shopId: $unitFilters['shop_id'],
@@ -329,6 +335,31 @@ final class ProductController
         ));
 
         $this->flashSuccess('Description updated');
+
+        return redirect()->back();
+    }
+
+    public function updateMetadata(UpdateProductMetadataRequest $request, int $product): RedirectResponse
+    {
+        $actor = app(ActorContext::class);
+        $sku = $this->catalog->find($product);
+
+        abort_if($sku === null, 404);
+
+        try {
+            $this->updateProductMetadata->handle(new UpdateProductMetadataCommand(
+                productId: $sku['product_id'],
+                brand: trim($request->string('brand')->toString()),
+                model: trim($request->string('model')->toString()),
+                category: $request->string('category')->toString(),
+                unit: $request->string('unit')->toString(),
+                updatedByStaffId: $actor->staffId->value,
+            ));
+        } catch (UnknownMasterEntry $exception) {
+            throw ValidationException::withMessages(['category' => $exception->getMessage()]);
+        }
+
+        $this->flashSuccess('Product details updated');
 
         return redirect()->back();
     }
